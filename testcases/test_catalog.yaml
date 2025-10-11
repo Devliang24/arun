@@ -1,0 +1,29 @@
+config:
+  name: Catalog
+  base_url: "${ENV(BASE_URL)}"
+  tags: [catalog]
+steps:
+  - name: list categories
+    request:
+      method: GET
+      url: /api/v1/categories/
+    validate:
+      - [status_code, eq, 200]
+      - [headers.Content-Type, contains, application/json]
+
+  - name: list products
+    request:
+      method: GET
+      url: /api/v1/products/
+    extract:
+      product_id: body.items[0].id
+    validate:
+      - [status_code, eq, 200]
+      - [headers.Content-Type, contains, application/json]
+
+  - name: product detail
+    request:
+      method: GET
+      url: /api/v1/products/${product_id}
+    validate:
+      - [status_code, eq, 200]

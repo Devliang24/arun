@@ -1,0 +1,39 @@
+config:
+  name: Auth Flow
+  base_url: "${ENV(BASE_URL)}"
+  tags: [auth]
+steps:
+  - name: login
+    request:
+      method: POST
+      url: /api/v1/auth/login
+      json:
+        username: "${ENV(USER_USERNAME)}"
+        password: "${ENV(USER_PASSWORD)}"
+    extract:
+      token: body.access_token
+    validate:
+      - [status_code, eq, 200]
+      - [headers.Content-Type, contains, application/json]
+
+  - name: whoami
+    variables:
+      authz: "Bearer ${token}"
+    request:
+      method: GET
+      url: /api/v1/users/me
+      headers:
+        Authorization: "${authz}"
+    validate:
+      - [status_code, eq, 200]
+
+  - name: logout
+    variables:
+      authz: "Bearer ${token}"
+    request:
+      method: DELETE
+      url: /api/v1/auth/session
+      headers:
+        Authorization: "${authz}"
+    validate:
+      - [status_code, eq, 200]

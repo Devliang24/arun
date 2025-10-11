@@ -1,0 +1,18 @@
+config:
+  name: Miscellaneous Endpoints
+  base_url: "${ENV(BASE_URL)}"
+  tags: [misc]
+steps:
+  - name: debug info
+    request:
+      method: GET
+      url: /debug/info
+    validate:
+      - [status_code, eq, 200]
+
+  - name: test error
+    request:
+      method: GET
+      url: /test-error
+    validate:
+      - [status_code, in, [200, 500, 400]]

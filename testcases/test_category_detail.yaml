@@ -1,0 +1,20 @@
+config:
+  name: Category Detail
+  base_url: "${ENV(BASE_URL)}"
+  tags: [catalog]
+steps:
+  - name: list categories
+    request:
+      method: GET
+      url: /api/v1/categories/
+    extract:
+      category_id: body[0].id
+    validate:
+      - [status_code, eq, 200]
+
+  - name: get category by id
+    request:
+      method: GET
+      url: /api/v1/categories/${category_id}
+    validate:
+      - [status_code, eq, 200]

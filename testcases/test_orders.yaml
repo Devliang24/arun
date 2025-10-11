@@ -1,0 +1,65 @@
+config:
+  name: Orders
+  base_url: "${ENV(BASE_URL)}"
+  tags: [orders]
+steps:
+  - name: login
+    request:
+      method: POST
+      url: /api/v1/auth/login
+      json:
+        username: "${ENV(USER_USERNAME)}"
+        password: "${ENV(USER_PASSWORD)}"
+    extract:
+      token: body.access_token
+    validate:
+      - [status_code, eq, 200]
+
+  - name: get product
+    request:
+      method: GET
+      url: /api/v1/products/
+    extract:
+      product_id: body.items[0].id
+    validate:
+      - [status_code, eq, 200]
+
+  - name: add to cart
+    variables:
+      authz: "Bearer ${token}"
+    request:
+      method: POST
+      url: /api/v1/cart/items
+      headers:
+        Authorization: "${authz}"
+      json:
+        product_id: "${product_id}"
+        quantity: 1
+    validate:
+      - [status_code, eq, 201]
+
+  - name: checkout
+    variables:
+      authz: "Bearer ${token}"
+    request:
+      method: POST
+      url: /api/v1/orders/
+      headers:
+        Authorization: "${authz}"
+      json:
+        shipping_address: "${ENV(SHIPPING_ADDRESS)}"
+    extract:
+      order_id: body.id
+    validate:
+      - [status_code, eq, 201]
+
+  - name: get order detail
+    variables:
+      authz: "Bearer ${token}"
+    request:
+      method: GET
+      url: /api/v1/orders/${order_id}
+      headers:
+        Authorization: "${authz}"
+    validate:
+      - [status_code, eq, 200]
