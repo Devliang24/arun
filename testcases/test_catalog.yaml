@@ -1,6 +1,6 @@
 config:
   name: Catalog
-  base_url: "${ENV(BASE_URL)}"
+  base_url: ${ENV(BASE_URL)}
   tags: [catalog]
 steps:
   - name: list categories
@@ -8,8 +8,8 @@ steps:
       method: GET
       url: /api/v1/categories/
     validate:
-      - [status_code, eq, 200]
-      - [headers.Content-Type, contains, application/json]
+      - eq: [status_code, 200]
+      - contains: [headers.Content-Type, application/json]
 
   - name: list products
     request:
@@ -18,12 +18,12 @@ steps:
     extract:
       product_id: $.items[0].id
     validate:
-      - [status_code, eq, 200]
-      - [headers.Content-Type, contains, application/json]
+      - eq: [status_code, 200]
+      - contains: [headers.Content-Type, application/json]
 
   - name: product detail
     request:
       method: GET
-      url: /api/v1/products/${product_id}
+      url: /api/v1/products/$product_id
     validate:
-      - [status_code, eq, 200]
+      - eq: [status_code, 200]

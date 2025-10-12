@@ -1,6 +1,6 @@
 config:
   name: Health Checks
-  base_url: "${ENV(BASE_URL)}"
+  base_url: ${ENV(BASE_URL)}
   tags: [health]
 steps:
   - name: get health
@@ -8,13 +8,13 @@ steps:
       method: GET
       url: /health
     validate:
-      - [status_code, eq, 200]
-      - [headers.Content-Type, contains, application/json]
+      - eq: [status_code, 200]
+      - contains: [headers.Content-Type, application/json]
 
   - name: get root
     request:
       method: GET
       url: /
     validate:
-      - [status_code, eq, 200]
-      - [headers.Content-Type, contains, application/json]
+      - eq: [status_code, 200]
+      - contains: [headers.Content-Type, application/json]

@@ -1,9 +1,9 @@
 config:
   name: Register and Login
-  base_url: "${ENV(BASE_URL)}"
+  base_url: ${ENV(BASE_URL)}
   variables:
-    new_username: "u_${short_uid(12)}"
-    new_email: "u_${uid()}@example.com"
+    new_username: u_${short_uid(12)}
+    new_email: u_${uid()}@example.com
     new_password: "P@ssw0rd123"
   tags: [auth, register]
 steps:
@@ -12,13 +12,13 @@ steps:
       method: POST
       url: /api/v1/auth/register
       json:
-        username: "${new_username}"
-        email: "${new_email}"
-        password: "${new_password}"
+        username: $new_username
+        email: $new_email
+        password: $new_password
         full_name: "New User"
         shipping_address: "No.1 Test Road"
     validate:
-      - [status_code, in, [200, 201]]
+      - in: [status_code, [200, 201]]
 
   - name: login with new account
     retry: 3
@@ -27,9 +27,9 @@ steps:
       method: POST
       url: /api/v1/auth/login
       json:
-        username: "${new_username}"
-        password: "${new_password}"
+        username: $new_username
+        password: $new_password
     extract:
       token: $.data.access_token
     validate:
-      - [status_code, eq, 200]
+      - eq: [status_code, 200]

@@ -1,31 +1,34 @@
 config:
   name: Admin Negative
-  base_url: "${ENV(BASE_URL)}"
+  base_url: ${ENV(BASE_URL)}
   tags: [admin, negative]
+  variables:
+    user_username: ${ENV(USER_USERNAME)}
+    user_password: ${ENV(USER_PASSWORD)}
 steps:
   - name: login
     request:
       method: POST
       url: /api/v1/auth/login
       json:
-        username: "${ENV(USER_USERNAME)}"
-        password: "${ENV(USER_PASSWORD)}"
+        username: $user_username
+        password: $user_password
     extract:
       token: $.data.access_token
     validate:
-      - [status_code, eq, 200]
+      - eq: [status_code, 200]
 
   - name: create category forbidden
     variables:
-      authz: "Bearer ${token}"
+      authz: Bearer $token
     request:
       method: POST
       url: /api/v1/categories/
       headers:
-        Authorization: "${authz}"
+        Authorization: $authz
       json:
-        name: "cat-${short_uid(8)}"
+        name: cat-${short_uid(8)}
         description: "tmp"
     validate:
-      - [status_code, eq, 403]
-      - [$.message, contains, "Not enough permissions"]
+      - eq: [status_code, 403]
+      - contains: [$.message, "Not enough permissions"]

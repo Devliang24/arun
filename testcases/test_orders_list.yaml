@@ -1,30 +1,33 @@
 config:
   name: Orders List
-  base_url: "${ENV(BASE_URL)}"
+  base_url: ${ENV(BASE_URL)}
   tags: [orders]
+  variables:
+    user_username: ${ENV(USER_USERNAME)}
+    user_password: ${ENV(USER_PASSWORD)}
 steps:
   - name: login
     request:
       method: POST
       url: /api/v1/auth/login
       json:
-        username: "${ENV(USER_USERNAME)}"
-        password: "${ENV(USER_PASSWORD)}"
+        username: $user_username
+        password: $user_password
     extract:
       token: $.data.access_token
     validate:
-      - [status_code, eq, 200]
+      - eq: [status_code, 200]
 
   - name: list orders
     variables:
-      authz: "Bearer ${token}"
+      authz: Bearer $token
     request:
       method: GET
       url: /api/v1/orders/
       headers:
-        Authorization: "${authz}"
+        Authorization: $authz
       params:
         skip: 0
         limit: 20
     validate:
-      - [status_code, eq, 200]
+      - eq: [status_code, 200]

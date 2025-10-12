@@ -1,6 +1,10 @@
 config:
   name: Orders
-  base_url: "${ENV(BASE_URL)}"
+  base_url: ${ENV(BASE_URL)}
+  variables:
+    user_username: ${ENV(USER_USERNAME)}
+    user_password: ${ENV(USER_PASSWORD)}
+    shipping_address: ${ENV(SHIPPING_ADDRESS)}
 tags: [orders]
 setup_hooks: [setup_hook_sign_request]
 teardown_hooks: [teardown_hook_assert_status_ok]
@@ -10,12 +14,12 @@ steps:
       method: POST
       url: /api/v1/auth/login
       json:
-        username: "${ENV(USER_USERNAME)}"
-        password: "${ENV(USER_PASSWORD)}"
+        username: $user_username
+        password: $user_password
     extract:
       token: $.data.access_token
     validate:
-      - [status_code, eq, 200]
+      - eq: [status_code, 200]
 
   - name: get product
     request:
@@ -25,45 +29,45 @@ steps:
     extract:
       product_id: $.items[0].id
     validate:
-      - [status_code, eq, 200]
+      - eq: [status_code, 200]
 
   - name: add to cart
     variables:
-      authz: "Bearer ${token}"
+      authz: Bearer $token
     request:
       method: POST
       url: /api/v1/cart/items
       headers:
-        Authorization: "${authz}"
-        X-Request-Id: "${request_id}"
+        Authorization: $authz
+        X-Request-Id: $request_id
       json:
-        product_id: "${product_id}"
+        product_id: $product_id
         quantity: 1
     validate:
-      - [status_code, eq, 201]
+      - eq: [status_code, 201]
 
   - name: checkout
     variables:
-      authz: "Bearer ${token}"
+      authz: Bearer $token
     request:
       method: POST
       url: /api/v1/orders/
       headers:
-        Authorization: "${authz}"
+        Authorization: $authz
       json:
-        shipping_address: "${ENV(SHIPPING_ADDRESS)}"
+        shipping_address: $shipping_address
     extract:
       order_id: $.id
     validate:
-      - [status_code, eq, 201]
+      - eq: [status_code, 201]
 
   - name: get order detail
     variables:
-      authz: "Bearer ${token}"
+      authz: Bearer $token
     request:
       method: GET
-      url: /api/v1/orders/${order_id}
+      url: /api/v1/orders/$order_id
       headers:
-        Authorization: "${authz}"
+        Authorization: $authz
     validate:
-      - [status_code, eq, 200]
+      - eq: [status_code, 200]
