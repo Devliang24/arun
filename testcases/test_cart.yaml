@@ -17,15 +17,24 @@ steps:
       token: $.data.access_token
     validate:
       - eq: [status_code, 200]
+      - eq: [$.success, true]
+      - eq: [$.message, "登录成功"]
+      - eq: [$.data.user.username, $user_username]
+      - regex: [$.data.access_token, '^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$']
 
   - name: get product
     request:
       method: GET
       url: /api/v1/products/
     extract:
-      product_id: $.items[0].id
+      product_id: $.data.items[0].id
     validate:
       - eq: [status_code, 200]
+      - eq: [$.success, true]
+      - eq: [$.code, 200]
+      - gt: [$.data.total, 0]
+      - gt: [$.data.items[0].price, 0.0]
+      - contains: [$.data.items[0], product_name]
 
   - name: add to cart
     variables:
@@ -40,6 +49,13 @@ steps:
         quantity: 2
     validate:
       - eq: [status_code, 201]
+      - eq: [$.success, true]
+      - eq: [$.code, 201]
+      - eq: [$.message, "添加商品到购物车成功"]
+      - len_eq: [$.data.items, 1]
+      - eq: [$.data.items[0].product_id, $product_id]
+      - eq: [$.data.items[0].quantity, 2]
+      - gt: [$.data.total_price, 0.0]
 
   - name: update quantity
     variables:
@@ -53,6 +69,11 @@ steps:
         quantity: 1
     validate:
       - eq: [status_code, 200]
+      - eq: [$.success, true]
+      - eq: [$.message, "更新购物车成功"]
+      - len_eq: [$.data.items, 1]
+      - eq: [$.data.items[0].product_id, $product_id]
+      - eq: [$.data.items[0].quantity, 1]
 
   - name: get cart
     variables:
@@ -64,6 +85,11 @@ steps:
         Authorization: $authz
     validate:
       - eq: [status_code, 200]
+      - eq: [$.success, true]
+      - eq: [$.code, 200]
+      - eq: [$.message, "获取购物车成功"]
+      - len_eq: [$.data.items, 1]
+      - eq: [$.data.items[0].quantity, 1]
 
   - name: remove from cart
     variables:
@@ -75,3 +101,7 @@ steps:
         Authorization: $authz
     validate:
       - eq: [status_code, 200]
+      - eq: [$.success, true]
+      - eq: [$.message, "从购物车移除商品成功"]
+      - len_eq: [$.data.items, 0]
+      - eq: [$.data.total_items, 0]

@@ -10,16 +10,26 @@ steps:
     validate:
       - eq: [status_code, 200]
       - contains: [headers.Content-Type, application/json]
+      - eq: [$.success, true]
+      - eq: [$.code, 200]
+      - eq: [$.message, "获取分类列表成功"]
+      - gt: [$.data[0].id, 0]
+      - contains: [$.data[0], name]
 
   - name: list products
     request:
       method: GET
       url: /api/v1/products/
     extract:
-      product_id: $.items[0].id
+      product_id: $.data.items[0].id
     validate:
       - eq: [status_code, 200]
       - contains: [headers.Content-Type, application/json]
+      - eq: [$.success, true]
+      - eq: [$.code, 200]
+      - eq: [$.message, "获取产品列表成功"]
+      - gt: [$.data.items[0].price, 0.0]
+      - contains: [$.data.items[0], product_name]
 
   - name: product detail
     request:
@@ -27,3 +37,9 @@ steps:
       url: /api/v1/products/$product_id
     validate:
       - eq: [status_code, 200]
+      - eq: [$.success, true]
+      - eq: [$.code, 200]
+      - eq: [$.message, "获取产品详情成功"]
+      - eq: [$.data.id, $product_id]
+      - gt: [$.data.price, 0.0]
+      - contains: [$.data, stock]

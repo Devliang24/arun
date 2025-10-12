@@ -19,6 +19,9 @@ steps:
       token: $.data.access_token
     validate:
       - eq: [status_code, 200]
+      - eq: [$.success, true]
+      - eq: [$.message, "登录成功"]
+      - eq: [$.data.user.username, $user_username]
 
   - name: update me
     variables:
@@ -33,6 +36,10 @@ steps:
         shipping_address: $new_address
     validate:
       - eq: [status_code, 200]
+      - eq: [$.success, true]
+      - eq: [$.message, "用户信息更新成功"]
+      - eq: [$.data.full_name, $new_full_name]
+      - eq: [$.data.shipping_address, $new_address]
 
   - name: get me
     variables:
@@ -45,3 +52,7 @@ steps:
     validate:
       - eq: [status_code, 200]
       - contains: [$.data.shipping_address, $new_address]
+      - eq: [$.success, true]
+      - eq: [$.message, "获取用户信息成功"]
+      - eq: [$.data.username, $user_username]
+      - eq: [$.data.full_name, $new_full_name]

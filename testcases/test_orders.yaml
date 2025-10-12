@@ -20,6 +20,9 @@ steps:
       token: $.data.access_token
     validate:
       - eq: [status_code, 200]
+      - eq: [$.success, true]
+      - eq: [$.message, "登录成功"]
+      - eq: [$.data.user.username, $user_username]
 
   - name: get product
     request:
@@ -27,9 +30,13 @@ steps:
       url: /api/v1/products/
     teardown_hooks: [teardown_hook_capture_request_id]
     extract:
-      product_id: $.items[0].id
+      product_id: $.data.items[0].id
     validate:
       - eq: [status_code, 200]
+      - eq: [$.success, true]
+      - eq: [$.code, 200]
+      - gt: [$.data.items[0].stock, 0]
+      - contains: [$.data.items[0], product_name]
 
   - name: add to cart
     variables:
@@ -45,6 +52,13 @@ steps:
         quantity: 1
     validate:
       - eq: [status_code, 201]
+      - eq: [$.success, true]
+      - eq: [$.code, 201]
+      - eq: [$.message, "添加商品到购物车成功"]
+      - len_eq: [$.data.items, 1]
+      - eq: [$.data.items[0].product_id, $product_id]
+      - eq: [$.data.items[0].quantity, 1]
+      - gt: [$.data.total_price, 0.0]
 
   - name: checkout
     variables:
@@ -57,9 +71,15 @@ steps:
       json:
         shipping_address: $shipping_address
     extract:
-      order_id: $.id
+      order_id: $.data.order_id
     validate:
       - eq: [status_code, 201]
+      - eq: [$.success, true]
+      - eq: [$.code, 201]
+      - eq: [$.message, "订单创建成功"]
+      - gt: [$.data.order_id, 0]
+      - gt: [$.data.total_price, 0.0]
+      - len_eq: [$.data.warnings, 0]
 
   - name: get order detail
     variables:
@@ -71,3 +91,11 @@ steps:
         Authorization: $authz
     validate:
       - eq: [status_code, 200]
+      - eq: [$.success, true]
+      - eq: [$.code, 200]
+      - eq: [$.message, "获取订单详情成功"]
+      - eq: [$.data.id, $order_id]
+      - eq: [$.data.status, pending]
+      - gt: [$.data.total_amount, 0.0]
+      - len_eq: [$.data.items, 1]
+      - eq: [$.data.items[0].product_id, $product_id]

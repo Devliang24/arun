@@ -17,6 +17,9 @@ steps:
       token: $.data.access_token
     validate:
       - eq: [status_code, 200]
+      - eq: [$.success, true]
+      - eq: [$.message, "登录成功"]
+      - eq: [$.data.user.username, $user_username]
 
   - name: create category forbidden
     variables:
@@ -32,3 +35,5 @@ steps:
     validate:
       - eq: [status_code, 403]
       - contains: [$.message, "Not enough permissions"]
+      - eq: [$.success, false]
+      - eq: [$.code, 403]

@@ -17,6 +17,9 @@ steps:
       token: $.data.access_token
     validate:
       - eq: [status_code, 200]
+      - eq: [$.success, true]
+      - eq: [$.message, "登录成功"]
+      - eq: [$.data.user.username, $user_username]
 
   - name: list orders
     variables:
@@ -31,3 +34,10 @@ steps:
         limit: 20
     validate:
       - eq: [status_code, 200]
+      - eq: [$.success, true]
+      - eq: [$.code, 200]
+      - contains: [$.message, "订单列表"]
+      - eq: [$.data.page, 1]
+      - eq: [$.data.page_size, 20]
+      - contains: [$.data, items]
+      - ge: [$.data.total, 0]

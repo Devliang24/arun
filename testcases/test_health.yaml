@@ -10,6 +10,11 @@ steps:
     validate:
       - eq: [status_code, 200]
       - contains: [headers.Content-Type, application/json]
+      - eq: [$.success, true]
+      - eq: [$.code, 200]
+      - eq: [$.message, "服务健康状态正常"]
+      - eq: [$.data.status, healthy]
+      - contains: [$.data, service]
 
   - name: get root
     request:
@@ -18,3 +23,7 @@ steps:
     validate:
       - eq: [status_code, 200]
       - contains: [headers.Content-Type, application/json]
+      - eq: [$.success, true]
+      - eq: [$.code, 200]
+      - eq: [$.message, "欢迎使用电商API"]
+      - contains: [$.data, version]

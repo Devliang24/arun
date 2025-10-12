@@ -19,6 +19,11 @@ steps:
         shipping_address: "No.1 Test Road"
     validate:
       - in: [status_code, [200, 201]]
+      - eq: [$.success, true]
+      - eq: [$.message, "用户注册成功"]
+      - eq: [$.data.username, $new_username]
+      - eq: [$.data.email, $new_email]
+      - eq: [$.data.role, user]
 
   - name: login with new account
     retry: 3
@@ -33,3 +38,7 @@ steps:
       token: $.data.access_token
     validate:
       - eq: [status_code, 200]
+      - eq: [$.success, true]
+      - eq: [$.message, "登录成功"]
+      - eq: [$.data.user.username, $new_username]
+      - regex: [$.data.access_token, '^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$']
