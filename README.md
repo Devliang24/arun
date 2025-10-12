@@ -7,6 +7,7 @@ Quickstart
 - Put YAML tests in `testcases/` (HttpRunner 命名规范：`test_*.yaml`)。
 - Run: `arun run testcases --env-file .env --report reports/run.json --junit reports/junit.xml --html reports/report.html`.
 - Validate YAML (no execution): `arun check testcases`。
+- Auto-fix hooks style（将 Suite/Case 级 hooks 移到 config 内）：`arun fix testcases`、`arun fix testsuites`。
 
 CLI
 - `arun run <path>`: Run a file or directory of YAML tests
@@ -60,42 +61,35 @@ Hooks（函数钩子）
     - 可原地修改 `request`（如加签、补 headers）；返回的 dict 会合并进运行变量（供后续步骤使用）。
   - teardown: `def my_teardown(response: dict, variables: dict, env: dict) -> dict | None`
     - 可检查响应（抛异常使步骤失败）；返回的 dict 会合并进运行变量。
-- YAML 示例：
+- YAML 示例（所有 hooks 必须采用 HttpRunner `${...}` 表达式写法）：
   ```yaml
   steps:
     - name: signed request
-      setup_hooks: [setup_hook_sign_request]
+      setup_hooks:
+        - ${setup_hook_sign_request($request)}
       request:
         method: GET
         url: /secure
-      teardown_hooks: [teardown_hook_assert_status_ok]
+      teardown_hooks:
+        - ${teardown_hook_assert_status_ok($response)}
   ```
 - API Key 注入示例：
   ```yaml
   steps:
     - name: with api key
-      setup_hooks: [setup_hook_api_key]
+      setup_hooks:
+        - ${setup_hook_api_key($request)}
       request:
         method: GET
         url: /debug/info
-  ```
-
-- 表达式 Hooks 示例：
-  ```yaml
-  steps:
-    - name: expr style
-      setup_hooks: ["${setup_hook_sign_request($request)}"]
-      request:
-        method: GET
-        url: /debug/info
-      teardown_hooks: ["${teardown_hook_assert_status_ok($response)}"]
   ```
 
 - HMAC 加签示例：
   ```yaml
   steps:
     - name: hmac signed
-      setup_hooks: [setup_hook_hmac_sign]
+      setup_hooks:
+        - ${setup_hook_hmac_sign($request)}
       request:
         method: GET
         url: /debug/info
@@ -103,11 +97,41 @@ Hooks（函数钩子）
         - [status_code, eq, 200]
   ```
   需要在环境中提供 `APP_SECRET`（例如 `.env` 中设置 APP_SECRET=xxxx）。
- - Case/Suite 级 hooks：在 `cases[].setup_hooks/teardown_hooks` 与 suite 顶层的 `setup_hooks/teardown_hooks` 中声明，执行顺序：Suite.setup → Case.setup → Steps → Case.teardown → Suite.teardown。
- - 函数命名约定：
-   - setup 函数需以 `setup_hook_` 开头，例如 `setup_hook_sign_request`
-   - teardown 函数需以 `teardown_hook_` 开头，例如 `teardown_hook_assert_status_ok`
-- 进阶：也支持表达式写法 `${setup_hook_sign_request($request)}` / `${teardown_hook_assert_status_ok($response)}`，但推荐使用“函数名字符串列表”形式。
+- Hooks（执行顺序：Suite.setup → Case.setup → Steps → Case.teardown → Suite.teardown）
+  - 套件级（Suite）：只支持在 `config.setup_hooks/config.teardown_hooks` 中声明（不再支持套件顶层声明）
+  - 用例级（Case）：只支持在 `config.setup_hooks/config.teardown_hooks` 中声明（不再支持用例顶层声明）
+  - 步骤级（Step）：在步骤的 `setup_hooks/teardown_hooks` 中声明
+
+自动修复 YAML 风格
+- 运行：`arun fix testcases` 或 `arun fix testsuites` 批量修复 hooks 写法。
+- 可选：启用本地 Git 预提交钩子自动修复
+  1) `chmod +x scripts/pre-commit-fix-hooks.sh`
+  2) `ln -sf ../../scripts/pre-commit-fix-hooks.sh .git/hooks/pre-commit`
+  这样在 `git commit` 前会自动规范化 hooks 写法。
+- Hook 函数命名遵循 HttpRunner 习惯，可任意自定义（推荐使用 `setup_*`/`teardown_*` 前缀以便区分），调用时必须写为 `${func(...)}`
+  表达式，框架会注入请求/响应、变量、环境等上下文。
+- 表达式上下文兼容 HttpRunner 变量：
+  - `$request` / `$response`：当前请求/响应对象（dict，引用同一内存，可原地修改）
+  - `$hrp_step_name`：当前步骤名称
+  - `$hrp_step_request` / `$hrp_step_response`：请求/响应对象（同 `$request`/`$response`）
+  - `$hrp_step_variables`：步骤内可见变量（dict）
+  - `$hrp_session_variables`：当前会话变量（dict，包含 case/suite/参数等展开结果）
+  - `$hrp_session_env`：合并后的环境变量（dict）
+- 进阶示例（HttpRunner 风格）：
+  ```yaml
+  steps:
+    - name: demo hook
+      setup_hooks:
+        - ${setup_hook_example()}
+        - ${setup_show_step_name($hrp_step_name)}
+        - ${setup_show_step_request($hrp_step_request)}
+      teardown_hooks:
+        - ${teardown_hook_example()}
+        - ${teardown_show_step_response($hrp_step_response)}
+      request:
+        method: GET
+        url: /debug/info
+  ```
 
 Hooks 参考表（示例已内置于 `arun_hooks.py`）
 - setup_hook_sign_request(request, variables, env) -> dict
