@@ -263,6 +263,7 @@ SQL 响应校验
 - `apirunner/` core package
 - `testcases/` YAML testcases (HttpRunner 风格 `test_*.yaml`)
 - `testsuites/` YAML testsuites（可选，`suite_*.yaml`）
+- `examples/` 示例目录（更完整的演示用例，见 `examples/README.md`）
 - `reports/` output folder (created at runtime)
 - `spec/openapi/ecommerce_api.json` API doc (reference only)
 - `spec/postman/HC-UDI.postman.json` Postman collection (reference only)

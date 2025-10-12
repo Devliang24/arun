@@ -1,0 +1,28 @@
+config:
+  name: "Example: Login + WhoAmI (Auto Bearer)"
+  base_url: ${ENV(BASE_URL)}
+  variables:
+    user_username: ${ENV(USER_USERNAME)}
+    user_password: ${ENV(USER_PASSWORD)}
+steps:
+  - name: login
+    request:
+      method: POST
+      url: /api/v1/auth/login
+      json:
+        username: $user_username
+        password: $user_password
+    extract:
+      token: $.data.access_token
+    validate:
+      - eq: [status_code, 200]
+      - eq: [$.success, true]
+      - eq: [$.message, "登录成功"]
+
+  - name: whoami (Authorization 自动注入)
+    request:
+      method: GET
+      url: /api/v1/users/me
+    validate:
+      - eq: [status_code, 200]
+      - eq: [$.success, true]

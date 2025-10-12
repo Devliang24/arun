@@ -1,0 +1,42 @@
+config:
+  name: "Example: Register + Login + WhoAmI"
+  base_url: ${ENV(BASE_URL)}
+  setup_hooks:
+    - ${setup_hook_sign_request($request)}
+steps:
+  - name: register
+    request:
+      method: POST
+      url: /api/v1/auth/register
+      json:
+        username: u_${short_uid(12)}
+        email: u_${uid()}@example.com
+        password: "P@ssw0rd123"
+        full_name: "Demo User_${short_uid(8)}"
+        shipping_address: "No.1 Demo Road"
+    extract:
+      new_username: $.data.username
+    validate:
+      - in: [status_code, [200, 201]]
+      - eq: [$.success, true]
+
+  - name: login
+    request:
+      method: POST
+      url: /api/v1/auth/login
+      json:
+        username: $new_username
+        password: "P@ssw0rd123"
+    extract:
+      token: $.data.access_token
+    validate:
+      - eq: [status_code, 200]
+      - eq: [$.success, true]
+
+  - name: whoami
+    request:
+      method: GET
+      url: /api/v1/users/me
+    validate:
+      - eq: [status_code, 200]
+      - eq: [$.success, true]
