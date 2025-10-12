@@ -1,16 +1,15 @@
 from __future__ import annotations
 
 import logging
-import ast
 from typing import Any, Callable, Dict, Iterable, List, Mapping, MutableMapping, Sequence, Tuple
 from urllib.parse import urlparse
 
-from apirunner.models.mysql_assert import MySQLAssertConfig
+from apirunner.models.sql_validate import SQLValidateConfig
 from apirunner.models.report import AssertionResult
 from apirunner.runner.assertions import compare
 from apirunner.runner.extractors import extract_from_body
 
-MySQLConfigLike = Mapping[str, Any] | MySQLAssertConfig
+SQLValidateConfigLike = Mapping[str, Any] | SQLValidateConfig
 RenderFn = Callable[[Any], Any]
 
 _MYSQL_DRIVER_NAME: str | None = None
@@ -311,43 +310,9 @@ def _resolve_expected(value: Any, response: Mapping[str, Any], variables: Mappin
     return value
 
 
-def _format_query_label(query: str, params: Any) -> str:
+def _format_query_label(query: str) -> str:
     q = " ".join(str(query).split())
-    short = q[:60] + ("..." if len(q) > 60 else "")
-    if params in (None, (), [], {}):
-        return short
-    return f"{short} | params={params}"
-
-
-def _split_query_and_params(stmt: str) -> Tuple[str, str | None]:
-    marker = "| params="
-    if marker not in stmt:
-        return stmt.strip(), None
-    base, params = stmt.split(marker, 1)
-    return base.strip(), params.strip()
-
-
-def _parse_inline_params(text: str | None) -> Any:
-    if text is None or text == "":
-        return None
-    raw = text.strip()
-    if not raw:
-        return None
-    try:
-        value = ast.literal_eval(raw)
-    except Exception as exc:
-        raise ValueError(f"Invalid inline params literal: {text!r}") from exc
-    return value
-
-
-def _normalize_params_for_execute(params: Any) -> Any:
-    if params is None:
-        return None
-    if isinstance(params, dict):
-        return params
-    if isinstance(params, (list, tuple)):
-        return tuple(params)
-    return (params,)
+    return q[:60] + ("..." if len(q) > 60 else "")
 
 
 def _iter_expectations(expectations: Any) -> Iterable[Tuple[str, str, Any]]:
@@ -367,30 +332,30 @@ def _iter_expectations(expectations: Any) -> Iterable[Tuple[str, str, Any]]:
     if isinstance(expectations, Sequence) and not isinstance(expectations, (str, bytes, bytearray)):
         for entry in expectations:
             if not isinstance(entry, Mapping):
-                raise TypeError("mysql_assert expect list items must be mappings of comparator -> [column, expect]")
+                raise TypeError("sql_validate expect list items must be mappings of comparator -> [column, expect]")
             if len(entry) != 1:
-                raise TypeError("mysql_assert expect list items must contain exactly one comparator key")
+                raise TypeError("sql_validate expect list items must contain exactly one comparator key")
             comparator, payload = next(iter(entry.items()))
             if isinstance(payload, (list, tuple)):
                 if len(payload) < 2:
-                    raise TypeError("mysql_assert expect comparator payload must be [column, expected]")
+                    raise TypeError("sql_validate expect comparator payload must be [column, expected]")
                 column = payload[0]
                 target = payload[1]
             elif isinstance(payload, Mapping):
                 column = payload.get("check") or payload.get("column") or payload.get("field")
                 target = payload.get("value") if "value" in payload else payload.get("expect")
                 if column is None or target is None:
-                    raise TypeError("mysql_assert expect dict payload must include column/check and value/expect")
+                    raise TypeError("sql_validate expect dict payload must include column/check and value/expect")
             else:
-                raise TypeError("mysql_assert expect comparator payload must be list or mapping")
+                raise TypeError("sql_validate expect comparator payload must be list or mapping")
             yield str(column), str(comparator), target
         return
 
-    raise TypeError("mysql_assert.expect must be a mapping or comparator list")
+    raise TypeError("sql_validate.expect must be a mapping or comparator list")
 
 
-def run_mysql_asserts(
-    configs: Sequence[MySQLConfigLike],
+def run_sql_validate(
+    configs: Sequence[SQLValidateConfigLike],
     *,
     response: Mapping[str, Any],
     variables: Mapping[str, Any],
@@ -406,28 +371,28 @@ def run_mysql_asserts(
     updates: Dict[str, Any] = {}
 
     for cfg in configs:
-        cfg_obj = cfg if isinstance(cfg, MySQLAssertConfig) else MySQLAssertConfig.model_validate(cfg)
+        cfg_obj = cfg if isinstance(cfg, SQLValidateConfig) else SQLValidateConfig.model_validate(cfg)
         rendered_cfg_raw = cfg_obj.model_dump()
         rendered_cfg = render(rendered_cfg_raw) if render else rendered_cfg_raw
         if not isinstance(rendered_cfg, Mapping):
-            raise TypeError("Rendered mysql_assert configuration must be a mapping.")
+            raise TypeError("Rendered sql_validate configuration must be a mapping.")
 
-        query_raw = str(rendered_cfg.get("query") or cfg_obj.query)
-        sql_text, inline_params = _split_query_and_params(query_raw)
-        params = _parse_inline_params(inline_params)
-        exec_params = _normalize_params_for_execute(params)
-        query = sql_text
+        query = str(rendered_cfg.get("query") or cfg_obj.query).strip()
+        if "| params=" in query:
+            raise ValueError("sql_validate.query no longer supports '| params=...'; inline variables directly in SQL.")
         dsn = _merge_dsn(rendered_cfg.get("dsn"), variables, env_map)
         driver_name, conn = _ensure_connection(dsn)
         cursor = _open_cursor(driver_name, conn)
-        query_label = _format_query_label(query, params)
+        query_label = _format_query_label(query)
         if logger:
-            logger.info(f"[MYSQL] {query_label}")
+            logger.info(f"[SQL] {query_label}")
+        description = None
         try:
-            cursor.execute(query, exec_params)
+            cursor.execute(query)
+            description = cursor.description
             fetch_mode = str(rendered_cfg.get("fetch") or "one").lower()
             if fetch_mode not in ("one", "first", "single"):
-                raise ValueError("mysql_assert.fetch currently only supports 'one'")
+                raise ValueError("sql_validate.fetch currently only supports 'one'")
             row = cursor.fetchone()
         finally:
             try:
@@ -442,7 +407,7 @@ def run_mysql_asserts(
             if allow_empty:
                 results.append(
                     AssertionResult(
-                        check=f"mysql.row_exists[{q_label}]",
+                        check=f"sql.row_exists[{q_label}]",
                         comparator="eq",
                         expect=False,
                         actual=False,
@@ -454,21 +419,21 @@ def run_mysql_asserts(
             else:
                 results.append(
                     AssertionResult(
-                        check=f"mysql.row_exists[{q_label}]",
+                        check=f"sql.row_exists[{q_label}]",
                         comparator="eq",
                         expect=True,
                         actual=False,
                         passed=False,
-                        message="MySQL assertion: query returned no rows.",
+                        message="SQL validation: query returned no rows.",
                     )
                 )
                 if logger:
-                    logger.error(f"[MYSQL] assertion failed: no rows for {q_label}")
+                    logger.error(f"[SQL] validation failed: no rows for {q_label}")
                 continue
 
         results.append(
             AssertionResult(
-                check=f"mysql.row_exists[{q_label}]",
+                check=f"sql.row_exists[{q_label}]",
                 comparator="eq",
                 expect=True,
                 actual=True,
@@ -479,10 +444,9 @@ def run_mysql_asserts(
         if isinstance(row, Mapping):
             row_map: MutableMapping[str, Any] = dict(row)
         else:
-            # Fallback: try to coerce sequence rows with cursor description
             row_map = {}
-            if hasattr(cursor, "description") and cursor.description:
-                cols = [col[0] for col in cursor.description]
+            if description:
+                cols = [col[0] for col in description]
                 row_map.update({col: val for col, val in zip(cols, row)})
 
         expectations = rendered_cfg.get("expect") or rendered_cfg.get("expects")
@@ -493,7 +457,7 @@ def run_mysql_asserts(
                 passed, err = compare(comparator, actual, expected_value)
                 results.append(
                     AssertionResult(
-                        check=f"mysql.{column}",
+                        check=f"sql.{column}",
                         comparator=comparator,
                         expect=expected_value,
                         actual=actual,
@@ -503,12 +467,12 @@ def run_mysql_asserts(
                 )
                 if not passed and logger:
                     logger.error(
-                        f"[MYSQL] expectation failed for column '{column}': "
+                        f"[SQL] expectation failed for column '{column}': "
                         f"actual={actual!r} comparator={comparator} expected={expected_value!r} ({err})"
                     )
                 elif logger:
                     logger.info(
-                        f"[MYSQL] expectation ok for column '{column}': "
+                        f"[SQL] expectation ok for column '{column}': "
                         f"actual={actual!r} comparator={comparator} expected={expected_value!r}"
                     )
 
@@ -517,6 +481,9 @@ def run_mysql_asserts(
             for var_name, column in store_cfg.items():
                 updates[str(var_name)] = row_map.get(column)
                 if logger:
-                    logger.info(f"[MYSQL] store var: {var_name} = {row_map.get(column)!r}")
+                    logger.info(f"[SQL] store var: {var_name} = {row_map.get(column)!r}")
 
     return results, updates
+
+
+__all__ = ["run_sql_validate", "SQLValidateConfigLike"]
