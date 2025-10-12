@@ -7,7 +7,8 @@ config:
     user_password: ${ENV(USER_PASSWORD)}
 steps:
   - name: login
-    setup_hooks: [setup_hook_sign_request]
+    setup_hooks:
+      - ${setup_hook_sign_request($request)}
     request:
       method: POST
       url: /api/v1/auth/login
@@ -18,18 +19,18 @@ steps:
       token: $.data.access_token
     validate:
       - eq: [status_code, 200]
-      - contains: [headers.Content-Type, application/json]
+      - contains: [headers.Content-Type, "application/json"]
       - eq: [$.success, true]
       - eq: [$.code, 200]
       - eq: [$.message, "登录成功"]
-      - regex: [$.data.access_token, '^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$']
-      - eq: [$.data.token_type, bearer]
+      - regex: [$.data.access_token, "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$"]
+      - eq: [$.data.token_type, "bearer"]
       - eq: [$.data.user.username, $user_username]
       - eq: [$.data.user.is_active, true]
 
   - name: whoami
     variables:
-      authz: Bearer $token
+      authz: "Bearer $token"
     request:
       method: GET
       url: /api/v1/users/me
@@ -42,11 +43,11 @@ steps:
       - eq: [$.message, "获取用户信息成功"]
       - eq: [$.data.username, $user_username]
       - eq: [$.data.is_active, true]
-      - contains: [$.data, role]
+      - contains: [$.data, "role"]
 
   - name: logout
     variables:
-      authz: Bearer $token
+      authz: "Bearer $token"
     request:
       method: DELETE
       url: /api/v1/auth/session
@@ -57,4 +58,4 @@ steps:
       - eq: [$.success, true]
       - eq: [$.code, 200]
       - eq: [$.message, "登出成功"]
-      - contains: [$.data.instruction, JWT Token]
+      - contains: [$.data.instruction, "JWT Token"]

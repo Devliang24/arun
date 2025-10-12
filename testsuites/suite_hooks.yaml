@@ -1,13 +1,17 @@
 config:
   name: Suite With Hooks
   base_url: ${ENV(BASE_URL)}
-setup_hooks: [setup_hook_sign_request]
-teardown_hooks: [teardown_hook_capture_request_id]
+  setup_hooks:
+    - ${setup_hook_sign_request($request)}
+  teardown_hooks:
+    - ${teardown_hook_capture_request_id($response)}
 cases:
   - config:
       name: Case With Hooks
-    setup_hooks: [setup_hook_sign_request]
-    teardown_hooks: [teardown_hook_assert_status_ok]
+      setup_hooks:
+        - ${setup_hook_sign_request($request)}
+      teardown_hooks:
+        - ${teardown_hook_assert_status_ok($response)}
     steps:
       - name: get root with signed header
         request:

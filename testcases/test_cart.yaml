@@ -20,7 +20,7 @@ steps:
       - eq: [$.success, true]
       - eq: [$.message, "登录成功"]
       - eq: [$.data.user.username, $user_username]
-      - regex: [$.data.access_token, '^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$']
+      - regex: [$.data.access_token, "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$"]
 
   - name: get product
     request:
@@ -33,12 +33,12 @@ steps:
       - eq: [$.success, true]
       - eq: [$.code, 200]
       - gt: [$.data.total, 0]
-      - gt: [$.data.items[0].price, 0.0]
-      - contains: [$.data.items[0], product_name]
+      - gt: ["$.data.items[0].price", 0.0]
+      - contains: ["$.data.items[0]", "product_name"]
 
   - name: add to cart
     variables:
-      authz: Bearer $token
+      authz: "Bearer $token"
     request:
       method: POST
       url: /api/v1/cart/items
@@ -53,13 +53,13 @@ steps:
       - eq: [$.code, 201]
       - eq: [$.message, "添加商品到购物车成功"]
       - len_eq: [$.data.items, 1]
-      - eq: [$.data.items[0].product_id, $product_id]
-      - eq: [$.data.items[0].quantity, 2]
+      - eq: ["$.data.items[0].product_id", $product_id]
+      - eq: ["$.data.items[0].quantity", 2]
       - gt: [$.data.total_price, 0.0]
 
   - name: update quantity
     variables:
-      authz: Bearer $token
+      authz: "Bearer $token"
     request:
       method: PUT
       url: /api/v1/cart/items/$product_id
@@ -72,12 +72,12 @@ steps:
       - eq: [$.success, true]
       - eq: [$.message, "更新购物车成功"]
       - len_eq: [$.data.items, 1]
-      - eq: [$.data.items[0].product_id, $product_id]
-      - eq: [$.data.items[0].quantity, 1]
+      - eq: ["$.data.items[0].product_id", $product_id]
+      - eq: ["$.data.items[0].quantity", 1]
 
   - name: get cart
     variables:
-      authz: Bearer $token
+      authz: "Bearer $token"
     request:
       method: GET
       url: /api/v1/cart/
@@ -89,11 +89,11 @@ steps:
       - eq: [$.code, 200]
       - eq: [$.message, "获取购物车成功"]
       - len_eq: [$.data.items, 1]
-      - eq: [$.data.items[0].quantity, 1]
+      - eq: ["$.data.items[0].quantity", 1]
 
   - name: remove from cart
     variables:
-      authz: Bearer $token
+      authz: "Bearer $token"
     request:
       method: DELETE
       url: /api/v1/cart/items/$product_id

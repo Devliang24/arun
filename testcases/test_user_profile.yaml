@@ -4,7 +4,7 @@ config:
   variables:
     user_username: ${ENV(USER_USERNAME)}
     user_password: ${ENV(USER_PASSWORD)}
-    new_full_name: User ${uuid4()}
+    new_full_name: User_${short_uid(12)}
     new_address: "No.9 Automation Rd"
   tags: [users]
 steps:
@@ -25,7 +25,7 @@ steps:
 
   - name: update me
     variables:
-      authz: Bearer $token
+      authz: "Bearer $token"
     request:
       method: PUT
       url: /api/v1/users/me
@@ -43,7 +43,7 @@ steps:
 
   - name: get me
     variables:
-      authz: Bearer $token
+      authz: "Bearer $token"
     request:
       method: GET
       url: /api/v1/users/me

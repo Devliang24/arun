@@ -14,8 +14,8 @@ steps:
       - eq: [$.success, true]
       - eq: [$.code, 200]
       - eq: [$.message, "获取分类列表成功"]
-      - gt: [$.data[0].id, 0]
-      - contains: [$.data[0], name]
+      - gt: ["$.data[0].id", 0]
+      - contains: ["$.data[0]", "name"]
 
   - name: get category by id
     request:

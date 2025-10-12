@@ -34,12 +34,12 @@ steps:
       - eq: [status_code, 200]
       - eq: [$.success, true]
       - eq: [$.code, 200]
-      - gt: [$.data.items[0].stock, 0]
-      - contains: [$.data.items[0], product_name]
+      - gt: ["$.data.items[0].stock", 0]
+      - contains: ["$.data.items[0]", "product_name"]
 
   - name: add to cart
     variables:
-      authz: Bearer $token
+      authz: "Bearer $token"
     request:
       method: POST
       url: /api/v1/cart/items
@@ -54,13 +54,13 @@ steps:
       - eq: [$.code, 201]
       - eq: [$.message, "添加商品到购物车成功"]
       - len_eq: [$.data.items, 1]
-      - eq: [$.data.items[0].product_id, $product_id]
-      - eq: [$.data.items[0].quantity, $quantity]
+      - eq: ["$.data.items[0].product_id", $product_id]
+      - eq: ["$.data.items[0].quantity", $quantity]
       - gt: [$.data.total_price, 0.0]
 
   - name: checkout
     variables:
-      authz: Bearer $token
+      authz: "Bearer $token"
     request:
       method: POST
       url: /api/v1/orders/
@@ -81,7 +81,7 @@ steps:
 
   - name: order detail
     variables:
-      authz: Bearer $token
+      authz: "Bearer $token"
     request:
       method: GET
       url: /api/v1/orders/$order_id
@@ -94,6 +94,6 @@ steps:
       - eq: [$.message, "获取订单详情成功"]
       - eq: [$.data.id, $order_id]
       - gt: [$.data.total_amount, 0.0]
-      - eq: [$.data.status, pending]
+      - eq: [$.data.status, "pending"]
       - len_eq: [$.data.items, 1]
-      - eq: [$.data.items[0].product_id, $product_id]
+      - eq: ["$.data.items[0].product_id", $product_id]

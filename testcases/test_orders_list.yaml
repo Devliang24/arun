@@ -23,7 +23,7 @@ steps:
 
   - name: list orders
     variables:
-      authz: Bearer $token
+      authz: "Bearer $token"
     request:
       method: GET
       url: /api/v1/orders/
@@ -39,5 +39,5 @@ steps:
       - contains: [$.message, "订单列表"]
       - eq: [$.data.page, 1]
       - eq: [$.data.page_size, 20]
-      - contains: [$.data, items]
+      - contains: [$.data, "items"]
       - ge: [$.data.total, 0]

@@ -5,17 +5,35 @@ config:
     user_username: ${ENV(USER_USERNAME)}
     user_password: ${ENV(USER_PASSWORD)}
     shipping_address: ${ENV(SHIPPING_ADDRESS)}
-tags: [orders]
-setup_hooks: [setup_hook_sign_request]
-teardown_hooks: [teardown_hook_assert_status_ok]
+  tags: [orders]
+  setup_hooks:
+    - ${setup_hook_sign_request($request)}
+  teardown_hooks:
+    - ${teardown_hook_assert_status_ok($response)}
 steps:
+  - name: register user for order flow
+    request:
+      method: POST
+      url: /api/v1/auth/register
+      json:
+        username: u_${short_uid(12)}
+        email: u_${uid()}@example.com
+        password: "P@ssw0rd123"
+        full_name: "Orders User_${short_uid(10)}"
+        shipping_address: $shipping_address
+    extract:
+      user_username: $.data.username
+    validate:
+      - in: [status_code, [200, 201]]
+      - eq: [$.success, true]
+      - eq: [$.message, "用户注册成功"]
   - name: login
     request:
       method: POST
       url: /api/v1/auth/login
       json:
         username: $user_username
-        password: $user_password
+        password: "P@ssw0rd123"
     extract:
       token: $.data.access_token
     validate:
@@ -28,19 +46,20 @@ steps:
     request:
       method: GET
       url: /api/v1/products/
-    teardown_hooks: [teardown_hook_capture_request_id]
+    teardown_hooks:
+      - ${teardown_hook_capture_request_id($response)}
     extract:
       product_id: $.data.items[0].id
     validate:
       - eq: [status_code, 200]
       - eq: [$.success, true]
       - eq: [$.code, 200]
-      - gt: [$.data.items[0].stock, 0]
-      - contains: [$.data.items[0], product_name]
+      - gt: ["$.data.items[0].stock", 0]
+      - contains: ["$.data.items[0]", "name"]
 
   - name: add to cart
     variables:
-      authz: Bearer $token
+      authz: "Bearer $token"
     request:
       method: POST
       url: /api/v1/cart/items
@@ -56,13 +75,13 @@ steps:
       - eq: [$.code, 201]
       - eq: [$.message, "添加商品到购物车成功"]
       - len_eq: [$.data.items, 1]
-      - eq: [$.data.items[0].product_id, $product_id]
-      - eq: [$.data.items[0].quantity, 1]
+      - eq: ["$.data.items[0].product_id", $product_id]
+      - eq: ["$.data.items[0].quantity", 1]
       - gt: [$.data.total_price, 0.0]
 
   - name: checkout
     variables:
-      authz: Bearer $token
+      authz: "Bearer $token"
     request:
       method: POST
       url: /api/v1/orders/
@@ -83,7 +102,7 @@ steps:
 
   - name: get order detail
     variables:
-      authz: Bearer $token
+      authz: "Bearer $token"
     request:
       method: GET
       url: /api/v1/orders/$order_id
@@ -95,7 +114,7 @@ steps:
       - eq: [$.code, 200]
       - eq: [$.message, "获取订单详情成功"]
       - eq: [$.data.id, $order_id]
-      - eq: [$.data.status, pending]
-      - gt: [$.data.total_amount, 0.0]
+      - eq: [$.data.status, "pending"]
+      - gt: [$.data.total_price, 0.0]
       - len_eq: [$.data.items, 1]
-      - eq: [$.data.items[0].product_id, $product_id]
+      - eq: ["$.data.items[0].product_id", $product_id]

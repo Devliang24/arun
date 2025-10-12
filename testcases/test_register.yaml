@@ -15,7 +15,7 @@ steps:
         username: $new_username
         email: $new_email
         password: $new_password
-        full_name: "New User"
+        full_name: "New User_${short_uid(10)}"
         shipping_address: "No.1 Test Road"
     validate:
       - in: [status_code, [200, 201]]
@@ -23,7 +23,7 @@ steps:
       - eq: [$.message, "用户注册成功"]
       - eq: [$.data.username, $new_username]
       - eq: [$.data.email, $new_email]
-      - eq: [$.data.role, user]
+      - eq: [$.data.role, "user"]
 
   - name: login with new account
     retry: 3
@@ -41,4 +41,4 @@ steps:
       - eq: [$.success, true]
       - eq: [$.message, "登录成功"]
       - eq: [$.data.user.username, $new_username]
-      - regex: [$.data.access_token, '^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$']
+      - regex: [$.data.access_token, "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$"]

@@ -9,12 +9,12 @@ steps:
       url: /api/v1/categories/
     validate:
       - eq: [status_code, 200]
-      - contains: [headers.Content-Type, application/json]
+      - contains: [headers.Content-Type, "application/json"]
       - eq: [$.success, true]
       - eq: [$.code, 200]
       - eq: [$.message, "获取分类列表成功"]
-      - gt: [$.data[0].id, 0]
-      - contains: [$.data[0], name]
+      - gt: ["$.data[0].id", 0]
+      - contains: ["$.data[0]", "name"]
 
   - name: list products
     request:
@@ -24,12 +24,12 @@ steps:
       product_id: $.data.items[0].id
     validate:
       - eq: [status_code, 200]
-      - contains: [headers.Content-Type, application/json]
+      - contains: [headers.Content-Type, "application/json"]
       - eq: [$.success, true]
       - eq: [$.code, 200]
       - eq: [$.message, "获取产品列表成功"]
-      - gt: [$.data.items[0].price, 0.0]
-      - contains: [$.data.items[0], product_name]
+      - gt: ["$.data.items[0].price", 0.0]
+      - contains: ["$.data.items[0]", "name"]
 
   - name: product detail
     request:
@@ -42,4 +42,4 @@ steps:
       - eq: [$.message, "获取产品详情成功"]
       - eq: [$.data.id, $product_id]
       - gt: [$.data.price, 0.0]
-      - contains: [$.data, stock]
+      - contains: [$.data, "stock"]
