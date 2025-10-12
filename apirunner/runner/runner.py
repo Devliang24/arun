@@ -41,13 +41,13 @@ class Runner:
             return str(obj)
 
     def _fmt_aligned(self, section: str, label: str, text: str) -> str:
-        """Return a single string where multiline content is aligned under the label's colon.
+        """Return a single string where multiline content is aligned with fixed small indent.
 
         Example:
         [REQUEST] json: {
-                      "a": 1,
-                      "b": 2
-                    }
+          "a": 1,
+          "b": 2
+        }
         """
         section_label = {
             "REQ": "REQUEST",
@@ -57,17 +57,20 @@ class Runner:
         lines = (text or "").splitlines() or [""]
         if len(lines) == 1:
             return header + lines[0]
-        pad = " " * len(header)
+        # Use fixed 2-space indent instead of aligning to header length
+        pad = "  "
         tail_lines = lines[1:]
+        # Calculate minimum leading spaces to preserve relative indentation
         leading_spaces = [len(ln) - len(ln.lstrip(" ")) for ln in tail_lines if ln.strip()]
         trim = min(leading_spaces) if leading_spaces else 0
         adjusted = []
         for ln in tail_lines:
             if ln.strip():
-                content = ln[trim:] if trim and len(ln) >= trim else ln.lstrip(" ")
+                # Preserve relative indentation by only trimming common prefix
+                content = ln[trim:] if trim and len(ln) >= trim else ln
                 adjusted.append(pad + content)
             else:
-                adjusted.append(pad)
+                adjusted.append("")  # Empty lines don't need padding
         return header + lines[0].lstrip() + "\n" + "\n".join(adjusted)
 
     def _resolve_check(self, check: str, resp: Dict[str, Any]) -> Any:
