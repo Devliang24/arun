@@ -17,10 +17,11 @@ from apirunner.utils.mask import mask_body, mask_headers
 
 
 class Runner:
-    def __init__(self, *, log, failfast: bool = False, log_debug: bool = False) -> None:
+    def __init__(self, *, log, failfast: bool = False, log_debug: bool = False, reveal_secrets: bool = True) -> None:
         self.log = log
         self.failfast = failfast
         self.log_debug = log_debug
+        self.reveal = reveal_secrets
         self.templater = TemplateEngine()
 
     def _render(self, data: Any, variables: Dict[str, Any], functions: Dict[str, Any] | None = None, envmap: Dict[str, Any] | None = None) -> Any:
@@ -33,7 +34,32 @@ class Runner:
     def _request_dict(self, step: Step) -> Dict[str, Any]:
         return step.request.model_dump(exclude_none=True, by_alias=True)
 
+    def _fmt_json(self, obj: Any) -> str:
+        try:
+            return json.dumps(obj, ensure_ascii=False, indent=2)
+        except Exception:
+            return str(obj)
+
+    def _fmt_aligned(self, section: str, label: str, text: str) -> str:
+        """Return a single string where multiline content is aligned under the label's colon.
+
+        Example:
+        [REQ] json: {
+                      "a": 1,
+                      "b": 2
+                    }
+        """
+        header = f"[{section}] {label}: "
+        lines = (text or "").splitlines() or [""]
+        if len(lines) == 1:
+            return header + lines[0]
+        pad = " " * len(header)
+        return header + lines[0] + "\n" + "\n".join(pad + ln for ln in lines[1:])
+
     def _resolve_check(self, check: str, resp: Dict[str, Any]) -> Any:
+        # $-style check support
+        if isinstance(check, str) and check.strip().startswith("$"):
+            return self._eval_extract(check, resp)
         if check == "status_code":
             return resp.get("status_code")
         if check.startswith("headers."):
@@ -45,10 +71,105 @@ class Runner:
                 if h_key.lower() == key_lower:
                     return h_val
             return None
-        # default: body.* jmespath
+        # unsupported check format (body.* no longer supported)
+        return None
+
+    def _eval_extract(self, expr: Any, resp: Dict[str, Any]) -> Any:
+        # Only support string expressions starting with $ (HttpRunner-style)
+        if not isinstance(expr, str):
+            return None
+        e = expr.strip()
+        if not e.startswith("$"):
+            return None
+        if e in ("$", "$body"):
+            return resp.get("body")
+        if e == "$headers":
+            return resp.get("headers")
+        if e == "$status_code":
+            return resp.get("status_code")
+        if e == "$elapsed_ms":
+            return resp.get("elapsed_ms")
+        if e == "$url":
+            return resp.get("url")
+        if e == "$method":
+            return resp.get("method")
+        if e.startswith("$headers."):
+            key = e.split(".", 1)[1]
+            headers = resp.get("headers") or {}
+            key_lower = key.lower()
+            for h_key, h_val in headers.items():
+                if h_key.lower() == key_lower:
+                    return h_val
+            return None
+        # JSON body via JSONPath-like: $.a.b or $[0].id -> jmespath a.b / [0].id
         body = resp.get("body")
-        expr = check.split("body.", 1)[1] if check.startswith("body.") else check
-        return extract_from_body(body, expr)
+        if e.startswith("$."):
+            jexpr = e[2:]
+            return extract_from_body(body, jexpr)
+        if e.startswith("$["):
+            jexpr = e[1:]  # e.g. $[0].id -> [0].id
+            return extract_from_body(body, jexpr)
+        # Fallback: remove leading $ and try
+        return extract_from_body(body, e.lstrip("$"))
+
+    def _run_setup_hooks(self, names: List[str], *, funcs: Dict[str, Any] | None, req: Dict[str, Any], variables: Dict[str, Any], envmap: Dict[str, Any] | None) -> Dict[str, Any]:
+        updated: Dict[str, Any] = {}
+        fdict = funcs or {}
+        for entry in names or []:
+            if isinstance(entry, str) and entry.strip().startswith("${"):
+                # expression style
+                if self.log:
+                    self.log.info(f"[HOOK] setup expr -> {entry}")
+                import re as _re
+                m = _re.match(r"^\$\{\s*([A-Za-z_][A-Za-z0-9_]*)", entry.strip())
+                if not (m and m.group(1).startswith("setup_hook_")):
+                    raise ValueError(f"setup hook function in expression must start with 'setup_hook_': {entry}")
+                ret = self.templater.eval_expr(entry, variables, fdict, envmap, extra_ctx={"request": req, "variables": variables, "env": envmap})
+            else:
+                # function name style
+                name = entry
+                # enforce naming convention
+                if not (isinstance(name, str) and name.startswith("setup_hook_")):
+                    raise ValueError(f"setup hook function name must start with 'setup_hook_': {name}")
+                fn = fdict.get(name)
+                if not callable(fn):
+                    if self.log:
+                        self.log.error(f"[HOOK] setup '{name}' not found")
+                    continue
+                if self.log:
+                    self.log.info(f"[HOOK] setup -> {name}()")
+                ret = fn(request=req, variables=variables, env=envmap)
+            if isinstance(ret, dict):
+                updated.update(ret)
+        return updated
+
+    def _run_teardown_hooks(self, names: List[str], *, funcs: Dict[str, Any] | None, resp: Dict[str, Any], variables: Dict[str, Any], envmap: Dict[str, Any] | None) -> Dict[str, Any]:
+        updated: Dict[str, Any] = {}
+        fdict = funcs or {}
+        for entry in names or []:
+            if isinstance(entry, str) and entry.strip().startswith("${"):
+                if self.log:
+                    self.log.info(f"[HOOK] teardown expr -> {entry}")
+                import re as _re
+                m = _re.match(r"^\$\{\s*([A-Za-z_][A-Za-z0-9_]*)", entry.strip())
+                if not (m and m.group(1).startswith("teardown_hook_")):
+                    raise ValueError(f"teardown hook function in expression must start with 'teardown_hook_': {entry}")
+                ret = self.templater.eval_expr(entry, variables, fdict, envmap, extra_ctx={"response": resp, "variables": variables, "env": envmap})
+            else:
+                name = entry
+                if not (isinstance(name, str) and name.startswith("teardown_hook_")):
+                    raise ValueError(f"teardown hook function name must start with 'teardown_hook_': {name}")
+                fn = fdict.get(name)
+                if not callable(fn):
+                    if self.log:
+                        self.log.error(f"[HOOK] teardown '{name}' not found")
+                    continue
+                if self.log:
+                    self.log.info(f"[HOOK] teardown -> {name}()")
+                ret = fn(response=resp, variables=variables, env=envmap)
+            if isinstance(ret, dict):
+                updated.update(ret)
+        return updated
 
     def run_case(self, case: Case, global_vars: Dict[str, Any], params: Dict[str, Any], *, funcs: Dict[str, Any] | None = None, envmap: Dict[str, Any] | None = None) -> CaseInstanceResult:
         name = case.config.name or "Unnamed Case"
@@ -65,6 +186,27 @@ class Runner:
         client = self._build_client(case)
 
         try:
+            # Suite + Case setup hooks
+            try:
+                # suite-level
+                if getattr(case, "suite_setup_hooks", None):
+                    new_vars_suite = self._run_setup_hooks(case.suite_setup_hooks, funcs=funcs, req={}, variables={}, envmap=envmap)
+                    for k, v in (new_vars_suite or {}).items():
+                        ctx.set_base(k, v)
+                        if self.log:
+                            self.log.info(f"[HOOK] suite set var: {k} = {v!r}")
+                # case-level
+                if getattr(case, "setup_hooks", None):
+                    new_vars_case = self._run_setup_hooks(case.setup_hooks, funcs=funcs, req={}, variables={}, envmap=envmap)
+                    for k, v in (new_vars_case or {}).items():
+                        ctx.set_base(k, v)
+                        if self.log:
+                            self.log.info(f"[HOOK] case set var: {k} = {v!r}")
+            except Exception as e:
+                status = "failed"
+                steps_results.append(StepResult(name="case setup hooks", status="failed", error=f"{e}"))
+                raise
+
             for step in case.steps:
                 # skip handling
                 if step.skip:
@@ -85,18 +227,61 @@ class Runner:
                 # render request
                 req_dict = self._request_dict(step)
                 req_rendered = self._render(req_dict, variables, funcs, envmap)
+                # run setup hooks (mutation allowed)
+                try:
+                    new_vars = self._run_setup_hooks(step.setup_hooks, funcs=funcs, req=req_rendered, variables=variables, envmap=envmap)
+                    for k, v in (new_vars or {}).items():
+                        ctx.set_base(k, v)
+                        if self.log:
+                            self.log.info(f"[HOOK] set var: {k} = {v!r}")
+                    variables = ctx.get_merged(global_vars)
+                except Exception as e:
+                    status = "failed"
+                    if self.log:
+                        self.log.error(f"[HOOK] setup error: {e}")
+                    steps_results.append(StepResult(name=step.name, status="failed", error=f"setup hook error: {e}"))
+                    if self.failfast:
+                        break
+                    ctx.pop()
+                    continue
+                # sanitize headers to avoid illegal values (e.g., Bearer <empty>)
+                if isinstance(req_rendered.get("headers"), dict):
+                    headers = dict(req_rendered["headers"])  # type: ignore[index]
+                    for hk, hv in list(headers.items()):
+                        if hv is None:
+                            headers.pop(hk, None)
+                        elif isinstance(hv, str) and (hv.strip() == "" or hv.strip().lower() in {"bearer", "bearer none"}):
+                            headers.pop(hk, None)
+                    req_rendered["headers"] = headers
+                # Auto-inject Authorization if token is available and no header set
+                if (not (isinstance(req_rendered.get("headers"), dict) and any(k.lower()=="authorization" for k in req_rendered["headers"]))):
+                    tok = variables.get("token") if isinstance(variables, dict) else None
+                    if isinstance(tok, str) and tok.strip():
+                        hdrs = dict(req_rendered.get("headers") or {})
+                        hdrs["Authorization"] = f"Bearer {tok}"
+                        req_rendered["headers"] = hdrs
+
                 if self.log:
                     self.log.info(f"[STEP] Start: {step.name}")
                     # brief request line
                     self.log.info(f"[REQ] {req_rendered.get('method','GET')} {req_rendered.get('url')}")
-                    if req_rendered.get("params"):
-                        self.log.info(f"[REQ] params: {req_rendered.get('params')}")
+                    if req_rendered.get("params") is not None:
+                        self.log.info(self._fmt_aligned("REQ", "params", self._fmt_json(req_rendered.get("params"))))
                     if req_rendered.get("headers"):
-                        self.log.info(f"[REQ] headers: {mask_headers(req_rendered.get('headers'))}")
+                        hdrs_out = req_rendered.get("headers")
+                        if not self.reveal:
+                            hdrs_out = mask_headers(hdrs_out)
+                        self.log.info(self._fmt_aligned("REQ", "headers", self._fmt_json(hdrs_out)))
                     if req_rendered.get("json") is not None:
-                        self.log.info(f"[REQ] json: {req_rendered.get('json')}")
+                        body = req_rendered.get("json")
+                        if isinstance(body, (dict, list)) and not self.reveal:
+                            body = mask_body(body)
+                        self.log.info(self._fmt_aligned("REQ", "json", self._fmt_json(body)))
                     if req_rendered.get("data") is not None:
-                        self.log.info(f"[REQ] data: {req_rendered.get('data')}")
+                        data = req_rendered.get("data")
+                        if isinstance(data, (dict, list)) and not self.reveal:
+                            data = mask_body(data)
+                        self.log.info(self._fmt_aligned("REQ", "data", self._fmt_json(data)))
 
                 # send with retry
                 last_error: Optional[str] = None
@@ -133,14 +318,22 @@ class Runner:
 
                 assert resp_obj is not None
                 if self.log:
-                    hdrs = mask_headers(resp_obj.get("headers") or {})
+                    hdrs = resp_obj.get("headers") or {}
+                    if not self.reveal:
+                        hdrs = mask_headers(hdrs)
                     self.log.info(f"[RESP] status={resp_obj.get('status_code')} elapsed={resp_obj.get('elapsed_ms'):.1f}ms")
-                    self.log.info(f"[RESP] headers: {hdrs}")
+                    self.log.info(self._fmt_aligned("RESP", "headers", self._fmt_json(hdrs)))
                     body_preview = resp_obj.get("body")
                     if isinstance(body_preview, (dict, list)):
-                        self.log.info(f"[RESP] body: {str(body_preview)[:1000]}")
+                        out_body = body_preview
+                        if not self.reveal:
+                            out_body = mask_body(out_body)
+                        self.log.info(self._fmt_aligned("RESP", "body", self._fmt_json(out_body)))
                     elif body_preview is not None:
-                        self.log.info(f"[RESP] text: {str(body_preview)[:1000]}")
+                        text = str(body_preview)
+                        if len(text) > 2000:
+                            text = text[:2000] + "..."
+                        self.log.info(self._fmt_aligned("RESP", "text", text))
 
                 # assertions
                 assertions: List[AssertionResult] = []
@@ -150,7 +343,10 @@ class Runner:
                     passed, err = compare(v.comparator, actual, v.expect)
                     msg = err
                     if not passed and msg is None:
-                        msg = f"Assertion failed: {v.check} {v.comparator} {v.expect!r} (actual={actual!r})"
+                        addon = ""
+                        if isinstance(v.check, str) and v.check.startswith("body."):
+                            addon = " | unsupported 'body.' syntax; use '$' (e.g., $.path.to.field)"
+                        msg = f"Assertion failed: {v.check} {v.comparator} {v.expect!r} (actual={actual!r}){addon}"
                     assertions.append(
                         AssertionResult(
                             check=str(v.check),
@@ -169,17 +365,34 @@ class Runner:
                         if self.log:
                             self.log.info(f"[VALID] {v.check} {v.comparator} {v.expect!r} => actual={actual!r} | PASS")
 
-                # extracts
+                # extracts ($-only syntax)
                 extracts: Dict[str, Any] = {}
                 for var, expr in (step.extract or {}).items():
-                    extracts[var] = extract_from_body(resp_obj.get("body"), expr)
-                    ctx.set(var, extracts[var])
+                    val = self._eval_extract(expr, resp_obj)
+                    extracts[var] = val
+                    ctx.set_base(var, val)
                     if self.log:
-                        self.log.info(f"[EXTRACT] {var} = {extracts[var]!r} from {expr}")
+                        self.log.info(f"[EXTRACT] {var} = {val!r} from {expr}")
+
+                # teardown hooks
+                try:
+                    new_vars_td = self._run_teardown_hooks(step.teardown_hooks, funcs=funcs, resp=resp_obj, variables=variables, envmap=envmap)
+                    for k, v in (new_vars_td or {}).items():
+                        ctx.set_base(k, v)
+                        if self.log:
+                            self.log.info(f"[HOOK] set var: {k} = {v!r}")
+                    variables = ctx.get_merged(global_vars)
+                except Exception as e:
+                    step_failed = True
+                    if self.log:
+                        self.log.error(f"[HOOK] teardown error: {e}")
 
                 # build result
-                masked_headers = mask_headers(resp_obj.get("headers") or {})
-                body_masked = mask_body(resp_obj.get("body"))
+                masked_headers = resp_obj.get("headers") or {}
+                body_masked = resp_obj.get("body")
+                if not self.reveal:
+                    masked_headers = mask_headers(masked_headers)
+                    body_masked = mask_body(body_masked)
                 curl = None
                 if self.log_debug:
                     url_rendered = resp_obj.get("url") or req_rendered.get("url")
@@ -215,9 +428,22 @@ class Runner:
                 ctx.pop()
 
         finally:
+            # Suite + Case teardown hooks (best-effort)
+            try:
+                if getattr(case, "teardown_hooks", None):
+                    _ = self._run_teardown_hooks(case.teardown_hooks, funcs=funcs, resp={}, variables=ctx.get_merged(global_vars), envmap=envmap)
+                if getattr(case, "suite_teardown_hooks", None):
+                    _ = self._run_teardown_hooks(case.suite_teardown_hooks, funcs=funcs, resp={}, variables=ctx.get_merged(global_vars), envmap=envmap)
+            except Exception as e:
+                steps_results.append(StepResult(name="case teardown hooks", status="failed", error=f"{e}"))
             client.close()
 
         total_ms = (time.perf_counter() - t0) * 1000.0
+
+        # Final validation: ensure if any step failed, the case is marked as failed
+        if any(sr.status == "failed" for sr in steps_results):
+            status = "failed"
+
         return CaseInstanceResult(name=name, parameters=params or {}, steps=steps_results, status=status, duration_ms=total_ms)
 
     def build_report(self, results: List[CaseInstanceResult]) -> RunReport:

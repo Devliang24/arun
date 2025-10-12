@@ -15,6 +15,8 @@ class Step(BaseModel):
     request: StepRequest
     extract: Dict[str, str] = Field(default_factory=dict)
     validators: List[Validator] = Field(default_factory=list, alias="validate")
+    setup_hooks: List[str] = Field(default_factory=list)
+    teardown_hooks: List[str] = Field(default_factory=list)
     skip: Optional[str | bool] = None
     retry: int = 0
     retry_backoff: float = 0.5

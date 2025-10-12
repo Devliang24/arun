@@ -22,6 +22,11 @@ class VarContext:
     def set(self, key: str, value: Any) -> None:
         self.stack[-1][key] = value
 
+    def set_base(self, key: str, value: Any) -> None:
+        """Set a variable in the base layer (stack[0]) so it persists across steps.
+        Used for extracted variables that should be available to all subsequent steps."""
+        self.stack[0][key] = value
+
     def set_many(self, data: Dict[str, Any]) -> None:
         for k, v in (data or {}).items():
             self.set(k, v)

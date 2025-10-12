@@ -166,3 +166,22 @@ class TemplateEngine:
             return [self.render_value(v, variables, functions, envmap) for v in value]
         else:
             return value
+
+    def eval_expr(self, expr: str, variables: Dict[str, Any], functions: Dict[str, Any] | None = None, envmap: Dict[str, Any] | None = None, extra_ctx: Dict[str, Any] | None = None) -> Any:
+        text = expr.strip()
+        if text.startswith("${") and text.endswith("}"):
+            text = text[2:-1]
+        # Replace $name tokens to name, e.g., $request -> request
+        text = re.sub(r"\$([A-Za-z_][A-Za-z0-9_]*)", r"\1", text)
+
+        def ENV(name: str, default: Any = None) -> Any:  # noqa: N802
+            if envmap is not None and name in envmap:
+                return envmap.get(name)
+            return os.environ.get(name, default)
+
+        ctx: Dict[str, Any] = {**BUILTINS, **(functions or {}), **(variables or {}), **(extra_ctx or {}), "ENV": ENV}
+        try:
+            node = ast.parse(text, mode="eval")
+            return _safe_eval(node, ctx)
+        except Exception:
+            return None
