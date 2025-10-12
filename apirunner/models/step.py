@@ -6,7 +6,7 @@ from pydantic.config import ConfigDict
 
 from .request import StepRequest
 from .validators import Validator, normalize_validators
-from .mysql_assert import MySQLAssertConfig
+from .sql_validate import SQLValidateConfig
 
 
 class Step(BaseModel):
@@ -18,7 +18,7 @@ class Step(BaseModel):
     validators: List[Validator] = Field(default_factory=list, alias="validate")
     setup_hooks: List[str] = Field(default_factory=list)
     teardown_hooks: List[str] = Field(default_factory=list)
-    mysql_asserts: List[MySQLAssertConfig] = Field(default_factory=list)
+    sql_validate: List[SQLValidateConfig] = Field(default_factory=list)
     skip: Optional[str | bool] = None
     retry: int = 0
     retry_backoff: float = 0.5
@@ -29,9 +29,9 @@ class Step(BaseModel):
             data = {**data, "validate": normalize_validators(data["validate"]) }
         return cls.model_validate(data)
 
-    @field_validator("mysql_asserts", mode="before")
+    @field_validator("sql_validate", mode="before")
     @classmethod
-    def _normalize_mysql_asserts(cls, value: Any) -> List[Any]:
+    def _normalize_sql_validate(cls, value: Any) -> List[Any]:
         if value is None:
             return []
         if isinstance(value, (list, tuple)):

@@ -14,7 +14,7 @@ from apirunner.runner.extractors import extract_from_body
 from apirunner.runner.assertions import compare
 from apirunner.utils.curl import to_curl
 from apirunner.utils.mask import mask_body, mask_headers
-from apirunner.db.mysql_assert import run_mysql_asserts
+from apirunner.db.sql_validate import run_sql_validate
 
 
 class Runner:
@@ -357,19 +357,22 @@ class Runner:
                 assertions: List[AssertionResult] = []
                 step_failed = False
                 for v in step.validators:
-                    actual = self._resolve_check(str(v.check), resp_obj)
-                    passed, err = compare(v.comparator, actual, v.expect)
+                    rendered_check = self._render(v.check, variables, funcs, envmap)
+                    check_str = rendered_check if isinstance(rendered_check, str) else str(v.check)
+                    expect_rendered = self._render(v.expect, variables, funcs, envmap)
+                    actual = self._resolve_check(check_str, resp_obj)
+                    passed, err = compare(v.comparator, actual, expect_rendered)
                     msg = err
                     if not passed and msg is None:
                         addon = ""
-                        if isinstance(v.check, str) and v.check.startswith("body."):
+                        if isinstance(check_str, str) and check_str.startswith("body."):
                             addon = " | unsupported 'body.' syntax; use '$' (e.g., $.path.to.field)"
-                        msg = f"Assertion failed: {v.check} {v.comparator} {v.expect!r} (actual={actual!r}){addon}"
+                        msg = f"Assertion failed: {check_str} {v.comparator} {expect_rendered!r} (actual={actual!r}){addon}"
                     assertions.append(
                         AssertionResult(
-                            check=str(v.check),
+                            check=str(check_str),
                             comparator=v.comparator,
-                            expect=v.expect,
+                            expect=expect_rendered,
                             actual=actual,
                             passed=bool(passed),
                             message=msg,
@@ -378,23 +381,23 @@ class Runner:
                     if not passed:
                         step_failed = True
                         if self.log:
-                            self.log.error(f"[VALIDATION] {v.check} {v.comparator} {v.expect!r} => actual={actual!r} | FAIL | {msg}")
+                            self.log.error(f"[VALIDATION] {check_str} {v.comparator} {expect_rendered!r} => actual={actual!r} | FAIL | {msg}")
                     else:
                         if self.log:
-                            self.log.info(f"[VALIDATION] {v.check} {v.comparator} {v.expect!r} => actual={actual!r} | PASS")
+                            self.log.info(f"[VALIDATION] {check_str} {v.comparator} {expect_rendered!r} => actual={actual!r} | PASS")
 
-                if step.mysql_asserts:
-                    mysql_updates_total: Dict[str, Any] = {}
+                if step.sql_validate:
+                    sql_updates_total: Dict[str, Any] = {}
                     temp_vars = dict(variables)
-                    for idx, mysql_cfg in enumerate(step.mysql_asserts):
+                    for idx, sql_cfg in enumerate(step.sql_validate):
                         try:
-                            rendered_cfg = self._render(mysql_cfg.model_dump(), temp_vars, funcs, envmap)
+                            rendered_cfg = self._render(sql_cfg.model_dump(), temp_vars, funcs, envmap)
                         except Exception as e:
                             step_failed = True
-                            err_msg = f"MySQL assert render error: {e}"
+                            err_msg = f"SQL validate render error: {e}"
                             assertions.append(
                                 AssertionResult(
-                                    check=f"mysql.config[{idx}]",
+                                    check=f"sql.config[{idx}]",
                                     comparator="render",
                                     expect=None,
                                     actual=None,
@@ -403,10 +406,10 @@ class Runner:
                                 )
                             )
                             if self.log:
-                                self.log.error(f"[MYSQL] render error: {e}")
+                                self.log.error(f"[SQL] render error: {e}")
                             continue
                         try:
-                            mysql_results, mysql_updates = run_mysql_asserts(
+                            sql_results, sql_updates = run_sql_validate(
                                 [rendered_cfg],
                                 response=resp_obj,
                                 variables=temp_vars,
@@ -416,10 +419,10 @@ class Runner:
                             )
                         except Exception as e:
                             step_failed = True
-                            err_msg = f"MySQL assert error: {e}"
+                            err_msg = f"SQL validate error: {e}"
                             assertions.append(
                                 AssertionResult(
-                                    check=f"mysql.exec[{idx}]",
+                                    check=f"sql.exec[{idx}]",
                                     comparator="execute",
                                     expect=None,
                                     actual=None,
@@ -428,19 +431,19 @@ class Runner:
                                 )
                             )
                             if self.log:
-                                self.log.error(f"[MYSQL] execution error: {e}")
+                                self.log.error(f"[SQL] execution error: {e}")
                             continue
-                        for res in mysql_results:
+                        for res in sql_results:
                             assertions.append(res)
                             if not res.passed:
                                 step_failed = True
-                        mysql_updates_total.update(mysql_updates)
-                        temp_vars.update(mysql_updates)
-                    if mysql_updates_total:
-                        for k, v in mysql_updates_total.items():
+                        sql_updates_total.update(sql_updates)
+                        temp_vars.update(sql_updates)
+                    if sql_updates_total:
+                        for k, v in sql_updates_total.items():
                             ctx.set_base(k, v)
                             if self.log:
-                                self.log.info(f"[MYSQL] set var: {k} = {v!r}")
+                                self.log.info(f"[SQL] set var: {k} = {v!r}")
                         variables = ctx.get_merged(global_vars)
 
                 # extracts ($-only syntax)
