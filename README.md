@@ -1,28 +1,32 @@
 APIRunner (MVP)
 
-Minimal HTTP API test runner with a YAML DSL, HttpRunner-style ${...} templating, JMESPath extraction, baseline assertions, and JSON/JUnit/HTML reports.
+一个最小可用的 HTTP API 测试运行器，提供 YAML DSL、HttpRunner 风格的 ${...} 模板、JMESPath 提取、基础断言，以及 JSON/JUnit/HTML 报告输出。
 
-Quickstart
-- Create `.env` from `.env.example` and set BASE_URL and credentials.
-- Put YAML tests in `testcases/` (HttpRunner 命名规范：`test_*.yaml`)。
-- Run: `arun run testcases --env-file .env --report reports/run.json --junit reports/junit.xml --html reports/report.html`.
-- Validate YAML (no execution): `arun check testcases`。
-- Auto-fix hooks style（将 Suite/Case 级 hooks 移到 config 内）：`arun fix testcases`、`arun fix testsuites`。
+快速开始
+- 从 `.env.example` 复制 `.env`，设置 `BASE_URL` 和账号等变量。
+- 将 YAML 用例放到 `testcases/`（命名建议：`test_*.yaml`）。
+- 运行用例：
+  - 如果已安装命令别名：`arun run testcases --env-file .env --report reports/run.json --junit reports/junit.xml --html reports/report.html`
+  - 或使用模块方式：`python -m apirunner.cli run testcases --env-file .env --html reports/report.html`
+- 仅校验 YAML（不执行）：
+  - `arun check testcases` 或 `python -m apirunner.cli check testcases`
+- 自动修复 hooks 写法（将 Suite/Case 级 hooks 移到 config 内）：
+  - `arun fix testcases`、`arun fix testsuites` 或 `python -m apirunner.cli fix testcases`
 
-CLI
-- `arun run <path>`: Run a file or directory of YAML tests
-  - Options: `-k <expr>` tag filter, `--vars k=v` (repeatable), `--failfast`, `--report <file>`, `--junit <file>`, `--html <file>`, `--log-level info|debug`, `--env-file <path>`, `--log-file <file>`, `--httpx-logs/--no-httpx-logs`, `--reveal-secrets/--mask-secrets`
-    `--log-file <file>` 指定日志文件路径（默认 `logs/run-<timestamp>.log`）；`--httpx-logs/--no-httpx-logs` 控制是否显示 httpx 内建请求日志（默认关闭）。
-  - File naming (默认仅收集以下命名)：
-    - 位于目录 `testcases/` 或 `testsuites/` 下的 `.yml|.yaml` 文件；或
+命令行
+- 运行：`arun run <path>`（或 `python -m apirunner.cli run <path>`）
+  - 常用参数：`-k <expr>`（标签过滤）、`--vars k=v`（可重复）、`--failfast`、`--report <file>`、`--junit <file>`、`--html <file>`、`--log-level info|debug`、`--env-file <path>`、`--log-file <file>`、`--httpx-logs/--no-httpx-logs`、`--reveal-secrets/--mask-secrets`
+  - `--log-file <file>` 指定日志文件（默认 `logs/run-<timestamp>.log`）；`--httpx-logs` 控制 httpx 内建请求日志（默认关闭）。
+  - 用例收集规则：
+    - 位于 `testcases/` 或 `testsuites/` 目录下的 `.yml|.yaml`；或
     - 文件名以 `test_`（用例）或 `suite_`（套件）开头。
-  - 环境变量（与 HttpRunner 风格一致）：
-    - `--env <name>`（预留）：会从 `envs/<name>.yaml | environments/<name>.yaml | env/<name>.yaml` 读取环境配置（支持 `variables/base_url/headers`）。也支持单文件 `env.yaml` 按名称分节。
-    - `--env-file <path>`：可读取 `KEY=VALUE` 的 `.env` 或 YAML 文件；与 `--env` 结果合并。
+  - 环境加载（HttpRunner 风格）：
+    - `--env <name>`（预留）：从 `envs/<name>.yaml | environments/<name>.yaml | env/<name>.yaml` 读取；也支持单文件 `env.yaml` 按名称分节。
+    - `--env-file <path>`：读取 `.env`（KEY=VALUE）或 YAML；与 `--env` 合并。
     - 自动合并系统环境变量（`ENV_*`、`BASE_URL`）。
     - 合并顺序：命名环境 < `--env-file` < OS 环境 < `--vars`（最高）。
 
-DSL (YAML)
+DSL（YAML）
 - config: `name?`, `base_url?`, `variables?`(dict), `headers?`(dict), `timeout?`(float), `verify?`(bool), `tags?`(list)
 - parameters?:
   - enumerate: list of dicts: `[{a:1,b:2},{a:3,b:4}]`
@@ -39,7 +43,7 @@ DSL (YAML)
   - `skip?` (bool|string)
   - `retry?` (int), `retry_backoff?` (float seconds)
 
-Comparators
+比较器
 - `eq, ne, contains, not_contains, regex, lt, le, gt, ge, len_eq, in, not_in`
 
 Checks 与 Extract 语法
@@ -108,7 +112,7 @@ Hooks（函数钩子）
   1) `chmod +x scripts/pre-commit-fix-hooks.sh`
   2) `ln -sf ../../scripts/pre-commit-fix-hooks.sh .git/hooks/pre-commit`
   这样在 `git commit` 前会自动规范化 hooks 写法。
-- Hook 函数命名遵循 HttpRunner 习惯，可任意自定义（推荐使用 `setup_*`/`teardown_*` 前缀以便区分），调用时必须写为 `${func(...)}`
+  - Hook 函数命名遵循 HttpRunner 习惯，可任意自定义（推荐使用 `setup_*`/`teardown_*` 前缀以便区分），调用时必须写为 `${func(...)}`
   表达式，框架会注入请求/响应、变量、环境等上下文。
 - 表达式上下文兼容 HttpRunner 变量：
   - `$request` / `$response`：当前请求/响应对象（dict，引用同一内存，可原地修改）
@@ -142,8 +146,82 @@ Hooks 参考表（示例已内置于 `arun_hooks.py`）
   - HMAC-SHA256 对 `METHOD|URL|TS` 签名，写入 `X-HMAC/X-Timestamp`，需要 `APP_SECRET`
 - teardown_hook_assert_status_ok(response, variables, env) -> None
   - 若 `status_code` 非 200 抛异常
-- teardown_hook_capture_request_id(response, variables, env) -> dict
+  - teardown_hook_capture_request_id(response, variables, env) -> dict
   - 若响应体包含 `request_id`，写入变量 `{'request_id': ...}`
+
+更多示例
+- 用例级 hooks（写在 config 内）
+  ```yaml
+  # testcases/test_example_case.yaml
+  config:
+    name: Example With Case Hooks
+    base_url: ${ENV(BASE_URL)}
+    setup_hooks:
+      - ${setup_hook_sign_request($request)}
+    teardown_hooks:
+      - ${teardown_hook_assert_status_ok($response)}
+  steps:
+    - name: get ping
+      request:
+        method: GET
+        url: /ping
+      validate:
+        - eq: [status_code, 200]
+  ```
+
+- 套件级 hooks（写在 suite 的 config 内）
+  ```yaml
+  # testsuites/suite_example.yaml
+  config:
+    name: Example Suite
+    base_url: ${ENV(BASE_URL)}
+    setup_hooks:
+      - ${setup_hook_sign_request($request)}
+    teardown_hooks:
+      - ${teardown_hook_capture_request_id($response)}
+  cases:
+    - config:
+        name: Case A
+        setup_hooks:
+          - ${setup_hook_sign_request($request)}
+      steps:
+        - name: get root
+          request:
+            method: GET
+            url: /
+          validate:
+            - eq: [status_code, 200]
+  ```
+
+- 提取 Token 并自动注入 Authorization（无需手工写 Header）
+  ```yaml
+  config:
+    name: Login + WhoAmI
+    base_url: ${ENV(BASE_URL)}
+  steps:
+    - name: login
+      request:
+        method: POST
+        url: /api/v1/auth/login
+        json:
+          username: ${ENV(USER_USERNAME)}
+          password: ${ENV(USER_PASSWORD)}
+      extract:
+        token: $.data.access_token
+      validate:
+        - eq: [status_code, 200]
+    - name: whoami (Authorization 将自动注入)
+      request:
+        method: GET
+        url: /api/v1/users/me
+      validate:
+        - eq: [status_code, 200]
+  ```
+  说明：当变量中存在 `token` 且未显式设置 `Authorization` 头时，运行器会自动注入 `Authorization: Bearer $token`。
+
+- 标签过滤与变量覆盖（命令示例）
+  - 标签过滤运行：`arun run testcases -k "orders and not negative"`
+  - 覆盖变量运行：`arun run testcases --vars shipping_address="上海市黄浦区XX路1号"`
 
 SQL 响应校验
 - 安装数据库驱动（推荐 `pip install pymysql`），并在环境中提供连接信息：
@@ -181,7 +259,7 @@ SQL 响应校验
   ```
 - 断言结果会和普通 `validate` 一起写入报告；`store` 中的变量可供后续步骤使用。
 
-Project Layout
+项目结构
 - `apirunner/` core package
 - `testcases/` YAML testcases (HttpRunner 风格 `test_*.yaml`)
 - `testsuites/` YAML testsuites（可选，`suite_*.yaml`）

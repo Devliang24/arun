@@ -1,0 +1,15 @@
+config:
+  name: Example With Case Hooks
+  base_url: ${ENV(BASE_URL)}
+  setup_hooks:
+    - ${setup_hook_sign_request($request)}
+  teardown_hooks:
+    - ${teardown_hook_assert_status_ok($response)}
+steps:
+  - name: get ping
+    request:
+      method: GET
+      url: /ping
+    validate:
+      - eq: [status_code, 200]
+
