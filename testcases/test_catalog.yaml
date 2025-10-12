@@ -16,7 +16,7 @@ steps:
       method: GET
       url: /api/v1/products/
     extract:
-      product_id: body.items[0].id
+      product_id: $.items[0].id
     validate:
       - [status_code, eq, 200]
       - [headers.Content-Type, contains, application/json]

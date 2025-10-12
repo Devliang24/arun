@@ -1,0 +1,17 @@
+config:
+  name: Hooks Demo
+  base_url: "${ENV(BASE_URL)}"
+  variables:
+    API_KEY: "${ENV(API_KEY)}"
+steps:
+  - name: signed with api key
+    setup_hooks: [setup_hook_sign_request, setup_hook_api_key]
+    request:
+      method: GET
+      url: /debug/info
+    validate:
+      - [status_code, eq, 200]
+    teardown_hooks: [teardown_hook_assert_status_ok, teardown_hook_capture_request_id]
+    extract:
+      req_id: $.request_id
+

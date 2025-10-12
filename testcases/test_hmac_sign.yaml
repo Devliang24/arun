@@ -1,0 +1,15 @@
+config:
+  name: HMAC Sign Demo
+  base_url: "${ENV(BASE_URL)}"
+  variables:
+    APP_SECRET: "${ENV(APP_SECRET)}"
+steps:
+  - name: hmac-signed debug
+    setup_hooks: [setup_hook_hmac_sign]
+    request:
+      method: GET
+      url: /debug/info
+    validate:
+      - [status_code, eq, 200]
+    teardown_hooks: [teardown_hook_assert_status_ok]
+

@@ -13,7 +13,7 @@ steps:
         username: "${ENV(USER_USERNAME)}"
         password: "${ENV(USER_PASSWORD)}"
     extract:
-      token: body.access_token
+      token: $.data.access_token
     validate:
       - [status_code, eq, 200]
 
@@ -22,7 +22,7 @@ steps:
       method: GET
       url: /api/v1/products/
     extract:
-      product_id: body.items[0].id
+      product_id: $.items[0].id
     validate:
       - [status_code, eq, 200]
 
@@ -51,7 +51,7 @@ steps:
       json:
         shipping_address: "${ENV(SHIPPING_ADDRESS)}"
     extract:
-      order_id: body.id
+      order_id: $.id
     validate:
       - [status_code, eq, 201]
 

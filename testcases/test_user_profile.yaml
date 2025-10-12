@@ -14,7 +14,7 @@ steps:
         username: "${ENV(USER_USERNAME)}"
         password: "${ENV(USER_PASSWORD)}"
     extract:
-      token: body.access_token
+      token: $.data.access_token
     validate:
       - [status_code, eq, 200]
 
@@ -42,4 +42,4 @@ steps:
         Authorization: "${authz}"
     validate:
       - [status_code, eq, 200]
-      - [body.shipping_address, contains, "${new_address}"]
+      - [$.data.shipping_address, contains, "${new_address}"]

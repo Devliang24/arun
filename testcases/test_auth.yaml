@@ -4,6 +4,7 @@ config:
   tags: [auth]
 steps:
   - name: login
+    setup_hooks: [setup_hook_sign_request]
     request:
       method: POST
       url: /api/v1/auth/login
@@ -11,7 +12,7 @@ steps:
         username: "${ENV(USER_USERNAME)}"
         password: "${ENV(USER_PASSWORD)}"
     extract:
-      token: body.access_token
+      token: $.data.access_token
     validate:
       - [status_code, eq, 200]
       - [headers.Content-Type, contains, application/json]

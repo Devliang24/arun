@@ -30,6 +30,6 @@ steps:
         username: "${new_username}"
         password: "${new_password}"
     extract:
-      token: body.access_token
+      token: $.data.access_token
     validate:
       - [status_code, eq, 200]

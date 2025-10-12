@@ -8,7 +8,7 @@ steps:
       method: GET
       url: /api/v1/categories/
     extract:
-      category_id: body[0].id
+      category_id: $[0].id
     validate:
       - [status_code, eq, 200]
 
