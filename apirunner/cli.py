@@ -68,6 +68,7 @@ def run(
     env_file: Optional[str] = typer.Option(None, "--env-file", help=".env file path"),
     log_file: Optional[str] = typer.Option(None, "--log-file", help="Write console logs to file (default logs/run-<ts>.log)"),
     httpx_logs: bool = typer.Option(False, "--httpx-logs/--no-httpx-logs", help="Show httpx internal request logs", show_default=False),
+    reveal_secrets: bool = typer.Option(True, "--reveal-secrets/--mask-secrets", help="Show sensitive fields (password, tokens) in plaintext logs and reports", show_default=True),
 ):
     # default log file path
     ts = time.strftime("%Y%m%d-%H%M%S")
@@ -123,7 +124,7 @@ def run(
         raise typer.Exit(code=2)
 
     # Execute
-    runner = Runner(log=log, failfast=failfast, log_debug=(log_level.upper() == "DEBUG"))
+    runner = Runner(log=log, failfast=failfast, log_debug=(log_level.upper() == "DEBUG"), reveal_secrets=reveal_secrets)
     templater = TemplateEngine()
     instance_results = []
     log.info(f"[RUN] Discovered files: {len(files)} | Matched cases: {len(items)} | Failfast={failfast}")
@@ -174,6 +175,32 @@ def report_merge(
     write_json(merged, output)
     typer.echo(f"Merged report written to {output}")
 
+
+@app.command("check")
+def check(
+    path: str = typer.Argument(..., help="File or directory to validate"),
+):
+    """Validate YAML tests for syntax and style without executing.
+
+    Enforces:
+    - Extract uses only `$` syntax
+    - Check uses `$` for body, and `status_code`/`headers.*` for metadata
+    - Hooks function-name style has required prefixes
+    """
+    files = discover([path])
+    if not files:
+        typer.echo("No YAML test files found.")
+        raise typer.Exit(code=2)
+    ok = 0
+    for f in files:
+        try:
+            load_yaml_file(f)
+            ok += 1
+            typer.echo(f"OK: {f}")
+        except Exception as e:
+            typer.echo(f"FAIL: {f} -> {e}")
+            raise typer.Exit(code=2)
+    typer.echo(f"Validated {ok} file(s).")
 
 if __name__ == "__main__":
     app()

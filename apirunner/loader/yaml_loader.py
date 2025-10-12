@@ -24,8 +24,32 @@ def _normalize_case_dict(d: Dict[str, Any]) -> Dict[str, Any]:
             ss = dict(s)
             if "validate" in ss:
                 ss["validate"] = [v.model_dump() for v in normalize_validators(ss["validate"])]
+                # enforce $-only for body checks
+                for v in ss["validate"]:
+                    chk = v.get("check")
+                    if isinstance(chk, str) and chk.startswith("body."):
+                        raise LoadError(f"Invalid check '{chk}': use '$' syntax e.g. '$.path.to.field'")
+            # enforce $-only for extract
+            if "extract" in ss and isinstance(ss["extract"], dict):
+                for k, ex in ss["extract"].items():
+                    if isinstance(ex, str) and ex.startswith("body."):
+                        raise LoadError(f"Invalid extract '{ex}' for '{k}': use '$' syntax e.g. '$.path.to.field'")
+            # enforce hooks naming for function-name style
+            for hk_field, prefix in (("setup_hooks", "setup_hook_"), ("teardown_hooks", "teardown_hook_")):
+                if hk_field in ss and isinstance(ss[hk_field], list):
+                    for item in ss[hk_field]:
+                        if isinstance(item, str) and item.strip() and not item.strip().startswith("${"):
+                            if not item.startswith(prefix):
+                                raise LoadError(f"Invalid {hk_field} item '{item}': function name must start with '{prefix}' or use expression form ${'{'}{prefix}name(...){'}'}")
             new_steps.append(ss)
         dd["steps"] = new_steps
+    # enforce hooks naming at case level
+    for hk_field, prefix in (("setup_hooks", "setup_hook_"), ("teardown_hooks", "teardown_hook_")):
+        if hk_field in dd and isinstance(dd[hk_field], list):
+            for item in dd[hk_field]:
+                if isinstance(item, str) and item.strip() and not item.strip().startswith("${"):
+                    if not item.startswith(prefix):
+                        raise LoadError(f"Invalid {hk_field} item '{item}': function name must start with '{prefix}' or use expression form ${'{'}{prefix}name(...){'}'}")
     return dd
 
 
@@ -51,6 +75,16 @@ def load_yaml_file(path: Path) -> Tuple[List[Case], Dict[str, Any]]:
             merged.config.variables = {**(base_cfg.variables or {}), **(merged.config.variables or {})}
             merged.config.headers = {**(base_cfg.headers or {}), **(merged.config.headers or {})}
             merged.config.tags = list({*base_cfg.tags, *merged.config.tags})
+            # inherit suite hooks and enforce naming at suite level
+            merged.suite_setup_hooks = list(suite.setup_hooks or [])
+            merged.suite_teardown_hooks = list(suite.teardown_hooks or [])
+        # suite-level naming validation
+        for hk_field, prefix in (("setup_hooks", "setup_hook_"), ("teardown_hooks", "teardown_hook_")):
+            items = getattr(suite, hk_field, []) or []
+            for item in items:
+                if isinstance(item, str) and item.strip() and not item.strip().startswith("${"):
+                    if not item.startswith(prefix):
+                        raise LoadError(f"Invalid suite {hk_field} item '{item}': function name must start with '{prefix}' or use expression form ${'{'}{prefix}name(...){'}'}")
             cases.append(merged)
     else:
         # single case file: normalize validators
