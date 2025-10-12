@@ -209,5 +209,91 @@ def check(
             raise typer.Exit(code=2)
     typer.echo(f"Validated {ok} file(s).")
 
+
+@app.command("fix")
+def fix(
+    path: str = typer.Argument(..., help="File or directory to auto-fix YAML (move hooks to config.*)"),
+):
+    """Auto-fix YAML files to the new hooks convention.
+
+    - Suite-level hooks must be under `config.setup_hooks/config.teardown_hooks`.
+    - Case-level hooks must be under `config.setup_hooks/config.teardown_hooks`.
+    """
+    files = discover([path])
+    if not files:
+        typer.echo("No YAML test files found.")
+        raise typer.Exit(code=2)
+
+    def _merge_hooks(dst_cfg: dict, src_obj: dict, level: str) -> bool:
+        changed = False
+        for hk in ("setup_hooks", "teardown_hooks"):
+            if hk in src_obj and isinstance(src_obj.get(hk), list):
+                items = [it for it in src_obj.get(hk) or []]
+                if items:
+                    # merge with existing config hooks (config first, then moved)
+                    existing = list(dst_cfg.get(hk) or [])
+                    dst_cfg[hk] = existing + items
+                    changed = True
+                src_obj.pop(hk, None)
+        return changed
+
+    import yaml as _yaml
+    changed_files = []
+    for f in files:
+        raw = Path(f).read_text(encoding="utf-8")
+        try:
+            obj = _yaml.safe_load(raw) or {}
+        except Exception:
+            # skip invalid YAML
+            continue
+        if not isinstance(obj, dict):
+            continue
+        modified = False
+        # Suite vs Case
+        if "cases" in obj and isinstance(obj["cases"], list):
+            cfg = obj.get("config") or {}
+            if not isinstance(cfg, dict):
+                cfg = {}
+            # move suite top-level hooks into config
+            if _merge_hooks(cfg, obj, level="suite"):
+                obj["config"] = cfg
+                modified = True
+            # each case inside suite
+            new_cases = []
+            for c in obj["cases"]:
+                if not isinstance(c, dict):
+                    new_cases.append(c)
+                    continue
+                c_cfg = c.get("config") or {}
+                if not isinstance(c_cfg, dict):
+                    c_cfg = {}
+                if _merge_hooks(c_cfg, c, level="case"):
+                    c["config"] = c_cfg
+                    modified = True
+                new_cases.append(c)
+            obj["cases"] = new_cases
+        elif "steps" in obj and isinstance(obj["steps"], list):
+            # single case file
+            cfg = obj.get("config") or {}
+            if not isinstance(cfg, dict):
+                cfg = {}
+            if _merge_hooks(cfg, obj, level="case"):
+                obj["config"] = cfg
+                modified = True
+        else:
+            # not a recognized test file
+            continue
+
+        if modified:
+            Path(f).write_text(_yaml.safe_dump(obj, sort_keys=False, allow_unicode=True), encoding="utf-8")
+            changed_files.append(str(f))
+
+    if changed_files:
+        typer.echo("Fixed files:")
+        for p in changed_files:
+            typer.echo(f"- {p}")
+    else:
+        typer.echo("No changes needed.")
+
 if __name__ == "__main__":
     app()
