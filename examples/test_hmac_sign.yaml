@@ -1,0 +1,14 @@
+config:
+  name: "Example: HMAC Sign"
+  base_url: ${ENV(BASE_URL)}
+  setup_hooks:
+    - ${setup_hook_hmac_sign($request)}
+  variables:
+    APP_SECRET: ${ENV(APP_SECRET)}
+steps:
+  - name: signed get
+    request:
+      method: GET
+      url: /ping
+    validate:
+      - eq: [status_code, 200]

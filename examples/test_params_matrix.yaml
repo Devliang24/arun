@@ -1,0 +1,14 @@
+config:
+  name: "Example: Parameters Matrix"
+  base_url: ${ENV(BASE_URL)}
+parameters:
+  # 2 x 2 组合，共 4 组
+  a: [1, 2]
+  b: ["x", "y"]
+steps:
+  - name: echo params
+    request:
+      method: GET
+      url: /ping?a=$a&b=$b
+    validate:
+      - eq: [status_code, 200]

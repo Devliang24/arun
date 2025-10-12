@@ -28,4 +28,14 @@
 
 注意
 - 若运行登录相关示例失败，请先检查 `.env` 的用户名/密码是否有效，或直接使用“自注册 + 登录”示例。
+ - 参数化（矩阵参数）：`test_params_matrix.yaml`
+   - 展示 `parameters` 的使用，按组合生成多组用例执行。
+   - 运行：`arun run examples/test_params_matrix.yaml --env-file .env`
 
+ - SQL 校验（需要数据库连接）：`test_sql_validate.yaml`
+   - 示例展示 `sql_validate` 的写法；需在环境中提供 `MYSQL_*` 或 `MYSQL_DSN`。
+   - 运行：`arun run examples/test_sql_validate.yaml --env-file .env`
+
+ - HMAC 加签（需要 APP_SECRET）：`test_hmac_sign.yaml`
+   - 使用 `setup_hook_hmac_sign` 对请求进行签名，演示自定义安全头注入。
+   - 运行：`ARUN_HOOKS_FILE=arun_hooks.py APP_SECRET=xxxx arun run examples/test_hmac_sign.yaml --env-file .env`
