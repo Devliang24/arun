@@ -37,8 +37,14 @@ TEMPLATE = """
       .panel { border:1px solid #20242d; border-radius:8px; overflow:hidden; }
       .panel .p-head { padding:6px 8px; background:#11141b; color:var(--muted); font-size:12px; }
       .panel pre, .panel table { margin:0; padding:10px; overflow:auto; max-height: 360px; }
-      table { width: 100%; border-collapse: collapse; }
-      td, th { padding: 6px 8px; border-bottom: 1px solid #1f2430; vertical-align: top; }
+      table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+      th { padding: 6px 8px; border-bottom: 1px solid #1f2430; vertical-align: top; text-align: left; font-weight: 600; }
+      td { padding: 6px 8px; border-bottom: 1px solid #1f2430; vertical-align: top; word-break: break-word; }
+      .assert-table th:nth-child(1), .assert-table td:nth-child(1) { width: 25%; }
+      .assert-table th:nth-child(2), .assert-table td:nth-child(2) { width: 10%; }
+      .assert-table th:nth-child(3), .assert-table td:nth-child(3) { width: 25%; }
+      .assert-table th:nth-child(4), .assert-table td:nth-child(4) { width: 25%; }
+      .assert-table th:nth-child(5), .assert-table td:nth-child(5) { width: 15%; text-align: center; }
       .ok { color: var(--ok); }
       .err { color: var(--fail); }
       .muted { color: var(--muted); }
@@ -77,7 +83,7 @@ TEMPLATE = """
           <div>
             <div><b>用例：</b>{{ c.name }}</div>
             {% if c.parameters %}
-              <div class="muted">参数：<code>{{ c.parameters | tojson }}</code></div>
+              <div class="muted">参数：<code>{{ c.parameters | tojson_pretty }}</code></div>
             {% endif %}
           </div>
           <div>
@@ -99,13 +105,13 @@ TEMPLATE = """
             <div class="body">
               <div class="panel">
                 <div class="p-head">断言</div>
-                <table>
+                <table class="assert-table">
                   <thead><tr><th>check</th><th>op</th><th>expect</th><th>actual</th><th>结果</th></tr></thead>
                   <tbody>
                     {% for a in s.asserts %}
                     <tr>
                       <td><code>{{ a.check }}</code></td>
-                      <td>{{ a.comparator }}</td>
+                      <td><code>{{ a.comparator }}</code></td>
                       <td><code>{{ a.expect | tojson }}</code></td>
                       <td><code>{{ a.actual | tojson }}</code></td>
                       <td>{% if a.passed %}<span class="ok">✓</span>{% else %}<span class="err" title="{{ a.message }}">✗</span>{% endif %}</td>
@@ -118,18 +124,18 @@ TEMPLATE = """
               {% if s.extracts %}
               <div class="panel" style="margin-top:8px;">
                 <div class="p-head">提取变量</div>
-                <pre><code>{{ s.extracts | tojson }}</code></pre>
+                <pre><code>{{ s.extracts | tojson_pretty }}</code></pre>
               </div>
               {% endif %}
 
               <div class="grid" style="margin-top:8px;">
                 <div class="panel">
                   <div class="p-head">请求</div>
-                  <pre><code>{{ s.request | tojson }}</code></pre>
+                  <pre><code>{{ s.request | tojson_pretty }}</code></pre>
                 </div>
                 <div class="panel">
                   <div class="p-head">响应</div>
-                  <pre><code>{{ s.response | tojson }}</code></pre>
+                  <pre><code>{{ s.response | tojson_pretty }}</code></pre>
                 </div>
               </div>
 
@@ -152,7 +158,9 @@ def write_html(report: RunReport, outfile: str | Path) -> None:
         from jinja2 import Environment, select_autoescape  # type: ignore
 
         env = Environment(autoescape=select_autoescape(["html", "xml"]))
-        env.filters["tojson"] = lambda v: json.dumps(v, ensure_ascii=False, indent=2)
+        # Compact JSON for assertion table cells, pretty JSON for other sections
+        env.filters["tojson"] = lambda v: json.dumps(v, ensure_ascii=False)
+        env.filters["tojson_pretty"] = lambda v: json.dumps(v, ensure_ascii=False, indent=2)
         tmpl = env.from_string(TEMPLATE)
         html = tmpl.render(s=report.summary, cases=report.cases)
     except Exception:
