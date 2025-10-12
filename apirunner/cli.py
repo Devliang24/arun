@@ -69,6 +69,9 @@ def run(
     log_file: Optional[str] = typer.Option(None, "--log-file", help="Write console logs to file (default logs/run-<ts>.log)"),
     httpx_logs: bool = typer.Option(False, "--httpx-logs/--no-httpx-logs", help="Show httpx internal request logs", show_default=False),
     reveal_secrets: bool = typer.Option(True, "--reveal-secrets/--mask-secrets", help="Show sensitive fields (password, tokens) in plaintext logs and reports", show_default=True),
+    notify: Optional[str] = typer.Option(None, "--notify", help="Notify channels, comma-separated: feishu,email"),
+    notify_only: str = typer.Option("failed", "--notify-only", help="Notify policy: failed|always"),
+    notify_attach_html: bool = typer.Option(False, "--notify-attach-html/--no-notify-attach-html", help="Attach HTML report in email (if email enabled)", show_default=False),
 ):
     # default log file path
     ts = time.strftime("%Y%m%d-%H%M%S")
@@ -167,6 +170,58 @@ def run(
     from apirunner.reporter.html_reporter import write_html
     write_html(report_obj, html_target)
     typer.echo(f"HTML report written to {html_target}")
+
+    # Notifications (best-effort)
+    try:
+        from apirunner.notifier import (
+            NotifyContext,
+            FeishuNotifier,
+            EmailNotifier,
+            build_summary_text,
+        )
+
+        channels = [c.strip().lower() for c in (notify or os.environ.get("ARUN_NOTIFY", "")).split(",") if c.strip()]
+        policy = (notify_only or os.environ.get("ARUN_NOTIFY_ONLY", "failed")).strip().lower()
+        topn = int(os.environ.get("NOTIFY_TOPN", "5") or "5")
+
+        should_send = (
+            (policy == "always") or (policy == "failed" and (s.get("failed", 0) or 0) > 0)
+        )
+        if channels and should_send:
+            ctx = NotifyContext(html_path=html_target, log_path=default_log, notify_only=policy, topn=topn)
+            notifiers = []
+
+            if "feishu" in channels:
+                fw = os.environ.get("FEISHU_WEBHOOK", "").strip()
+                if fw:
+                    fs = os.environ.get("FEISHU_SECRET")
+                    fm = os.environ.get("FEISHU_MENTION")
+                    notifiers.append(FeishuNotifier(webhook=fw, secret=fs, mentions=fm))
+
+            if "email" in channels:
+                host = os.environ.get("SMTP_HOST", "").strip()
+                if host:
+                    notifiers.append(
+                        EmailNotifier(
+                            smtp_host=host,
+                            smtp_port=int(os.environ.get("SMTP_PORT", "465") or 465),
+                            smtp_user=os.environ.get("SMTP_USER"),
+                            smtp_pass=os.environ.get("SMTP_PASS"),
+                            mail_from=os.environ.get("MAIL_FROM"),
+                            mail_to=os.environ.get("MAIL_TO"),
+                            use_ssl=(os.environ.get("SMTP_SSL", "true").lower() != "false"),
+                            attach_html=bool(notify_attach_html or (os.environ.get("NOTIFY_ATTACH_HTML", "").lower() in {"1","true","yes"})),
+                        )
+                    )
+
+            for n in notifiers:
+                try:
+                    n.send(report_obj, ctx)
+                except Exception:
+                    pass
+    except Exception:
+        # never break main flow for notifications
+        pass
 
     typer.echo(f"Logs written to {default_log}")
     if s.get("failed", 0) > 0:

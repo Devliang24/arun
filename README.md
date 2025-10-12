@@ -173,6 +173,18 @@ arun run testcases \
   --junit reports/junit.xml \
   --html reports/report.html \
   --log-level debug
+
+**Notifications (optional):**
+```bash
+# Send Feishu notification on failure only
+ARUN_NOTIFY_ONLY=failed FEISHU_WEBHOOK=https://open.feishu.cn/xxx \
+python -m apirunner.cli run testcases --env-file .env --notify feishu
+
+# Send email notification always (attach HTML report)
+SMTP_HOST=smtp.example.com SMTP_PORT=465 SMTP_USER=noreply@example.com \
+SMTP_PASS=app-pass MAIL_FROM=noreply@example.com MAIL_TO=qa@example.com \
+python -m apirunner.cli run testcases --env-file .env --notify email --notify-only always --notify-attach-html
+```
 ```
 
 **Validate YAML syntax:**
