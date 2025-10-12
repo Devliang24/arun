@@ -1,0 +1,13 @@
+config:
+  name: "Multipart Upload (Template)"
+  base_url: ${ENV(BASE_URL)}
+steps:
+  - name: demo upload (skipped)
+    skip: "template"
+    request:
+      method: POST
+      url: /api/v1/upload
+      files:
+        file1: "@path/to/file.bin"
+      data:
+        meta: "demo"

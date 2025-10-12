@@ -1,14 +1,15 @@
 config:
-  name: "Example: Parameters Matrix"
+  name: "Parameters Zipped"
   base_url: ${ENV(BASE_URL)}
 parameters:
-  # 2 x 2 组合，共 4 组
-  a: [1, 2]
-  b: ["x", "y"]
+  - a-b:
+      - [1, "x"]
+      - [2, "y"]
 steps:
-  - name: echo params
+  - name: zipped params
     request:
       method: GET
       url: /?a=$a&b=$b
     validate:
       - eq: [status_code, 200]
+

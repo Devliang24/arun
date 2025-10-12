@@ -1,0 +1,12 @@
+config:
+  name: "Negative: Unauthorized"
+  base_url: ${ENV(BASE_URL)}
+steps:
+  - name: get cart without token
+    request:
+      method: GET
+      url: /api/v1/cart/
+    validate:
+      - in: [status_code, [401, 403]]
+      - contains: [$.message, "Not authenticated"]
+

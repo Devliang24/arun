@@ -1,0 +1,30 @@
+config:
+  name: "Suite Parameters"
+  base_url: ${ENV(BASE_URL)}
+cases:
+  - config:
+      name: "Case Pairs"
+      parameters:
+        - x-y:
+            - [10, "a"]
+            - [20, "b"]
+    steps:
+      - name: echo pair
+        request:
+          method: GET
+          url: /?x=$x&y=$y
+        validate:
+          - eq: [status_code, 200]
+  - config:
+      name: "Case Matrix"
+      parameters:
+        m: [1, 2]
+        n: ["k", "v"]
+    steps:
+      - name: echo matrix
+        request:
+          method: GET
+          url: /?m=$m&n=$n
+        validate:
+          - eq: [status_code, 200]
+

@@ -1,0 +1,15 @@
+config:
+  name: "Headers Merge"
+  base_url: ${ENV(BASE_URL)}
+  headers:
+    Accept-Language: "zh-CN"
+steps:
+  - name: override header at step
+    request:
+      method: GET
+      url: /
+      headers:
+        Accept-Language: "en-US"
+    validate:
+      - eq: [status_code, 200]
+

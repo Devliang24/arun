@@ -9,6 +9,6 @@ steps:
   - name: signed get
     request:
       method: GET
-      url: /ping
+      url: /
     validate:
       - eq: [status_code, 200]

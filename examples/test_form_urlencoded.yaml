@@ -1,0 +1,15 @@
+config:
+  name: "Form URL-Encoded (Template)"
+  base_url: ${ENV(BASE_URL)}
+steps:
+  - name: demo form (skipped)
+    skip: "template"
+    request:
+      method: POST
+      url: /api/v1/some-form-endpoint
+      headers:
+        Content-Type: application/x-www-form-urlencoded
+      data:
+        a: 1
+        b: two
+

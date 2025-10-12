@@ -1,0 +1,24 @@
+config:
+  name: "SQL DSN Override"
+  base_url: ${ENV(BASE_URL)}
+steps:
+  - name: create order (skip if no DSN)
+    skip: ${not ENV(MYSQL_DSN)}
+    request:
+      method: POST
+      url: /api/v1/orders/
+      json:
+        shipping_address: "No.3 Demo Road"
+    extract:
+      order_id: $.data.order_id
+  - name: query with override DSN
+    skip: ${not ENV(MYSQL_DSN)}
+    request:
+      method: GET
+      url: /
+    sql_validate:
+      - query: "SELECT COUNT(*) AS cnt FROM order_items WHERE order_id='$order_id'"
+        dsn: ${ENV(MYSQL_DSN)}
+        expect:
+          - ge: [cnt, 1]
+

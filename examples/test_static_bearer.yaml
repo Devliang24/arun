@@ -1,0 +1,15 @@
+config:
+  name: "Static Bearer Auth"
+  base_url: ${ENV(BASE_URL)}
+steps:
+  - name: whoami with static token
+    skip: ${not ENV(STATIC_BEARER)}
+    request:
+      method: GET
+      url: /api/v1/users/me
+      auth:
+        type: bearer
+        token: ${ENV(STATIC_BEARER)}
+    validate:
+      - eq: [status_code, 200]
+

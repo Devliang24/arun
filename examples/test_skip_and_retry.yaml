@@ -1,0 +1,18 @@
+config:
+  name: "Skip and Retry"
+  base_url: ${ENV(BASE_URL)}
+steps:
+  - name: skip this step
+    skip: "maintenance"
+    request:
+      method: GET
+      url: /
+  - name: flaky but retry
+    retry: 2
+    retry_backoff: 0.5
+    request:
+      method: GET
+      url: /
+    validate:
+      - eq: [status_code, 200]
+

@@ -39,3 +39,35 @@
  - HMAC 加签（需要 APP_SECRET）：`test_hmac_sign.yaml`
    - 使用 `setup_hook_hmac_sign` 对请求进行签名，演示自定义安全头注入。
    - 运行：`ARUN_HOOKS_FILE=arun_hooks.py APP_SECRET=xxxx arun run examples/test_hmac_sign.yaml --env-file .env`
+
+- 断言与提取合集：`test_assertions_showcase.yaml`
+  - 针对产品列表与详情，演示 contains/regex/gt 等断言与提取。
+
+- 性能耗时断言：`test_perf_timing.yaml`
+  - 使用 `$elapsed_ms` 断言接口耗时在 2 秒以内。
+
+- 参数化进阶
+  - 压缩参数（zipped）：`test_params_zipped.yaml`
+  - 枚举参数（enumerate）：`test_params_enumerate.yaml`
+  - 套件级参数化：`suite_params.yaml`
+
+- Headers 合并与覆盖：`test_headers_merge.yaml`
+  - 演示 `config.headers` 与 `step.headers` 的覆盖关系（示例仅检查 200）。
+
+- Hooks 上下文演示：`test_hook_contexts.yaml`
+  - 演示签名与提取 `request_id` 的 hooks 作用。
+
+- 鉴权与负例
+  - 未登录负例：`test_negative_auth.yaml`（预期 401/403）
+  - 静态 Bearer：`test_static_bearer.yaml`（通过 `STATIC_BEARER` 提供 token；未提供则跳过）
+
+- 跳过与重试：`test_skip_and_retry.yaml`
+  - 展示 `skip` 字段与 `retry/retry_backoff` 的用法。
+
+- SQL 进阶（基于可选 DSN）
+  - 结果存储与复用：`test_sql_store_reuse.yaml`（当 `MYSQL_DSN` 存在时执行）
+  - 覆盖 DSN：`test_sql_dsn_override.yaml`（步骤级 `dsn` 覆盖）
+
+- 其他内容类型（模板）
+  - 表单：`test_form_urlencoded.yaml`（默认跳过，示例模板）
+  - 文件上传：`test_multipart_upload.yaml`（默认跳过，示例模板）

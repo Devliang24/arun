@@ -1,0 +1,29 @@
+config:
+  name: "Assertions Showcase"
+  base_url: ${ENV(BASE_URL)}
+steps:
+  - name: list products
+    request:
+      method: GET
+      url: /api/v1/products/
+    extract:
+      first_id: $.data.items[0].id
+    validate:
+      - eq: [status_code, 200]
+      - contains: [headers.Content-Type, "application/json"]
+      - eq: [$.success, true]
+      - contains: ["$.data.items[0]", "name"]
+      - gt: ["$.data.items[0].price", 0.0]
+      - regex: [$.message, "产品|列表|成功"]
+
+  - name: product detail
+    request:
+      method: GET
+      url: /api/v1/products/$first_id
+    validate:
+      - eq: [status_code, 200]
+      - eq: [$.success, true]
+      - eq: [$.code, 200]
+      - eq: [$.data.id, $first_id]
+      - contains: [$.data, "stock"]
+

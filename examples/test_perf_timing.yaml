@@ -1,0 +1,13 @@
+config:
+  name: "Performance Timing"
+  base_url: ${ENV(BASE_URL)}
+steps:
+  - name: get root within 2s
+    request:
+      method: GET
+      url: /
+    validate:
+      - eq: [status_code, 200]
+      - gt: ["$elapsed_ms", 0]
+      - lt: ["$elapsed_ms", 2000]
+

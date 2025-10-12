@@ -1,0 +1,49 @@
+config:
+  name: "SQL Store and Reuse"
+  base_url: ${ENV(BASE_URL)}
+steps:
+  - name: register (skip if no DB DSN)
+    skip: ${not ENV(MYSQL_DSN)}
+    request:
+      method: POST
+      url: /api/v1/auth/register
+      json:
+        username: u_${short_uid(12)}
+        email: u_${uid()}@example.com
+        password: "P@ssw0rd123"
+    extract:
+      new_username: $.data.username
+  - name: login
+    skip: ${not ENV(MYSQL_DSN)}
+    request:
+      method: POST
+      url: /api/v1/auth/login
+      json:
+        username: $new_username
+        password: "P@ssw0rd123"
+    extract:
+      token: $.data.access_token
+  - name: create order and store
+    skip: ${not ENV(MYSQL_DSN)}
+    request:
+      method: POST
+      url: /api/v1/orders/
+      json:
+        shipping_address: "No.2 Demo Road"
+    extract:
+      order_id: $.data.order_id
+      order_total: $.data.total_price
+    sql_validate:
+      - query: "SELECT status, total_amount FROM orders WHERE id='$order_id'"
+        expect:
+          - eq: [status, pending]
+        store:
+          db_status: status
+  - name: reuse stored status
+    skip: ${not ENV(MYSQL_DSN)}
+    request:
+      method: GET
+      url: /
+    validate:
+      - contains: ["$hrp_session_variables", "db_status"]
+
