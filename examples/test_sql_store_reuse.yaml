@@ -45,5 +45,4 @@ steps:
       method: GET
       url: /
     validate:
-      - contains: ["$hrp_session_variables", "db_status"]
-
+      - contains: ["$session_variables", "db_status"]

@@ -39,7 +39,7 @@ def _normalize_case_dict(d: Dict[str, Any]) -> Dict[str, Any]:
                     if not text:
                         raise LoadError(f"Invalid empty {hk_field} entry")
                     if not (text.startswith("${") and text.endswith("}")):
-                        raise LoadError(f"Invalid {hk_field} entry '{item}': must use HttpRunner expression syntax '${{func(...)}}'")
+                        raise LoadError(f"Invalid {hk_field} entry '{item}': must use expression syntax '${{func(...)}}'")
                 dd[hk_field] = list(items)
                 promoted_from_config.add(hk_field)
                 # remove from config to avoid model validation issues
@@ -60,7 +60,7 @@ def _normalize_case_dict(d: Dict[str, Any]) -> Dict[str, Any]:
                 for k, ex in ss["extract"].items():
                     if isinstance(ex, str) and ex.startswith("body."):
                         raise LoadError(f"Invalid extract '{ex}' for '{k}': use '$' syntax e.g. '$.path.to.field'")
-            # hooks field: enforce HttpRunner-style "${...}" expressions
+            # hooks field: enforce "${...}" expression form
             for hk_field in ("setup_hooks", "teardown_hooks"):
                 if hk_field in ss and isinstance(ss[hk_field], list):
                     for item in ss[hk_field]:
@@ -70,7 +70,7 @@ def _normalize_case_dict(d: Dict[str, Any]) -> Dict[str, Any]:
                         if not text:
                             raise LoadError(f"Invalid empty {hk_field} entry")
                         if not (text.startswith("${") and text.endswith("}")):
-                            raise LoadError(f"Invalid {hk_field} entry '{item}': must use HttpRunner expression syntax \"${{func(...)}}\"")
+                            raise LoadError(f"Invalid {hk_field} entry '{item}': must use expression syntax \"${{func(...)}}\"")
             new_steps.append(ss)
         dd["steps"] = new_steps
     # Disallow old-style case-level hooks at top-level; allow if just promoted from config
@@ -109,7 +109,7 @@ def load_yaml_file(path: Path) -> Tuple[List[Case], Dict[str, Any]]:
                         if not text:
                             raise LoadError(f"Invalid empty suite {hk_field} entry")
                         if not (text.startswith("${") and text.endswith("}")):
-                            raise LoadError(f"Invalid suite {hk_field} entry '{item}': must use HttpRunner expression syntax '${{func(...)}}'")
+                            raise LoadError(f"Invalid suite {hk_field} entry '{item}': must use expression syntax '${{func(...)}}'")
                     obj[hk_field] = list(items)
                     promoted_from_config.add(hk_field)
                     obj["config"].pop(hk_field, None)
@@ -135,7 +135,7 @@ def load_yaml_file(path: Path) -> Tuple[List[Case], Dict[str, Any]]:
             # inherit suite hooks and enforce naming at suite level
             merged.suite_setup_hooks = list(suite.setup_hooks or [])
             merged.suite_teardown_hooks = list(suite.teardown_hooks or [])
-        # suite-level hooks: enforce HttpRunner-style "${...}" expressions
+        # suite-level hooks: enforce "${...}" expression form
         for hk_field in ("setup_hooks", "teardown_hooks"):
             items = getattr(suite, hk_field, []) or []
             for item in items:
@@ -145,7 +145,7 @@ def load_yaml_file(path: Path) -> Tuple[List[Case], Dict[str, Any]]:
                 if not text:
                     raise LoadError(f"Invalid empty suite {hk_field} entry")
                 if not (text.startswith("${") and text.endswith("}")):
-                    raise LoadError(f"Invalid suite {hk_field} entry '{item}': must use HttpRunner expression syntax \"${{func(...)}}\"")
+                    raise LoadError(f"Invalid suite {hk_field} entry '{item}': must use expression syntax \"${{func(...)}}\"")
             cases.append(merged)
     else:
         # single case file: normalize validators
@@ -158,9 +158,9 @@ def load_yaml_file(path: Path) -> Tuple[List[Case], Dict[str, Any]]:
 
 
 def expand_parameters(parameters: Any) -> List[Dict[str, Any]]:
-    """Expand HttpRunner-style parameterization to a list of param dicts.
+    """Expand parameterization to a list of param dicts.
 
-    Supported forms (compatible with HttpRunner):
+    Supported forms:
     1) Dict of lists (cartesian):
        parameters: { a: [1,2], b: [3,4] }
     2) List of dict-of-lists (cartesian across items):

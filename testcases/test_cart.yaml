@@ -6,6 +6,23 @@ config:
     user_username: ${ENV(USER_USERNAME)}
     user_password: ${ENV(USER_PASSWORD)}
 steps:
+  - name: register user
+    request:
+      method: POST
+      url: /api/v1/auth/register
+      json:
+        username: u_${short_uid(12)}
+        email: u_${uid()}@example.com
+        password: "P@ssw0rd123"
+        full_name: "Cart User_${short_uid(10)}"
+        shipping_address: ${ENV(SHIPPING_ADDRESS)}
+    extract:
+      user_username: $.data.username
+    validate:
+      - in: [status_code, [200, 201]]
+      - eq: [$.success, true]
+      - eq: [$.message, "用户注册成功"]
+
   - name: login
     request:
       method: POST
@@ -34,7 +51,7 @@ steps:
       - eq: [$.code, 200]
       - gt: [$.data.total, 0]
       - gt: ["$.data.items[0].price", 0.0]
-      - contains: ["$.data.items[0]", "product_name"]
+      - contains: ["$.data.items[0]", "name"]
 
   - name: add to cart
     variables:

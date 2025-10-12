@@ -12,7 +12,7 @@ def _is_valid_name(path: Path) -> bool:
     parts = {p.lower() for p in path.parts}
     if "testcases" in parts or "testsuites" in parts:
         return True
-    # Or accept prefix-based naming similar to HttpRunner convention
+    # Also accept prefix-based naming convention
     if name.startswith("test_") or name.startswith("suite_"):
         return True
     return False

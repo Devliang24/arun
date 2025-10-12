@@ -4,11 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-APIRunner is a minimal HTTP API test runner with a YAML-based DSL. It's compatible with HttpRunner naming conventions and supports Jinja2 templating, JMESPath extraction, and multiple report formats.
+APIRunner is a minimal HTTP API test runner with a YAML-based DSL. It supports `${...}`-style expressions, Jinja2 templating, JMESPath extraction, and multiple report formats.
 
 **Key Features:**
 - YAML test cases with declarative syntax
-- Dual templating: Jinja2 (`{{ var }}`) and HttpRunner (`$var`, `${func()}`)
+- Dual templating: Jinja2 (`{{ var }}`) and `${...}` expressions (`$var`, `${func()}`)
 - Custom hooks via `arun_hooks.py` for helper functions
 - Tag-based test filtering
 - Parameterized testing (enumerate/matrix)
@@ -52,7 +52,7 @@ arun report reports/run1.json reports/run2.json -o reports/merged.json
 ```
 
 ### Test File Naming
-Test files must follow HttpRunner conventions:
+Test files should follow these conventions:
 - Located in `testcases/` or `testsuites/` directories, OR
 - Named with prefix `test_*.yaml` (cases) or `suite_*.yaml` (suites)
 
@@ -85,9 +85,9 @@ Reporters (reporter/)
 
 **Dual Syntax Support** (`apirunner/templating/engine.py`):
 1. **Jinja2**: `{{ ts() }}`, `{{ user_id }}`, `{{ sign(app_key, timestamp) }}`
-2. **HttpRunner**: `${ts()}`, `$user_id`, `${sign($app_key, $timestamp)}`
+2. **Dollar expressions**: `${ts()}`, `$user_id`, `${sign($app_key, $timestamp)}`
 
-Preprocessing converts HttpRunner syntax to Jinja2 before rendering. Falls back to safe AST evaluation if Jinja2 unavailable.
+Rendering supports `${...}` via safe AST evaluation and also supports Jinja2.
 
 **Variable Scoping** (priority order, highest to lowest):
 1. CLI overrides: `--vars key=value`

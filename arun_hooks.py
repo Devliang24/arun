@@ -3,7 +3,7 @@
 
 支持用法：
 - Jinja2: {{ ts() }}, {{ md5('abc') }}, {{ sign('demo', 123) }}
-- HttpRunner: ${ts()}, ${md5('abc')}, ${sign('demo', 123)}
+- 表达式: ${ts()}, ${md5('abc')}, ${sign('demo', 123)}
 """
 
 import hashlib
@@ -81,7 +81,7 @@ def capture_request_id(response: dict, variables: dict | None = None, env: dict 
     return None
 
 
-# Prefixed wrappers (HttpRunner-style naming convention)
+# Prefixed wrappers (DSL-style naming convention)
 def setup_hook_sign_request(request: dict, variables: dict | None = None, env: dict | None = None) -> dict | None:
     return sign_request(request=request, variables=variables or {}, env=env or {})
 

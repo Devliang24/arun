@@ -87,7 +87,7 @@ def run(
         log.info(f"[ENV] Using default env file: {env_file}")
 
     # Global variables from env file and CLI overrides
-    # Unified env loading (HttpRunner-like): --env <name> YAML + --env-file (kv or yaml) + OS ENV
+    # Unified env loading: --env <name> YAML + --env-file (kv or yaml) + OS ENV
     env_name: Optional[str] = os.environ.get("ARUN_ENV")  # optional default via env var
     env_store = load_environment(env_name, env_file)
     cli_vars = parse_kv(vars)

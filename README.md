@@ -1,304 +1,1532 @@
-APIRunner (MVP)
+# APIRunner
 
-一个最小可用的 HTTP API 测试运行器，提供 YAML DSL、HttpRunner 风格的 ${...} 模板、JMESPath 提取、基础断言，以及 JSON/JUnit/HTML 报告输出。
+<div align="center">
 
-快速开始
-- 从 `.env.example` 复制 `.env`，设置 `BASE_URL` 和账号等变量。
-- 将 YAML 用例放到 `testcases/`（命名建议：`test_*.yaml`）。
-- 运行用例：
-  - 如果已安装命令别名：`arun run testcases --env-file .env --report reports/run.json --junit reports/junit.xml --html reports/report.html`
-  - 或使用模块方式：`python -m apirunner.cli run testcases --env-file .env --html reports/report.html`
-- 仅校验 YAML（不执行）：
-  - `arun check testcases` 或 `python -m apirunner.cli check testcases`
-- 自动修复 hooks 写法（将 Suite/Case 级 hooks 移到 config 内）：
-  - `arun fix testcases`、`arun fix testsuites` 或 `python -m apirunner.cli fix testcases`
+**A lightweight, powerful HTTP API testing framework with YAML-based DSL**
 
-命令行
-- 运行：`arun run <path>`（或 `python -m apirunner.cli run <path>`）
-  - 常用参数：`-k <expr>`（标签过滤）、`--vars k=v`（可重复）、`--failfast`、`--report <file>`、`--junit <file>`、`--html <file>`、`--log-level info|debug`、`--env-file <path>`、`--log-file <file>`、`--httpx-logs/--no-httpx-logs`、`--reveal-secrets/--mask-secrets`
-  - `--log-file <file>` 指定日志文件（默认 `logs/run-<timestamp>.log`）；`--httpx-logs` 控制 httpx 内建请求日志（默认关闭）。
-  - 用例收集规则：
-    - 位于 `testcases/` 或 `testsuites/` 目录下的 `.yml|.yaml`；或
-    - 文件名以 `test_`（用例）或 `suite_`（套件）开头。
-  - 环境加载（HttpRunner 风格）：
-    - `--env <name>`（预留）：从 `envs/<name>.yaml | environments/<name>.yaml | env/<name>.yaml` 读取；也支持单文件 `env.yaml` 按名称分节。
-    - `--env-file <path>`：读取 `.env`（KEY=VALUE）或 YAML；与 `--env` 合并。
-    - 自动合并系统环境变量（`ENV_*`、`BASE_URL`）。
-    - 合并顺序：命名环境 < `--env-file` < OS 环境 < `--vars`（最高）。
+[![Python Version](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-DSL（YAML）
-- config: `name?`, `base_url?`, `variables?`(dict), `headers?`(dict), `timeout?`(float), `verify?`(bool), `tags?`(list)
-- parameters?:
-  - enumerate: list of dicts: `[{a:1,b:2},{a:3,b:4}]`
-  - matrix: dict of lists: `{a:[1,3], b:[2,4]}`
-- steps[]:
-  - `name`
-  - `variables?` (dict)
-  - request: `method`, `url`, `params?`, `headers?`, `json?`, `data?`, `files?`, `auth?` (basic|bearer), `timeout?`, `verify?`, `allow_redirects?`
-  - `extract?` (dict var -> `$` 表达式，仅支持 `$` 语法)
-  - `sql_validate?` (list[dict]，响应后执行 SQL 校验)
-- `validate?` (list of comparator entries，如 `- eq: ["status_code", 200]`；`check` 支持 `$` 语法)
-  - `setup_hooks?` (list[string]，在发送请求前调用 hooks 函数)
-  - `teardown_hooks?` (list[string]，在收到响应后调用 hooks 函数)
-  - `skip?` (bool|string)
-  - `retry?` (int), `retry_backoff?` (float seconds)
+[Features](#features) • [Quick Start](#quick-start) • [Documentation](#documentation) • [Examples](#examples)
 
-比较器
-- `eq, ne, contains, not_contains, regex, lt, le, gt, ge, len_eq, in, not_in`
+</div>
 
-Checks 与 Extract 语法
-- Extract 仅支持 `$` 开头（HttpRunner 风格）：
-  - `$.data.access_token`, `$[0].id`
-  - 特殊：`$headers.Content-Type`、`$status_code` 也可用于提取请求头/状态码
-- Check（断言）规范（单一格式）：
-  - 写法：`- <comparator>: ["<check>", <expect>]`
-    - 例如：`- eq: ["status_code", 200]`
-  - 状态码与请求头不需要 `$`：`status_code`、`headers.Content-Type`
-  - 响应体字段使用 `$`：`$.data.id`、`$[0].name`
-- 不再支持 `body.foo.bar` 写法，请统一使用 `$` 语法（如 `$.foo.bar`）
+---
 
-Hooks（函数钩子）
-- 放置在 `arun_hooks.py` 的可调用函数会被自动加载。
-- 在步骤级支持：`setup_hooks`（请求前）、`teardown_hooks`（响应后）。
-- 签名约定（按需实现其中任意参数，未用可省略）：
-  - setup: `def my_setup(request: dict, variables: dict, env: dict) -> dict | None`
-    - 可原地修改 `request`（如加签、补 headers）；返回的 dict 会合并进运行变量（供后续步骤使用）。
-  - teardown: `def my_teardown(response: dict, variables: dict, env: dict) -> dict | None`
-    - 可检查响应（抛异常使步骤失败）；返回的 dict 会合并进运行变量。
-- YAML 示例（所有 hooks 必须采用 HttpRunner `${...}` 表达式写法）：
-  ```yaml
-  steps:
-    - name: signed request
-      setup_hooks:
-        - ${setup_hook_sign_request($request)}
-      request:
-        method: GET
-        url: /secure
-      teardown_hooks:
-        - ${teardown_hook_assert_status_ok($response)}
-  ```
-- API Key 注入示例：
-  ```yaml
-  steps:
-    - name: with api key
-      setup_hooks:
-        - ${setup_hook_api_key($request)}
-      request:
-        method: GET
-        url: /debug/info
-  ```
+## Overview
 
-- HMAC 加签示例：
-  ```yaml
-  steps:
-    - name: hmac signed
-      setup_hooks:
-        - ${setup_hook_hmac_sign($request)}
-      request:
-        method: GET
-        url: /debug/info
-      validate:
-        - [status_code, eq, 200]
-  ```
-  需要在环境中提供 `APP_SECRET`（例如 `.env` 中设置 APP_SECRET=xxxx）。
-- Hooks（执行顺序：Suite.setup → Case.setup → Steps → Case.teardown → Suite.teardown）
-  - 套件级（Suite）：只支持在 `config.setup_hooks/config.teardown_hooks` 中声明（不再支持套件顶层声明）
-  - 用例级（Case）：只支持在 `config.setup_hooks/config.teardown_hooks` 中声明（不再支持用例顶层声明）
-  - 步骤级（Step）：在步骤的 `setup_hooks/teardown_hooks` 中声明
+APIRunner is a modern, minimal HTTP API test runner designed for simplicity and power. Write your API tests in clean YAML syntax, leverage powerful templating and extraction capabilities, and generate comprehensive test reports—all without writing a single line of code.
 
-自动修复 YAML 风格
-- 运行：`arun fix testcases` 或 `arun fix testsuites` 批量修复 hooks 写法。
-- 可选：启用本地 Git 预提交钩子自动修复
-  1) `chmod +x scripts/pre-commit-fix-hooks.sh`
-  2) `ln -sf ../../scripts/pre-commit-fix-hooks.sh .git/hooks/pre-commit`
-  这样在 `git commit` 前会自动规范化 hooks 写法。
-  - Hook 函数命名遵循 HttpRunner 习惯，可任意自定义（推荐使用 `setup_*`/`teardown_*` 前缀以便区分），调用时必须写为 `${func(...)}`
-  表达式，框架会注入请求/响应、变量、环境等上下文。
-- 表达式上下文兼容 HttpRunner 变量：
-  - `$request` / `$response`：当前请求/响应对象（dict，引用同一内存，可原地修改）
-  - `$hrp_step_name`：当前步骤名称
-  - `$hrp_step_request` / `$hrp_step_response`：请求/响应对象（同 `$request`/`$response`）
-  - `$hrp_step_variables`：步骤内可见变量（dict）
-  - `$hrp_session_variables`：当前会话变量（dict，包含 case/suite/参数等展开结果）
-  - `$hrp_session_env`：合并后的环境变量（dict）
-- 进阶示例（HttpRunner 风格）：
-  ```yaml
-  steps:
-    - name: demo hook
-      setup_hooks:
-        - ${setup_hook_example()}
-        - ${setup_show_step_name($hrp_step_name)}
-        - ${setup_show_step_request($hrp_step_request)}
-      teardown_hooks:
-        - ${teardown_hook_example()}
-        - ${teardown_show_step_response($hrp_step_response)}
-      request:
-        method: GET
-        url: /debug/info
-  ```
+APIRunner offers a streamlined, Pythonic approach to API testing with first-class support for:
+- **YAML-First**: Declarative test cases in human-readable YAML
+- **Dual Templating**: Both `${...}` expression and Jinja2 (`{{ ... }}`) syntax
+- **Smart Extraction**: JMESPath-powered JSON response extraction
+- **Flexible Hooks**: Custom Python functions for setup, teardown, and request signing
+- **Rich Reporting**: JSON, JUnit XML, and interactive HTML reports
+- **SQL Validation**: Built-in database assertion support
+- **CI/CD Ready**: Designed for seamless integration with your pipeline
 
-Hooks 参考表（示例已内置于 `arun_hooks.py`）
-- setup_hook_sign_request(request, variables, env) -> dict
-  - 简单加签（X-Timestamp/X-Signature），返回 `{'last_signature': sig}`
-- setup_hook_api_key(request, variables, env) -> None
-  - 注入 `X-API-Key`，优先从 `env['API_KEY']`，否则 `variables['API_KEY']`
-- setup_hook_hmac_sign(request, variables, env) -> dict
-  - HMAC-SHA256 对 `METHOD|URL|TS` 签名，写入 `X-HMAC/X-Timestamp`，需要 `APP_SECRET`
-- teardown_hook_assert_status_ok(response, variables, env) -> None
-  - 若 `status_code` 非 200 抛异常
-  - teardown_hook_capture_request_id(response, variables, env) -> dict
-  - 若响应体包含 `request_id`，写入变量 `{'request_id': ...}`
+## Features
 
-更多示例
-- 用例级 hooks（写在 config 内）
-  ```yaml
-  # testcases/test_example_case.yaml
-  config:
-    name: Example With Case Hooks
-    base_url: ${ENV(BASE_URL)}
+### Core Capabilities
+
+- **Declarative YAML DSL**: Write tests in clean, maintainable YAML syntax
+- **Powerful Templating Engine**:
+  - `${...}` expressions: `${variable}`, `${function()}`
+  - Jinja2 templates: `{{ variable }}`, `{{ function() }}`
+  - Environment variable injection: `${ENV(VAR_NAME)}`
+- **Advanced Response Handling**:
+  - JMESPath-based extraction: `$.data.user.id`
+  - Rich assertion library: `eq`, `contains`, `regex`, `lt`, `gt`, etc.
+  - Automatic token/auth injection
+- **Test Organization**:
+  - Tag-based filtering with logical expressions
+  - Parameterized testing (enumerate, matrix, zipped)
+  - Suite-level and case-level configuration inheritance
+- **Custom Hooks System**:
+  - Setup/teardown hooks at suite, case, and step levels
+  - Request signing and authentication hooks
+  - Custom validation and data transformation
+- **Database Integration**:
+  - SQL response validation
+  - Query results stored as variables
+  - Multiple database connection support
+- **Professional Reporting**:
+  - Detailed JSON reports with full request/response logs
+  - JUnit XML for CI/CD integration
+  - Interactive HTML reports with filtering and search
+- **Security Features**:
+  - Automatic sensitive data masking
+  - Configurable secret revelation for debugging
+- **Developer Experience**:
+  - Fast execution with connection pooling
+  - Retry logic with exponential backoff
+  - Rich console output with color coding
+  - Curl command generation for debugging
+
+## Quick Start
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/your-org/apirunner.git
+cd apirunner
+
+# Install in development mode
+pip install -e .
+
+# Verify installation
+arun --help
+```
+
+### Your First Test
+
+1. **Create environment file** (`.env`):
+```env
+BASE_URL=https://api.example.com
+USER_USERNAME=test_user
+USER_PASSWORD=test_pass
+```
+
+2. **Write a test case** (`testcases/test_health.yaml`):
+```yaml
+config:
+  name: Health Check
+  base_url: ${ENV(BASE_URL)}
+  tags: [smoke, health]
+
+steps:
+  - name: Check API health
+    request:
+      method: GET
+      url: /health
+    validate:
+      - eq: [status_code, 200]
+      - eq: [$.status, "healthy"]
+      - contains: [$.data, "version"]
+```
+
+3. **Run the test**:
+```bash
+arun run testcases/test_health.yaml --env-file .env --html reports/report.html
+```
+
+4. **View results**:
+```
+Total: 1 Passed: 1 Failed: 0 Skipped: 0 Duration: 145.3ms
+HTML report written to reports/report.html
+```
+
+## Installation
+
+### Requirements
+
+- Python 3.10 or higher
+- pip (Python package installer)
+
+### Dependencies
+
+APIRunner has minimal dependencies:
+- `httpx` (>=0.27) - Modern HTTP client
+- `pydantic` (>=2.6) - Data validation
+- `jinja2` (>=3.1) - Template engine
+- `jmespath` (>=1.0) - JSON extraction
+- `PyYAML` (>=6.0) - YAML parsing
+- `rich` (>=13.7) - Beautiful terminal output
+- `typer` (>=0.12) - CLI framework
+
+### Installation Methods
+
+**Development Installation:**
+```bash
+git clone https://github.com/your-org/apirunner.git
+cd apirunner
+pip install -e .
+```
+
+**From Source:**
+```bash
+pip install git+https://github.com/your-org/apirunner.git
+```
+
+## Usage
+
+### Basic Commands
+
+**Run tests:**
+```bash
+# Run all tests in a directory
+arun run testcases --env-file .env
+
+# Run with tag filtering
+arun run testcases -k "smoke and not slow" --env-file .env
+
+# Run with variable overrides
+arun run testcases --vars base_url=http://localhost:8000 --vars debug=true
+
+# Generate all report types
+arun run testcases \
+  --env-file .env \
+  --report reports/run.json \
+  --junit reports/junit.xml \
+  --html reports/report.html \
+  --log-level debug
+```
+
+**Validate YAML syntax:**
+```bash
+# Check YAML files without running tests
+arun check testcases
+```
+
+**Auto-fix YAML style:**
+```bash
+# Migrate hooks to new config-based format
+arun fix testcases
+```
+
+**Merge reports:**
+```bash
+# Combine multiple JSON reports
+arun report reports/run1.json reports/run2.json -o reports/merged.json
+```
+
+### Command-Line Options
+
+| Option | Description |
+|--------|-------------|
+| `path` | File or directory to run (required) |
+| `-k EXPR` | Tag filter expression (e.g., `"smoke and not slow"`) |
+| `--vars k=v` | Variable overrides (repeatable) |
+| `--failfast` | Stop on first failure |
+| `--report FILE` | Write JSON report |
+| `--junit FILE` | Write JUnit XML report |
+| `--html FILE` | Write HTML report |
+| `--log-level LEVEL` | Logging level (INFO, DEBUG) |
+| `--env-file FILE` | Environment file path (default: `.env`) |
+| `--log-file FILE` | Log file path (default: `logs/run-<timestamp>.log`) |
+| `--httpx-logs` | Show httpx internal logs |
+| `--mask-secrets` | Hide sensitive data in logs/reports |
+
+## Documentation
+
+### DSL Syntax Reference
+
+#### Test Case Structure
+
+```yaml
+config:
+  name: Test Case Name                    # Required
+  base_url: https://api.example.com       # Optional (can use ${ENV(BASE_URL)})
+  variables:                              # Optional case-level variables
+    user_id: 12345
+    api_key: secret
+  headers:                                # Optional default headers
+    X-API-Version: "v1"
+  timeout: 30.0                           # Optional request timeout (seconds)
+  verify: true                            # Optional SSL verification
+  tags: [smoke, regression]               # Optional tags for filtering
+  setup_hooks:                            # Optional case setup hooks
+    - ${setup_function()}
+  teardown_hooks:                         # Optional case teardown hooks
+    - ${teardown_function()}
+
+parameters:                               # Optional parameterization
+  env: [dev, staging]                     # Matrix: generates 2 test instances
+  region: [us, eu]                        # Matrix: 2 x 2 = 4 instances total
+
+steps:
+  - name: Step Name                       # Required
+    variables:                            # Optional step-level variables
+      custom_id: abc123
+
+    request:                              # Required
+      method: POST                        # Required: GET, POST, PUT, DELETE, etc.
+      url: /api/users                     # Required: absolute or relative to base_url
+      params:                             # Optional query parameters
+        page: 1
+        limit: 10
+      headers:                            # Optional headers (merged with config)
+        Content-Type: application/json
+      json:                               # Optional JSON body
+        username: ${ENV(USER_USERNAME)}
+        email: user@example.com
+      data:                               # Optional form data
+        key: value
+      files:                              # Optional file uploads
+        file: /path/to/file.pdf
+      auth:                               # Optional authentication
+        type: bearer                      # bearer or basic
+        token: ${ENV(API_TOKEN)}
+      timeout: 10.0                       # Optional request-specific timeout
+      verify: true                        # Optional SSL verification
+      allow_redirects: true               # Optional redirect handling
+
+    extract:                              # Optional response extraction
+      user_id: $.data.user.id            # JMESPath expression ($ required)
+      token: $.data.access_token         # Stored for use in subsequent steps
+
+    validate:                             # Optional assertions
+      - eq: [status_code, 200]           # Status code check
+      - eq: [$.success, true]            # Response body check
+      - contains: [$.message, "success"] # Substring check
+      - regex: [$.email, ".*@.*\\.com"]  # Regex pattern
+      - lt: [$elapsed_ms, 2000]          # Response time check
+
+    sql_validate:                         # Optional SQL validation
+      - query: "SELECT status FROM users WHERE id='$user_id'"
+        expect:
+          - eq: [status, "active"]
+        store:                            # Store query results as variables
+          db_status: status
+
+    setup_hooks:                          # Optional step setup hooks
+      - ${sign_request($request)}
+
+    teardown_hooks:                       # Optional step teardown hooks
+      - ${validate_response($response)}
+
+    skip: false                           # Optional: skip this step
+    retry: 3                              # Optional: retry count on failure
+    retry_backoff: 0.5                    # Optional: initial backoff (seconds)
+```
+
+#### Suite Structure
+
+```yaml
+config:
+  name: Test Suite Name
+  base_url: ${ENV(BASE_URL)}
+  variables:
+    suite_var: value
+  tags: [integration]
+  setup_hooks:                            # Suite-level setup (runs once)
+    - ${suite_setup()}
+  teardown_hooks:                         # Suite-level teardown (runs once)
+    - ${suite_teardown()}
+
+cases:
+  - config:
+      name: Case 1
+      tags: [smoke]
+    steps:
+      - name: Step 1
+        request:
+          method: GET
+          url: /api/endpoint
+        validate:
+          - eq: [status_code, 200]
+
+  - config:
+      name: Case 2
+      tags: [regression]
+    steps:
+      - name: Step 1
+        request:
+          method: POST
+          url: /api/endpoint
+        validate:
+          - eq: [status_code, 201]
+```
+
+### Templating System
+
+APIRunner supports dual templating syntax:
+
+#### Dollar Style (Recommended)
+
+```yaml
+# Variable reference
+url: /users/$user_id                    # Simple variable
+
+# Function call
+headers:
+  X-Timestamp: ${ts()}                  # Current timestamp
+  X-Signature: ${sign($app_key, ts())} # Custom function
+
+# Environment variable
+base_url: ${ENV(BASE_URL)}              # Read from environment
+
+# Complex expression
+json:
+  user_id: ${int($user_id) + 1}        # Arithmetic
+```
+
+#### Jinja2 Style (Alternative)
+
+```yaml
+# Variable reference
+url: /users/{{ user_id }}
+
+# Function call
+headers:
+  X-Timestamp: {{ ts() }}
+  X-Signature: {{ sign(app_key, ts()) }}
+
+# Filters and logic
+message: {{ username | upper }}
+```
+
+**Variable Precedence** (highest to lowest):
+1. CLI overrides: `--vars key=value`
+2. Step-level: `steps[].variables`
+3. Config-level: `config.variables`
+4. Parameters: `parameters`
+5. Extracts: `steps[].extract`
+6. Environment: `${ENV(KEY)}`
+
+### Assertions (Validators)
+
+| Comparator | Description | Example |
+|------------|-------------|---------|
+| `eq` | Equal | `- eq: [status_code, 200]` |
+| `ne` | Not equal | `- ne: [$.error, null]` |
+| `lt` | Less than | `- lt: [$elapsed_ms, 1000]` |
+| `le` | Less than or equal | `- le: [$.price, 100]` |
+| `gt` | Greater than | `- gt: [$.count, 0]` |
+| `ge` | Greater than or equal | `- ge: [$.age, 18]` |
+| `contains` | Contains substring/element | `- contains: [$.message, "success"]` |
+| `not_contains` | Does not contain | `- not_contains: [$.errors, "fatal"]` |
+| `regex` | Regex match | `- regex: [$.email, ".*@example\\.com"]` |
+| `len_eq` | Length equals | `- len_eq: [$.items, 10]` |
+| `in` | Element in collection | `- in: ["admin", $.roles]` |
+| `not_in` | Element not in collection | `- not_in: ["banned", $.statuses]` |
+
+**Check Targets:**
+- `status_code` - HTTP status code
+- `headers.Header-Name` - Response header (case-insensitive)
+- `$.path.to.field` - JSON body field (JMESPath)
+- `$[0].id` - Array element
+- `$elapsed_ms` - Response time in milliseconds
+
+### Extraction (JMESPath)
+
+Extract data from responses to use in subsequent steps:
+
+```yaml
+extract:
+  # Extract single field
+  user_id: $.data.user.id
+
+  # Extract from array
+  first_item: $[0].name
+
+  # Extract nested field
+  access_token: $.data.auth.access_token
+
+  # Extract header
+  rate_limit: $headers.X-RateLimit-Remaining
+
+  # Extract status code
+  status: $status_code
+```
+
+Extracted variables are automatically available in all subsequent steps.
+
+### Parameterization
+
+Run the same test with multiple input combinations:
+
+#### Enumerate (List of Dicts)
+
+```yaml
+parameters:
+  - {username: alice, role: admin}
+  - {username: bob, role: user}
+  - {username: charlie, role: guest}
+
+# Generates 3 test instances
+```
+
+#### Matrix (Cartesian Product)
+
+```yaml
+parameters:
+  env: [dev, staging, prod]
+  region: [us, eu, asia]
+
+# Generates 3 × 3 = 9 test instances
+```
+
+#### Zipped (Parallel Arrays)
+
+```yaml
+parameters:
+  - username-password:
+      - [alice, pass123]
+      - [bob, secret456]
+      - [charlie, pwd789]
+
+# Generates 3 test instances with paired values
+```
+
+### Hooks System
+
+Hooks are Python functions that run at specific points in the test lifecycle.
+
+#### Hook Types
+
+1. **Suite Hooks** (in `config.setup_hooks` / `config.teardown_hooks`)
+2. **Case Hooks** (in `config.setup_hooks` / `config.teardown_hooks`)
+3. **Step Hooks** (in `steps[].setup_hooks` / `steps[].teardown_hooks`)
+
+#### Creating Custom Hooks
+
+Create `arun_hooks.py` in your project root:
+
+```python
+import time
+import hashlib
+import hmac
+
+def ts() -> int:
+    """Return current Unix timestamp"""
+    return int(time.time())
+
+def md5(s: str) -> str:
+    """Calculate MD5 hash"""
+    return hashlib.md5(s.encode()).hexdigest()
+
+def setup_hook_sign_request(request: dict, variables: dict, env: dict) -> dict:
+    """
+    Setup hook: sign the request with HMAC-SHA256
+
+    Args:
+        request: Request dict (mutable, modify in-place)
+        variables: Current variables dict
+        env: Environment variables dict
+
+    Returns:
+        Dict of new variables to inject (or None)
+    """
+    secret = env.get('APP_SECRET', '').encode()
+    method = request.get('method', 'GET')
+    url = request.get('url', '')
+    timestamp = str(ts())
+
+    # Calculate signature
+    raw = f"{method}|{url}|{timestamp}".encode()
+    sig = hmac.new(secret, raw, hashlib.sha256).hexdigest()
+
+    # Modify request headers
+    headers = request.setdefault('headers', {})
+    headers['X-Timestamp'] = timestamp
+    headers['X-Signature'] = sig
+
+    # Return new variables
+    return {'last_signature': sig, 'last_timestamp': timestamp}
+
+def teardown_hook_assert_status_ok(response: dict, variables: dict, env: dict) -> None:
+    """
+    Teardown hook: verify response status is 200
+
+    Args:
+        response: Response dict with status_code, headers, body, etc.
+        variables: Current variables dict
+        env: Environment variables dict
+
+    Returns:
+        None (or dict of new variables)
+
+    Raises:
+        AssertionError: If status code is not 200
+    """
+    if response.get('status_code') != 200:
+        raise AssertionError(f"Expected 200, got {response.get('status_code')}")
+```
+
+#### Using Hooks in YAML
+
+```yaml
+config:
+  name: Signed Request Test
+  base_url: ${ENV(BASE_URL)}
+  setup_hooks:
+    - ${setup_hook_sign_request($request)}
+
+steps:
+  - name: Make signed request
     setup_hooks:
       - ${setup_hook_sign_request($request)}
+    request:
+      method: GET
+      url: /api/secure
     teardown_hooks:
       - ${teardown_hook_assert_status_ok($response)}
-  steps:
-    - name: get ping
-      request:
-        method: GET
-        url: /ping
-      validate:
-        - eq: [status_code, 200]
-  ```
+    validate:
+      - eq: [status_code, 200]
+```
 
-- 套件级 hooks（写在 suite 的 config 内）
-  ```yaml
-  # testsuites/suite_example.yaml
-  config:
-    name: Example Suite
-    base_url: ${ENV(BASE_URL)}
-    setup_hooks:
-      - ${setup_hook_sign_request($request)}
-    teardown_hooks:
-      - ${teardown_hook_capture_request_id($response)}
-  cases:
-    - config:
-        name: Case A
-        setup_hooks:
-          - ${setup_hook_sign_request($request)}
-      steps:
-        - name: get root
-          request:
-            method: GET
-            url: /
-          validate:
-            - eq: [status_code, 200]
-  ```
+**Hook Context Variables:**
+- `$request` / `$step_request` - Request dict
+- `$response` / `$step_response` - Response dict
+- `$step_name` - Current step name
+- `$step_variables` - Step-level variables
+- `$session_variables` - All session variables
+- `$session_env` - Environment variables
 
-- 提取 Token 并自动注入 Authorization（无需手工写 Header）
-  ```yaml
-  config:
-    name: Login + WhoAmI
-    base_url: ${ENV(BASE_URL)}
-  steps:
-    - name: login
-      request:
-        method: POST
-        url: /api/v1/auth/login
-        json:
-          username: ${ENV(USER_USERNAME)}
-          password: ${ENV(USER_PASSWORD)}
-      extract:
-        token: $.data.access_token
-      validate:
-        - eq: [status_code, 200]
-    - name: whoami (Authorization 将自动注入)
-      request:
-        method: GET
-        url: /api/v1/users/me
-      validate:
-        - eq: [status_code, 200]
-  ```
-  说明：当变量中存在 `token` 且未显式设置 `Authorization` 头时，运行器会自动注入 `Authorization: Bearer $token`。
+### SQL Validation
 
-- 标签过滤与变量覆盖（命令示例）
-  - 标签过滤运行：`arun run testcases -k "orders and not negative"`
-  - 覆盖变量运行：`arun run testcases --vars shipping_address="上海市黄浦区XX路1号"`
+Validate API responses against database state:
 
-SQL 响应校验
-- 安装数据库驱动（推荐 `pip install pymysql`），并在环境中提供连接信息：
-  `MYSQL_HOST`、`MYSQL_PORT`、`MYSQL_USER`、`MYSQL_PASSWORD`、`MYSQL_DB` / `MYSQL_DATABASE`；或 `MYSQL_DSN=mysql://user:pwd@host:3306/db`
-- 在步骤中新增 `sql_validate`，数组里的每一项支持：
-  - `query`（必填）：SQL 字符串，可直接在语句中插入 `$变量`，模板引擎会渲染为实际值（需要字符串时请自行包裹引号）
-  - `expect?`：可写“列名 -> 值”映射，或使用与 `validate` 相同的列表写法（如 `- eq: [status_code, 200]`）；期望值支持 `$.path`、`var:变量名`、`env:ENV_KEY`
-  - `store?`：将查询结果的列写入变量，如 `store: {db_status: status}`
-  - `allow_empty?` / `optional?`：允许结果为空（默认为失败）
-  - `dsn?`：覆盖默认连接信息（可写字符串 DSN 或 dict）
-  ```yaml
-  steps:
-    - name: create order
-      request:
-        method: POST
-        url: /api/orders
+#### Setup
+
+Install a database driver:
+```bash
+pip install pymysql  # For MySQL/MariaDB
+```
+
+Configure connection in `.env`:
+```env
+MYSQL_HOST=localhost
+MYSQL_PORT=3306
+MYSQL_USER=test_user
+MYSQL_PASSWORD=test_pass
+MYSQL_DB=test_db
+
+# Or use DSN
+MYSQL_DSN=mysql://user:pass@localhost:3306/test_db
+```
+
+#### Usage
+
+```yaml
+steps:
+  - name: Create order
+    request:
+      method: POST
+      url: /api/orders
       json:
-        sku: "SKU-1"
-        amount: 199
-      extract:
-        order_id: $.data.order_id
-        order_total: $.data.total_price
-      sql_validate:
-        - query: "SELECT status, total_amount FROM orders WHERE id='$order_id'"
-          expect:
-            - eq: [status, pending]
-            - eq: [total_amount, var:order_total]
-          store:
-            db_status: status
-        - query: "SELECT COUNT(*) AS cnt FROM order_items WHERE order_id='$order_id'"
-          expect:
-            - ge: [cnt, 1]
-          allow_empty: false
+        sku: "PRODUCT-123"
+        quantity: 2
+    extract:
+      order_id: $.data.order_id
 
-  ```
-- 断言结果会和普通 `validate` 一起写入报告；`store` 中的变量可供后续步骤使用。
+    sql_validate:
+      # Query 1: Verify order status
+      - query: "SELECT status, total FROM orders WHERE id='$order_id'"
+        expect:
+          - eq: [status, "pending"]
+          - gt: [total, 0]
+        store:                         # Store results as variables
+          db_status: status
+          db_total: total
 
-项目结构
-- `apirunner/` core package
-- `testcases/` YAML testcases (HttpRunner 风格 `test_*.yaml`)
-- `testsuites/` YAML testsuites（可选，`suite_*.yaml`）
-- `examples/` 示例目录（更完整的演示用例，见 `examples/README.md`）
-- `reports/` output folder (created at runtime)
-- `spec/openapi/ecommerce_api.json` API doc (reference only)
-- `spec/postman/HC-UDI.postman.json` Postman collection (reference only)
+      # Query 2: Verify order items
+      - query: "SELECT COUNT(*) AS cnt FROM order_items WHERE order_id='$order_id'"
+        expect:
+          - ge: [cnt, 1]
+        allow_empty: false             # Fail if query returns no rows
 
-变量与函数（语法约定）
-- 系统/环境变量仅允许通过 `ENV` 读取：`${ENV(KEY)}`，例如 `base_url: "${ENV(BASE_URL)}"`、`${ENV(USER_USERNAME)}`。
-- 调用辅助函数：仅支持 `${...}` 语法，例如：`${sum_two_int(1, 2)}`。
-- 步骤内引用变量推荐使用 `$var` 简写，复杂表达式仍使用 `${...}`，禁用 `{{ ... }}`。
+      # Query 3: Override DSN for different database
+      - query: "SELECT audit_log FROM audit_db.logs WHERE order_id='$order_id'"
+        dsn: mysql://user:pass@audit-host:3306/audit_db
+        expect:
+          - contains: [audit_log, "order_created"]
+```
 
-arun_hooks.py（辅助函数）
-- 将 `arun_hooks.py` 放在用例同级或任意上级目录（就近优先），框架会自动加载其中的可调用对象并在模板中可用。
-- 示例：
-  ```py
-  # arun_hooks.py
-  import time, hashlib
-  def ts():
-      return int(time.time())
-  def md5(s: str) -> str:
-      return hashlib.md5(s.encode()).hexdigest()
-  def sign(app_key: str, ts: int) -> str:
-      return md5(f"{app_key}{ts}")
-  def sum_two_int(a:int,b:int)->int:
-      return a+b
-  ```
-  在 YAML 中：
-  ```yaml
-  config:
-    base_url: "${ENV(BASE_URL)}"
-  steps:
-    - name: demo
-      request:
-        method: GET
-        url: /ping?x=${sum_two_int(1,2)}
-  ```
-高级：通过环境变量 ARUN_HOOKS_FILE 指定自定义文件名（支持逗号分隔多个候选名），例如 `ARUN_HOOKS_FILE=custom_hooks.py`。
-- 敏感信息显示
-  - 默认明文显示敏感字段（`Authorization/password/*token*` 等），便于联调排查
-  - 如需隐藏/脱敏输出，使用 `--mask-secrets`
+**SQL Validation Options:**
+- `query` - SQL query (required, supports variable interpolation)
+- `expect` - Assertions on query results (optional)
+- `store` - Store column values as variables (optional)
+- `allow_empty` / `optional` - Allow empty result set (default: false)
+- `dsn` - Override database connection (optional)
+
+### Tag Filtering
+
+Filter test execution using logical tag expressions:
+
+```bash
+# Run tests with 'smoke' tag
+arun run testcases -k "smoke"
+
+# Run tests with both 'smoke' AND 'regression' tags
+arun run testcases -k "smoke and regression"
+
+# Run tests with either 'smoke' OR 'p0' tags
+arun run testcases -k "smoke or p0"
+
+# Run all tests EXCEPT 'slow' ones
+arun run testcases -k "not slow"
+
+# Complex expression
+arun run testcases -k "(smoke or regression) and not slow and not flaky"
+```
+
+**Tag Expression Syntax:**
+- `and` - Logical AND (higher precedence)
+- `or` - Logical OR
+- `not` - Logical NOT
+- `( )` - Grouping (left-to-right evaluation)
+- Case-insensitive matching
+
+### Auto-Injection Features
+
+#### Bearer Token Auto-Injection
+
+When a variable named `token` is extracted, APIRunner automatically injects `Authorization: Bearer {token}` header in subsequent requests (unless explicitly overridden):
+
+```yaml
+steps:
+  - name: Login
+    request:
+      method: POST
+      url: /api/auth/login
+      json:
+        username: ${ENV(USER_USERNAME)}
+        password: ${ENV(USER_PASSWORD)}
+    extract:
+      token: $.data.access_token        # Extract token
+    validate:
+      - eq: [status_code, 200]
+
+  - name: Get user profile
+    request:
+      method: GET
+      url: /api/users/me
+      # No need to manually set Authorization header!
+      # APIRunner automatically adds: Authorization: Bearer {token}
+    validate:
+      - eq: [status_code, 200]
+```
+
+### Retry and Backoff
+
+Configure automatic retry for flaky endpoints:
+
+```yaml
+steps:
+  - name: Flaky endpoint
+    request:
+      method: GET
+      url: /api/sometimes-fails
+    retry: 3                            # Retry up to 3 times
+    retry_backoff: 0.5                  # Initial backoff: 0.5s
+                                        # Exponential: 0.5s, 1.0s, 2.0s (max)
+    validate:
+      - eq: [status_code, 200]
+```
+
+## Architecture
+
+### Project Structure
+
+```
+apirunner/
+├── apirunner/              # Core package
+│   ├── cli.py             # CLI entry point
+│   ├── engine/            # HTTP client
+│   │   └── http.py
+│   ├── loader/            # YAML parsing & discovery
+│   │   ├── collector.py   # Test file discovery
+│   │   ├── yaml_loader.py # YAML parsing
+│   │   ├── hooks.py       # Hook loading
+│   │   └── env.py         # Environment loading
+│   ├── runner/            # Test execution
+│   │   ├── runner.py      # Main runner
+│   │   ├── assertions.py  # Assertion logic
+│   │   └── extractors.py  # JMESPath extraction
+│   ├── templating/        # Template engine
+│   │   ├── engine.py      # Dual-syntax rendering
+│   │   ├── context.py     # Variable scoping
+│   │   └── builtins.py    # Built-in functions
+│   ├── models/            # Pydantic models
+│   │   ├── case.py        # Case & Suite models
+│   │   ├── step.py        # Step model
+│   │   ├── config.py      # Config model
+│   │   └── report.py      # Report models
+│   ├── reporter/          # Report generation
+│   │   ├── json_reporter.py
+│   │   ├── junit_reporter.py
+│   │   ├── html_reporter.py
+│   │   └── merge.py
+│   ├── db/                # Database support
+│   │   └── sql_validate.py
+│   └── utils/             # Utilities
+│       ├── logging.py     # Rich logging
+│       ├── mask.py        # Secret masking
+│       └── curl.py        # Curl generation
+├── testcases/             # Test case files
+├── testsuites/            # Test suite files
+├── examples/              # Example tests
+├── arun_hooks.py          # Custom hook functions
+├── .env                   # Environment variables
+└── reports/               # Generated reports
+```
+
+### Execution Flow
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ 1. CLI (cli.py)                                             │
+│    ├─ Parse arguments                                       │
+│    ├─ Load environment (.env, --env-file, --vars)          │
+│    └─ Discover test files (collector.py)                   │
+└────────────────────┬────────────────────────────────────────┘
+                     ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 2. Loader (loader/)                                         │
+│    ├─ Parse YAML (yaml_loader.py)                          │
+│    ├─ Validate models (models/)                            │
+│    ├─ Expand parameters (enumerate/matrix/zipped)          │
+│    ├─ Load custom hooks (hooks.py → arun_hooks.py)         │
+│    └─ Apply tag filters                                    │
+└────────────────────┬────────────────────────────────────────┘
+                     ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 3. Runner (runner/runner.py)                               │
+│    ├─ Initialize VarContext (variable scoping)             │
+│    ├─ Execute suite/case setup hooks                       │
+│    │                                                        │
+│    └─ For each step:                                       │
+│        ├─ Push step variables to context                   │
+│        ├─ Render templates (templating/engine.py)          │
+│        ├─ Execute setup hooks                              │
+│        ├─ Send HTTP request (engine/http.py)               │
+│        ├─ Extract variables (extractors.py)                │
+│        ├─ Run assertions (assertions.py)                   │
+│        ├─ Execute SQL validations (db/sql_validate.py)     │
+│        ├─ Execute teardown hooks                           │
+│        └─ Pop step context                                 │
+│                                                             │
+│    ├─ Execute suite/case teardown hooks                    │
+│    └─ Build case result                                    │
+└────────────────────┬────────────────────────────────────────┘
+                     ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 4. Reporters (reporter/)                                    │
+│    ├─ Aggregate results                                    │
+│    ├─ Generate JSON report (json_reporter.py)              │
+│    ├─ Generate JUnit XML (junit_reporter.py)               │
+│    ├─ Generate HTML report (html_reporter.py)              │
+│    └─ Write logs (utils/logging.py)                        │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Key Design Decisions
+
+1. **Dual Templating**: Support both `${...}` and Jinja2 (`{{ ... }}`) for flexibility and migration paths
+2. **Immutable Scoping**: Variable contexts use a stack-based approach for clean isolation between steps
+3. **Type Preservation**: Single-token templates (`${var}`) preserve native types (int, bool, etc.) instead of stringifying
+4. **Hook Signatures**: Flexible hook signatures allow functions to declare only needed parameters
+5. **Fail-Fast Option**: `--failfast` stops execution on first failure for rapid feedback
+6. **Secret Masking**: Automatic masking of sensitive fields (configurable with `--reveal-secrets`)
+
+## Examples
+
+### Example 1: Login Flow with Token Auto-Injection
+
+```yaml
+config:
+  name: Login and Access Protected Resource
+  base_url: ${ENV(BASE_URL)}
+  variables:
+    username: ${ENV(USER_USERNAME)}
+    password: ${ENV(USER_PASSWORD)}
+
+steps:
+  - name: User login
+    request:
+      method: POST
+      url: /api/v1/auth/login
+      json:
+        username: $username
+        password: $password
+    extract:
+      token: $.data.access_token
+      user_id: $.data.user.id
+    validate:
+      - eq: [status_code, 200]
+      - eq: [$.success, true]
+      - eq: [$.message, "登录成功"]
+
+  - name: Get user profile
+    request:
+      method: GET
+      url: /api/v1/users/me
+      # Authorization: Bearer {token} automatically injected
+    validate:
+      - eq: [status_code, 200]
+      - eq: [$.data.user.id, var:user_id]
+```
+
+### Example 2: Parameterized Testing
+
+```yaml
+config:
+  name: Multi-Environment Health Check
+  tags: [smoke, health]
+
+parameters:
+  env: [dev, staging, prod]
+  region: [us, eu]
+
+steps:
+  - name: Check health endpoint
+    variables:
+      base_url: https://${env}-${region}.example.com
+    request:
+      method: GET
+      url: ${base_url}/health
+    validate:
+      - eq: [status_code, 200]
+      - eq: [$.status, "healthy"]
+      - contains: [$.data.region, $region]
+```
+
+### Example 3: Request Signing with Hooks
+
+**arun_hooks.py:**
+```python
+import time
+import hmac
+import hashlib
+
+def setup_hook_hmac_sign(request: dict, variables: dict, env: dict) -> dict:
+    secret = env.get('APP_SECRET', '').encode()
+    method = request.get('method', 'GET')
+    url = request.get('url', '')
+    timestamp = str(int(time.time()))
+
+    message = f"{method}|{url}|{timestamp}".encode()
+    signature = hmac.new(secret, message, hashlib.sha256).hexdigest()
+
+    headers = request.setdefault('headers', {})
+    headers['X-Timestamp'] = timestamp
+    headers['X-Signature'] = signature
+
+    return {'last_signature': signature}
+```
+
+**test_signed_request.yaml:**
+```yaml
+config:
+  name: Signed API Request
+  base_url: ${ENV(BASE_URL)}
+
+steps:
+  - name: Make signed request
+    setup_hooks:
+      - ${setup_hook_hmac_sign($request)}
+    request:
+      method: GET
+      url: /api/secure/data
+    validate:
+      - eq: [status_code, 200]
+      - eq: [$.authenticated, true]
+```
+
+### Example 4: SQL Validation
+
+```yaml
+config:
+  name: Order Creation with Database Verification
+  base_url: ${ENV(BASE_URL)}
+
+steps:
+  - name: Create order
+    request:
+      method: POST
+      url: /api/orders
+      json:
+        product_id: "PROD-001"
+        quantity: 5
+        shipping_address: "123 Main St, City, 12345"
+    extract:
+      order_id: $.data.order_id
+      total_price: $.data.total_price
+    validate:
+      - eq: [status_code, 201]
+      - eq: [$.success, true]
+
+    sql_validate:
+      - query: |
+          SELECT status, total_amount, created_at
+          FROM orders
+          WHERE id = '$order_id'
+        expect:
+          - eq: [status, "pending"]
+          - eq: [total_amount, var:total_price]
+        store:
+          db_status: status
+          db_created_at: created_at
+
+      - query: |
+          SELECT COUNT(*) AS item_count
+          FROM order_items
+          WHERE order_id = '$order_id'
+        expect:
+          - ge: [item_count, 1]
+```
+
+### Example 5: Test Suite with Inheritance
+
+```yaml
+config:
+  name: User Management Test Suite
+  base_url: ${ENV(BASE_URL)}
+  variables:
+    api_version: v1
+  headers:
+    X-API-Version: $api_version
+  tags: [integration, users]
+  setup_hooks:
+    - ${setup_hook_suite_init()}
+  teardown_hooks:
+    - ${teardown_hook_suite_cleanup()}
+
+cases:
+  - config:
+      name: User Registration
+      tags: [registration]
+    steps:
+      - name: Register new user
+        request:
+          method: POST
+          url: /api/$api_version/users/register
+          json:
+            username: test_user_${short_uid(8)}
+            email: test_${short_uid()}@example.com
+            password: SecurePass123!
+        extract:
+          user_id: $.data.user.id
+        validate:
+          - eq: [status_code, 201]
+          - eq: [$.success, true]
+
+  - config:
+      name: User Login
+      tags: [auth]
+    steps:
+      - name: Login with credentials
+        request:
+          method: POST
+          url: /api/$api_version/auth/login
+          json:
+            username: ${ENV(USER_USERNAME)}
+            password: ${ENV(USER_PASSWORD)}
+        extract:
+          token: $.data.access_token
+        validate:
+          - eq: [status_code, 200]
+          - eq: [$.success, true]
+```
+
+### More Examples
+
+Check the `examples/` directory for additional examples:
+- `test_params_matrix.yaml` - Matrix parameterization
+- `test_params_enumerate.yaml` - Enumeration parameterization
+- `test_assertions_showcase.yaml` - All assertion types
+- `test_perf_timing.yaml` - Performance assertions
+- `test_skip_and_retry.yaml` - Skip and retry logic
+- `test_negative_auth.yaml` - Negative test cases
+- `suite_hooks.yaml` - Suite-level hooks
+- And many more...
+
+Run all examples:
+```bash
+arun run examples --env-file .env --html reports/examples.html
+```
+
+## Environment Configuration
+
+### Environment File Format
+
+**.env (KEY=VALUE format):**
+```env
+# API Configuration
+BASE_URL=https://api.example.com
+API_VERSION=v1
+
+# Authentication
+USER_USERNAME=test_user
+USER_PASSWORD=test_password
+API_KEY=your-api-key-here
+APP_SECRET=your-hmac-secret
+
+# Database (for SQL validation)
+MYSQL_HOST=localhost
+MYSQL_PORT=3306
+MYSQL_USER=db_user
+MYSQL_PASSWORD=db_password
+MYSQL_DB=test_database
+
+# Or use DSN
+MYSQL_DSN=mysql://user:pass@localhost:3306/test_db
+
+# Feature Flags
+ENABLE_RETRY=true
+MAX_RETRY_COUNT=3
+```
+
+**Environment variables in YAML:**
+```yaml
+config:
+  base_url: ${ENV(BASE_URL)}      # Read from environment
+  variables:
+    api_key: ${ENV(API_KEY)}      # Inject into variables
+    version: ${ENV(API_VERSION, v1)}  # With default value
+```
+
+### Variable Precedence
+
+When the same variable is defined in multiple places:
+
+1. **CLI overrides** (`--vars key=value`) - Highest priority
+2. **Step variables** (`steps[].variables`)
+3. **Config variables** (`config.variables`)
+4. **Parameters** (`parameters`)
+5. **Extracted variables** (`steps[].extract`)
+6. **Environment** (`${ENV(KEY)}`) - Lowest priority
+
+## Reporting
+
+### JSON Report
+
+Structured JSON output with full request/response details:
+
+```bash
+arun run testcases --report reports/run.json
+```
+
+**Example output:**
+```json
+{
+  "summary": {
+    "total": 10,
+    "passed": 8,
+    "failed": 2,
+    "skipped": 0,
+    "duration_ms": 2456.7
+  },
+  "cases": [
+    {
+      "name": "Health Check",
+      "status": "passed",
+      "duration_ms": 145.3,
+      "parameters": {},
+      "steps": [
+        {
+          "name": "Check API health",
+          "status": "passed",
+          "request": {
+            "method": "GET",
+            "url": "https://api.example.com/health",
+            "headers": {...}
+          },
+          "response": {
+            "status_code": 200,
+            "headers": {...},
+            "body": {...}
+          },
+          "asserts": [
+            {
+              "check": "status_code",
+              "comparator": "eq",
+              "expect": 200,
+              "actual": 200,
+              "passed": true
+            }
+          ],
+          "duration_ms": 145.3
+        }
+      ]
+    }
+  ]
+}
+```
+
+### JUnit XML Report
+
+CI/CD-compatible XML output:
+
+```bash
+arun run testcases --junit reports/junit.xml
+```
+
+Integrates with:
+- Jenkins
+- GitLab CI
+- GitHub Actions
+- CircleCI
+- Azure DevOps
+
+### HTML Report
+
+Interactive HTML report with search and filtering:
+
+```bash
+arun run testcases --html reports/report.html
+```
+
+Features:
+- Summary dashboard with pass/fail statistics
+- Expandable test case details
+- Request/response inspection
+- Assertion results with diff view
+- Search and filter capabilities
+- Responsive design
+
+### Report Merging
+
+Combine multiple test runs:
+
+```bash
+# Run tests in parallel jobs
+arun run testcases/smoke --report reports/smoke.json
+arun run testcases/regression --report reports/regression.json
+
+# Merge reports
+arun report reports/smoke.json reports/regression.json -o reports/merged.json
+```
+
+## Advanced Topics
+
+### Test File Discovery
+
+APIRunner discovers test files using these rules:
+
+1. **Directory-based**: Files in `testcases/` or `testsuites/` directories
+2. **Name-based**: Files matching `test_*.yaml` (cases) or `suite_*.yaml` (suites)
+
+**Custom hooks file discovery:**
+- Search upward from test file for `arun_hooks.py`
+- Configurable via `ARUN_HOOKS_FILE` environment variable
+
+```bash
+# Use custom hooks file
+ARUN_HOOKS_FILE=custom_hooks.py arun run testcases
+```
+
+### Sensitive Data Handling
+
+**Automatic masking** (default):
+```bash
+arun run testcases --env-file .env  # Secrets masked in logs/reports
+```
+
+**Reveal secrets for debugging:**
+```bash
+arun run testcases --env-file .env --reveal-secrets
+```
+
+Masked fields:
+- `Authorization` header
+- `password` fields
+- `*token*` fields (access_token, refresh_token, etc.)
+- `*secret*` fields
+- `*key*` fields (api_key, etc.)
+
+### Performance Testing
+
+Assert on response times:
+
+```yaml
+steps:
+  - name: Performance-critical endpoint
+    request:
+      method: GET
+      url: /api/data
+    validate:
+      - eq: [status_code, 200]
+      - lt: [$elapsed_ms, 500]    # Must respond in < 500ms
+```
+
+### Debugging
+
+**Enable debug logging:**
+```bash
+arun run testcases --log-level debug --log-file debug.log
+```
+
+**Show httpx internal logs:**
+```bash
+arun run testcases --httpx-logs
+```
+
+**Generate curl commands:**
+Debug logs automatically include curl equivalents for all requests:
+```
+[DEBUG] cURL: curl -X POST 'https://api.example.com/login' -H 'Content-Type: application/json' -d '{"username":"test","password":"***"}'
+```
+
+## CI/CD Integration
+
+### GitHub Actions
+
+```yaml
+name: API Tests
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          pip install -e .
+
+      - name: Run API tests
+        env:
+          BASE_URL: ${{ secrets.API_BASE_URL }}
+          USER_USERNAME: ${{ secrets.TEST_USERNAME }}
+          USER_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+        run: |
+          arun run testcases \
+            --junit reports/junit.xml \
+            --html reports/report.html \
+            --mask-secrets
+
+      - name: Publish test results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          files: reports/junit.xml
+
+      - name: Upload HTML report
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: test-report
+          path: reports/report.html
+```
+
+### GitLab CI
+
+```yaml
+stages:
+  - test
+
+api-tests:
+  stage: test
+  image: python:3.10
+  before_script:
+    - pip install -e .
+  script:
+    - |
+      arun run testcases \
+        --env-file .env \
+        --junit reports/junit.xml \
+        --html reports/report.html \
+        --mask-secrets
+  artifacts:
+    when: always
+    reports:
+      junit: reports/junit.xml
+    paths:
+      - reports/
+  variables:
+    BASE_URL: $API_BASE_URL
+    USER_USERNAME: $TEST_USERNAME
+    USER_PASSWORD: $TEST_PASSWORD
+```
+
+### Jenkins
+
+```groovy
+pipeline {
+    agent any
+
+    environment {
+        BASE_URL = credentials('api-base-url')
+        USER_USERNAME = credentials('test-username')
+        USER_PASSWORD = credentials('test-password')
+    }
+
+    stages {
+        stage('Setup') {
+            steps {
+                sh 'pip install -e .'
+            }
+        }
+
+        stage('Test') {
+            steps {
+                sh '''
+                    arun run testcases \
+                        --junit reports/junit.xml \
+                        --html reports/report.html \
+                        --mask-secrets
+                '''
+            }
+        }
+    }
+
+    post {
+        always {
+            junit 'reports/junit.xml'
+            publishHTML([
+                reportDir: 'reports',
+                reportFiles: 'report.html',
+                reportName: 'API Test Report'
+            ])
+        }
+    }
+}
+```
+
+## Development
+
+### Setting Up Development Environment
+
+```bash
+# Clone repository
+git clone https://github.com/your-org/apirunner.git
+cd apirunner
+
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install in editable mode with dev dependencies
+pip install -e .
+
+# Verify installation
+arun --help
+```
+
+### Running Tests
+
+```bash
+# Run all tests
+arun run testcases --env-file .env
+
+# Run specific tags
+arun run testcases -k "smoke" --env-file .env
+
+# Run with full reporting
+arun run testcases \
+  --env-file .env \
+  --report reports/run.json \
+  --junit reports/junit.xml \
+  --html reports/report.html \
+  --log-level debug
+```
+
+### Code Style
+
+This project uses:
+- `black` for code formatting
+- `ruff` for linting
+- `mypy` for type checking
+
+### Git Hooks
+
+Auto-fix YAML formatting on commit:
+
+```bash
+# Make pre-commit hook executable
+chmod +x scripts/pre-commit-fix-hooks.sh
+
+# Install hook
+ln -sf ../../scripts/pre-commit-fix-hooks.sh .git/hooks/pre-commit
+```
+
+This automatically runs `arun fix` to migrate hooks to the new config-based format.
+
+## Notes
+
+APIRunner focuses on a minimal core with practical features for everyday API testing without extra bloat.
+
+## Troubleshooting
+
+### Common Issues
+
+**Issue: `ModuleNotFoundError: No module named 'apirunner'`**
+```bash
+# Solution: Install in editable mode
+pip install -e .
+```
+
+**Issue: `No YAML test files found`**
+```bash
+# Solution: Ensure files follow naming convention
+# - Located in testcases/ or testsuites/ directories, OR
+# - Named test_*.yaml or suite_*.yaml
+```
+
+**Issue: `Invalid check 'body.field': use '$' syntax`**
+```bash
+# Old syntax (deprecated):
+validate:
+  - eq: [body.user.id, 123]
+
+# New syntax (required):
+validate:
+  - eq: [$.user.id, 123]
+```
+
+**Issue: Hooks not loading**
+```bash
+# Ensure arun_hooks.py is in project root or parent directory
+# Or specify explicitly:
+ARUN_HOOKS_FILE=path/to/hooks.py arun run testcases
+```
+
+**Issue: SQL validation fails with connection error**
+```bash
+# Install database driver
+pip install pymysql  # For MySQL
+
+# Verify environment variables
+echo $MYSQL_HOST $MYSQL_USER $MYSQL_DB
+
+# Or use DSN
+export MYSQL_DSN=mysql://user:pass@host:3306/db
+```
+
+## Contributing
+
+We welcome contributions! Here's how to get started:
+
+1. **Fork the repository**
+2. **Create a feature branch**: `git checkout -b feature/your-feature`
+3. **Make your changes**
+4. **Run tests**: `arun run testcases --env-file .env`
+5. **Commit**: `git commit -m "feat: add amazing feature"`
+6. **Push**: `git push origin feature/your-feature`
+7. **Open a Pull Request**
+
+### Contribution Guidelines
+
+- Follow existing code style (black, ruff)
+- Add tests for new features
+- Update documentation
+- Write clear commit messages
+- Keep changes focused and atomic
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+- Built with [httpx](https://www.python-httpx.org/), [pydantic](https://pydantic-docs.helpmanual.io/), [rich](https://rich.readthedocs.io/)
+- Thanks to all contributors
+
+## Support
+
+- **Documentation**: See [CLAUDE.md](CLAUDE.md) for detailed technical documentation
+- **Examples**: Check the `examples/` directory for sample tests
+- **Issues**: Report bugs and request features on [GitHub Issues](https://github.com/your-org/apirunner/issues)
+
+---
+
+<div align="center">
+
+**Built with ❤️ by the APIRunner Team**
+
+[⬆ Back to Top](#apirunner)
+
+</div>

@@ -93,7 +93,7 @@ class Runner:
         return None
 
     def _eval_extract(self, expr: Any, resp: Dict[str, Any]) -> Any:
-        # Only support string expressions starting with $ (HttpRunner-style)
+        # Only support string expressions starting with $
         if not isinstance(expr, str):
             return None
         e = expr.strip()
@@ -150,11 +150,10 @@ class Runner:
             "env": env_ctx,
             "step_name": meta_data.get("step_name"),
             "case_name": meta_data.get("case_name"),
-            "hrp_step_name": meta_data.get("hrp_step_name") or meta_data.get("step_name"),
-            "hrp_step_request": meta_data.get("hrp_step_request") or req,
-            "hrp_step_variables": meta_data.get("hrp_step_variables") or variables,
-            "hrp_session_variables": meta_data.get("hrp_session_variables") or variables,
-            "hrp_session_env": meta_data.get("hrp_session_env") or env_ctx,
+            "step_request": meta_data.get("step_request") or req,
+            "step_variables": meta_data.get("step_variables") or variables,
+            "session_variables": meta_data.get("session_variables") or variables,
+            "session_env": meta_data.get("session_env") or env_ctx,
         }
         hook_ctx.update(meta_data)
         for entry in names or []:
@@ -164,7 +163,7 @@ class Runner:
             if not text:
                 raise ValueError("Invalid empty setup hook entry")
             if not (text.startswith("${") and text.endswith("}")):
-                raise ValueError(f"Setup hook must use HttpRunner syntax '${{func(...)}}': {entry}")
+                raise ValueError(f"Setup hook must use expression syntax '${{func(...)}}': {entry}")
             import re as _re
             m = _re.match(r"^\$\{\s*([A-Za-z_][A-Za-z0-9_]*)", text)
             fn_label = f"{m.group(1)}()" if m else text
@@ -195,11 +194,10 @@ class Runner:
             "env": env_ctx,
             "step_name": meta_data.get("step_name"),
             "case_name": meta_data.get("case_name"),
-            "hrp_step_name": meta_data.get("hrp_step_name") or meta_data.get("step_name"),
-            "hrp_step_response": meta_data.get("hrp_step_response") or resp,
-            "hrp_step_variables": meta_data.get("hrp_step_variables") or variables,
-            "hrp_session_variables": meta_data.get("hrp_session_variables") or variables,
-            "hrp_session_env": meta_data.get("hrp_session_env") or env_ctx,
+            "step_response": meta_data.get("step_response") or resp,
+            "step_variables": meta_data.get("step_variables") or variables,
+            "session_variables": meta_data.get("session_variables") or variables,
+            "session_env": meta_data.get("session_env") or env_ctx,
         }
         hook_ctx.update(meta_data)
         for entry in names or []:
@@ -209,7 +207,7 @@ class Runner:
             if not text:
                 raise ValueError("Invalid empty teardown hook entry")
             if not (text.startswith("${") and text.endswith("}")):
-                raise ValueError(f"Teardown hook must use HttpRunner syntax '${{func(...)}}': {entry}")
+                raise ValueError(f"Teardown hook must use expression syntax '${{func(...)}}': {entry}")
             import re as _re
             m = _re.match(r"^\$\{\s*([A-Za-z_][A-Za-z0-9_]*)", text)
             fn_label = f"{m.group(1)}()" if m else text
@@ -249,9 +247,9 @@ class Runner:
                         envmap=envmap,
                         meta={
                             "case_name": case.config.name or name,
-                            "hrp_step_variables": base_vars,
-                            "hrp_session_variables": base_vars,
-                            "hrp_session_env": envmap or {},
+                            "step_variables": base_vars,
+                            "session_variables": base_vars,
+                            "session_env": envmap or {},
                         },
                     )
                     for k, v in (new_vars_suite or {}).items():
@@ -269,9 +267,9 @@ class Runner:
                         envmap=envmap,
                         meta={
                             "case_name": case.config.name or name,
-                            "hrp_step_variables": base_vars,
-                            "hrp_session_variables": base_vars,
-                            "hrp_session_env": envmap or {},
+                            "step_variables": base_vars,
+                            "session_variables": base_vars,
+                            "session_env": envmap or {},
                         },
                     )
                     for k, v in (new_vars_case or {}).items():
@@ -308,10 +306,10 @@ class Runner:
                 setup_meta = {
                     "step_name": step.name,
                     "case_name": case.config.name or name,
-                    "hrp_step_request": req_rendered,
-                    "hrp_step_variables": step_locals_for_hook,
-                    "hrp_session_variables": session_vars_for_hook,
-                    "hrp_session_env": envmap or {},
+                    "step_request": req_rendered,
+                    "step_variables": step_locals_for_hook,
+                    "session_variables": session_vars_for_hook,
+                    "session_env": envmap or {},
                 }
                 # run setup hooks (mutation allowed)
                 try:
@@ -536,11 +534,11 @@ class Runner:
                     teardown_meta = {
                         "step_name": step.name,
                         "case_name": case.config.name or name,
-                        "hrp_step_response": resp_obj,
-                        "hrp_step_request": req_rendered,
-                        "hrp_step_variables": variables,
-                        "hrp_session_variables": ctx.get_merged(global_vars),
-                        "hrp_session_env": envmap or {},
+                        "step_response": resp_obj,
+                        "step_request": req_rendered,
+                        "step_variables": variables,
+                        "session_variables": ctx.get_merged(global_vars),
+                        "session_env": envmap or {},
                     }
                     new_vars_td = self._run_teardown_hooks(
                         step.teardown_hooks,
@@ -613,10 +611,10 @@ class Runner:
                         envmap=envmap,
                         meta={
                             "case_name": case.config.name or name,
-                            "hrp_step_response": last_resp_obj or {},
-                            "hrp_step_variables": session_vars,
-                            "hrp_session_variables": session_vars,
-                            "hrp_session_env": envmap or {},
+                            "step_response": last_resp_obj or {},
+                            "step_variables": session_vars,
+                            "session_variables": session_vars,
+                            "session_env": envmap or {},
                         },
                     )
                 if getattr(case, "suite_teardown_hooks", None):
@@ -629,10 +627,10 @@ class Runner:
                         envmap=envmap,
                         meta={
                             "case_name": case.config.name or name,
-                            "hrp_step_response": last_resp_obj or {},
-                            "hrp_step_variables": session_vars,
-                            "hrp_session_variables": session_vars,
-                            "hrp_session_env": envmap or {},
+                            "step_response": last_resp_obj or {},
+                            "step_variables": session_vars,
+                            "session_variables": session_vars,
+                            "session_env": envmap or {},
                         },
                     )
             except Exception as e:
