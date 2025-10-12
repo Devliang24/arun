@@ -58,7 +58,6 @@ def sign_request(request: dict, variables: dict | None = None, env: dict | None 
     """Example setup hook: add a simple signature header.
     In real cases compute HMAC of method+url+ts with secret from env.
     """
-    import hashlib, time
     headers = request.setdefault('headers', {})
     ts_val = str(int(time.time()))
     raw = f"{request.get('method','GET')}|{request.get('url','')}|{ts_val}"
@@ -69,15 +68,13 @@ def sign_request(request: dict, variables: dict | None = None, env: dict | None 
 
 
 def assert_status_ok(response: dict, variables: dict | None = None, env: dict | None = None) -> None:
-    """Example teardown hook: ensure status_code==200 else raise.
-    """
+    """Example teardown hook: ensure status_code==200 else raise."""
     if int(response.get('status_code', 0)) != 200:
         raise AssertionError(f"status not 200: {response.get('status_code')}")
 
 
 def capture_request_id(response: dict, variables: dict | None = None, env: dict | None = None) -> dict | None:
-    """Extract request_id from response body (if present) into variables.
-    """
+    """Extract request_id from response body (if present) into variables."""
     body = response.get('body') or {}
     if isinstance(body, dict) and 'request_id' in body:
         return {'request_id': body['request_id']}
@@ -99,8 +96,7 @@ def teardown_hook_capture_request_id(response: dict, variables: dict | None = No
 
 def setup_hook_api_key(request: dict, variables: dict | None = None, env: dict | None = None) -> None:
     """Inject API Key header from environment/variables.
-    Priority: env['API_KEY'] > variables['API_KEY'] > env['X_API_KEY'] > variables['X_API_KEY']
-    Writes 'X-API-Key' header.
+    Priority: env['API_KEY'] > variables['API_KEY'] > env['X_API_KEY'] > variables['X_API_KEY'].
     """
     api_key = None
     srcs = [

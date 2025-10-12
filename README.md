@@ -31,6 +31,7 @@ DSL (YAML)
   - `variables?` (dict)
   - request: `method`, `url`, `params?`, `headers?`, `json?`, `data?`, `files?`, `auth?` (basic|bearer), `timeout?`, `verify?`, `allow_redirects?`
   - `extract?` (dict var -> `$` 表达式，仅支持 `$` 语法)
+  - `mysql_asserts?` (list[dict]，响应后执行 MySQL 校验)
 - `validate?` (list of comparator entries，如 `- eq: ["status_code", 200]`；`check` 支持 `$` 语法)
   - `setup_hooks?` (list[string]，在发送请求前调用 hooks 函数)
   - `teardown_hooks?` (list[string]，在收到响应后调用 hooks 函数)
@@ -119,6 +120,40 @@ Hooks 参考表（示例已内置于 `arun_hooks.py`）
   - 若 `status_code` 非 200 抛异常
 - teardown_hook_capture_request_id(response, variables, env) -> dict
   - 若响应体包含 `request_id`，写入变量 `{'request_id': ...}`
+
+MySQL 响应断言
+- 安装数据库驱动（推荐 `pip install pymysql`），并在环境中提供连接信息：
+  `MYSQL_HOST`、`MYSQL_PORT`、`MYSQL_USER`、`MYSQL_PASSWORD`、`MYSQL_DB` / `MYSQL_DATABASE`；或 `MYSQL_DSN=mysql://user:pwd@host:3306/db`
+- 在步骤中新增 `mysql_asserts`，数组里的每一项支持：
+  - `query`（必填）：SQL，支持 `%s` 占位符；若需传参，请写成 `"SELECT ... | params=${[...]}"`（使用 `${[...]}` 让模板引擎输出合法的 Python 字面量，例如 `['ORD123']`）
+  - `expect?`：可写“列名 -> 值”映射，或使用与 `validate` 相同的列表写法（如 `- eq: [status_code, 200]`）；期望值支持 `$.path`、`var:变量名`、`env:ENV_KEY`
+  - `store?`：将查询结果的列写入变量，如 `store: {db_status: status}`
+  - `allow_empty?` / `optional?`：允许结果为空（默认为失败）
+  - `dsn?`：覆盖默认连接信息（可写字符串 DSN 或 dict）
+  ```yaml
+  steps:
+    - name: create order
+      request:
+        method: POST
+        url: /api/orders
+      json:
+        sku: "SKU-1"
+        amount: 199
+      extract:
+        order_id: $.data.id
+      mysql_asserts:
+        - query: "SELECT status, total_amount FROM orders WHERE id=%s | params=${[$order_id]}"
+          expect:
+            - eq: [status, $.data.status]
+            - eq: [total_amount, $.data.amount]
+          store:
+            db_status: status
+        - query: "SELECT COUNT(*) AS cnt FROM order_items WHERE order_id=%s | params=${[$order_id]}"
+          expect:
+            - ge: [cnt, 1]
+          allow_empty: false
+  ```
+- 断言结果会和普通 `validate` 一起写入报告；`store` 中的变量可供后续步骤使用。
 
 Project Layout
 - `apirunner/` core package
