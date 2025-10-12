@@ -18,6 +18,32 @@ def _is_suite(doc: Dict[str, Any]) -> bool:
 
 def _normalize_case_dict(d: Dict[str, Any]) -> Dict[str, Any]:
     dd = dict(d)
+    # Allow case-level hooks declared inside config as aliases, e.g.:
+    # config:
+    #   setup_hooks: ["${func()}"]
+    #   teardown_hooks: ["${func()}"]
+    promoted_from_config: set[str] = set()
+    if "config" in dd and isinstance(dd["config"], dict):
+        for hk_field in ("setup_hooks", "teardown_hooks"):
+            if hk_field in dd["config"]:
+                items = dd["config"].get(hk_field)
+                if items is None:
+                    items = []
+                if not isinstance(items, list):
+                    raise LoadError(f"Invalid config.{hk_field} entry type {type(items).__name__}; expected list of '${{func(...)}}'")
+                # validate expressions and promote to case-level
+                for item in items:
+                    if not isinstance(item, str):
+                        raise LoadError(f"Invalid {hk_field} entry type {type(item).__name__}; expected string like '${{func(...)}}'")
+                    text = item.strip()
+                    if not text:
+                        raise LoadError(f"Invalid empty {hk_field} entry")
+                    if not (text.startswith("${") and text.endswith("}")):
+                        raise LoadError(f"Invalid {hk_field} entry '{item}': must use HttpRunner expression syntax '${{func(...)}}'")
+                dd[hk_field] = list(items)
+                promoted_from_config.add(hk_field)
+                # remove from config to avoid model validation issues
+                dd["config"].pop(hk_field, None)
     if "steps" in dd and isinstance(dd["steps"], list):
         new_steps: List[Dict[str, Any]] = []
         for s in dd["steps"]:
@@ -34,22 +60,25 @@ def _normalize_case_dict(d: Dict[str, Any]) -> Dict[str, Any]:
                 for k, ex in ss["extract"].items():
                     if isinstance(ex, str) and ex.startswith("body."):
                         raise LoadError(f"Invalid extract '{ex}' for '{k}': use '$' syntax e.g. '$.path.to.field'")
-            # enforce hooks naming for function-name style
-            for hk_field, prefix in (("setup_hooks", "setup_hook_"), ("teardown_hooks", "teardown_hook_")):
+            # hooks field: enforce HttpRunner-style "${...}" expressions
+            for hk_field in ("setup_hooks", "teardown_hooks"):
                 if hk_field in ss and isinstance(ss[hk_field], list):
                     for item in ss[hk_field]:
-                        if isinstance(item, str) and item.strip() and not item.strip().startswith("${"):
-                            if not item.startswith(prefix):
-                                raise LoadError(f"Invalid {hk_field} item '{item}': function name must start with '{prefix}' or use expression form ${'{'}{prefix}name(...){'}'}")
+                        if not isinstance(item, str):
+                            raise LoadError(f"Invalid {hk_field} entry type {type(item).__name__}; expected string like \"${{func(...)}}\"")
+                        text = item.strip()
+                        if not text:
+                            raise LoadError(f"Invalid empty {hk_field} entry")
+                        if not (text.startswith("${") and text.endswith("}")):
+                            raise LoadError(f"Invalid {hk_field} entry '{item}': must use HttpRunner expression syntax \"${{func(...)}}\"")
             new_steps.append(ss)
         dd["steps"] = new_steps
-    # enforce hooks naming at case level
-    for hk_field, prefix in (("setup_hooks", "setup_hook_"), ("teardown_hooks", "teardown_hook_")):
-        if hk_field in dd and isinstance(dd[hk_field], list):
-            for item in dd[hk_field]:
-                if isinstance(item, str) and item.strip() and not item.strip().startswith("${"):
-                    if not item.startswith(prefix):
-                        raise LoadError(f"Invalid {hk_field} item '{item}': function name must start with '{prefix}' or use expression form ${'{'}{prefix}name(...){'}'}")
+    # Disallow old-style case-level hooks at top-level; allow if just promoted from config
+    for hk_field in ("setup_hooks", "teardown_hooks"):
+        if hk_field in dd and hk_field not in promoted_from_config:
+            raise LoadError(
+                f"Invalid top-level '{hk_field}': case-level hooks must be declared under 'config.{hk_field}'."
+            )
     return dd
 
 
@@ -62,6 +91,34 @@ def load_yaml_file(path: Path) -> Tuple[List[Case], Dict[str, Any]]:
 
     cases: List[Case] = []
     if _is_suite(obj):
+        # Promote suite-level hooks declared under config.* and forbid old top-level style
+        promoted_from_config: set[str] = set()
+        if isinstance(obj.get("config"), dict):
+            for hk_field in ("setup_hooks", "teardown_hooks"):
+                if hk_field in obj["config"]:
+                    items = obj["config"].get(hk_field)
+                    if items is None:
+                        items = []
+                    if not isinstance(items, list):
+                        raise LoadError(f"Invalid config.{hk_field} entry type {type(items).__name__}; expected list of '${{func(...)}}'")
+                    # validate expressions and promote to suite-level
+                    for item in items:
+                        if not isinstance(item, str):
+                            raise LoadError(f"Invalid suite {hk_field} entry type {type(item).__name__}; expected string like '${{func(...)}}'")
+                        text = item.strip()
+                        if not text:
+                            raise LoadError(f"Invalid empty suite {hk_field} entry")
+                        if not (text.startswith("${") and text.endswith("}")):
+                            raise LoadError(f"Invalid suite {hk_field} entry '{item}': must use HttpRunner expression syntax '${{func(...)}}'")
+                    obj[hk_field] = list(items)
+                    promoted_from_config.add(hk_field)
+                    obj["config"].pop(hk_field, None)
+        # Disallow old top-level suite hooks (unless just promoted from config)
+        for hk_field in ("setup_hooks", "teardown_hooks"):
+            if hk_field in obj and hk_field not in promoted_from_config:
+                raise LoadError(
+                    f"Invalid top-level '{hk_field}': suite-level hooks must be declared under 'config.{hk_field}'."
+                )
         # pre-normalize validators in nested cases
         if "cases" in obj and isinstance(obj["cases"], list):
             obj = {**obj, "cases": [_normalize_case_dict(c) for c in obj["cases"]]}
@@ -78,13 +135,17 @@ def load_yaml_file(path: Path) -> Tuple[List[Case], Dict[str, Any]]:
             # inherit suite hooks and enforce naming at suite level
             merged.suite_setup_hooks = list(suite.setup_hooks or [])
             merged.suite_teardown_hooks = list(suite.teardown_hooks or [])
-        # suite-level naming validation
-        for hk_field, prefix in (("setup_hooks", "setup_hook_"), ("teardown_hooks", "teardown_hook_")):
+        # suite-level hooks: enforce HttpRunner-style "${...}" expressions
+        for hk_field in ("setup_hooks", "teardown_hooks"):
             items = getattr(suite, hk_field, []) or []
             for item in items:
-                if isinstance(item, str) and item.strip() and not item.strip().startswith("${"):
-                    if not item.startswith(prefix):
-                        raise LoadError(f"Invalid suite {hk_field} item '{item}': function name must start with '{prefix}' or use expression form ${'{'}{prefix}name(...){'}'}")
+                if not isinstance(item, str):
+                    raise LoadError(f"Invalid suite {hk_field} entry type {type(item).__name__}; expected string like \"${{func(...)}}\"")
+                text = item.strip()
+                if not text:
+                    raise LoadError(f"Invalid empty suite {hk_field} entry")
+                if not (text.startswith("${") and text.endswith("}")):
+                    raise LoadError(f"Invalid suite {hk_field} entry '{item}': must use HttpRunner expression syntax \"${{func(...)}}\"")
             cases.append(merged)
     else:
         # single case file: normalize validators

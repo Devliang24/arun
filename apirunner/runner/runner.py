@@ -130,61 +130,92 @@ class Runner:
         # Fallback: remove leading $ and try
         return extract_from_body(body, e.lstrip("$"))
 
-    def _run_setup_hooks(self, names: List[str], *, funcs: Dict[str, Any] | None, req: Dict[str, Any], variables: Dict[str, Any], envmap: Dict[str, Any] | None) -> Dict[str, Any]:
+    def _run_setup_hooks(
+        self,
+        names: List[str],
+        *,
+        funcs: Dict[str, Any] | None,
+        req: Dict[str, Any],
+        variables: Dict[str, Any],
+        envmap: Dict[str, Any] | None,
+        meta: Dict[str, Any] | None = None,
+    ) -> Dict[str, Any]:
         updated: Dict[str, Any] = {}
         fdict = funcs or {}
+        env_ctx = envmap or {}
+        meta_data = {k: v for k, v in (meta or {}).items() if v is not None}
+        hook_ctx: Dict[str, Any] = {
+            "request": req,
+            "variables": variables,
+            "env": env_ctx,
+            "step_name": meta_data.get("step_name"),
+            "case_name": meta_data.get("case_name"),
+            "hrp_step_name": meta_data.get("hrp_step_name") or meta_data.get("step_name"),
+            "hrp_step_request": meta_data.get("hrp_step_request") or req,
+            "hrp_step_variables": meta_data.get("hrp_step_variables") or variables,
+            "hrp_session_variables": meta_data.get("hrp_session_variables") or variables,
+            "hrp_session_env": meta_data.get("hrp_session_env") or env_ctx,
+        }
+        hook_ctx.update(meta_data)
         for entry in names or []:
-            if isinstance(entry, str) and entry.strip().startswith("${"):
-                # expression style
-                if self.log:
-                    self.log.info(f"[HOOK] setup expr -> {entry}")
-                import re as _re
-                m = _re.match(r"^\$\{\s*([A-Za-z_][A-Za-z0-9_]*)", entry.strip())
-                if not (m and m.group(1).startswith("setup_hook_")):
-                    raise ValueError(f"setup hook function in expression must start with 'setup_hook_': {entry}")
-                ret = self.templater.eval_expr(entry, variables, fdict, envmap, extra_ctx={"request": req, "variables": variables, "env": envmap})
-            else:
-                # function name style
-                name = entry
-                # enforce naming convention
-                if not (isinstance(name, str) and name.startswith("setup_hook_")):
-                    raise ValueError(f"setup hook function name must start with 'setup_hook_': {name}")
-                fn = fdict.get(name)
-                if not callable(fn):
-                    if self.log:
-                        self.log.error(f"[HOOK] setup '{name}' not found")
-                    continue
-                if self.log:
-                    self.log.info(f"[HOOK] setup -> {name}()")
-                ret = fn(request=req, variables=variables, env=envmap)
+            if not isinstance(entry, str):
+                raise ValueError(f"Invalid setup hook entry type {type(entry).__name__}; expected string like '${{func(...)}}'")
+            text = entry.strip()
+            if not text:
+                raise ValueError("Invalid empty setup hook entry")
+            if not (text.startswith("${") and text.endswith("}")):
+                raise ValueError(f"Setup hook must use HttpRunner syntax '${{func(...)}}': {entry}")
+            import re as _re
+            m = _re.match(r"^\$\{\s*([A-Za-z_][A-Za-z0-9_]*)", text)
+            fn_label = f"{m.group(1)}()" if m else text
+            if self.log:
+                self.log.info(f"[HOOK] setup expr -> {fn_label}")
+            ret = self.templater.eval_expr(text, variables, fdict, envmap, extra_ctx=hook_ctx)
             if isinstance(ret, dict):
                 updated.update(ret)
         return updated
 
-    def _run_teardown_hooks(self, names: List[str], *, funcs: Dict[str, Any] | None, resp: Dict[str, Any], variables: Dict[str, Any], envmap: Dict[str, Any] | None) -> Dict[str, Any]:
+    def _run_teardown_hooks(
+        self,
+        names: List[str],
+        *,
+        funcs: Dict[str, Any] | None,
+        resp: Dict[str, Any],
+        variables: Dict[str, Any],
+        envmap: Dict[str, Any] | None,
+        meta: Dict[str, Any] | None = None,
+    ) -> Dict[str, Any]:
         updated: Dict[str, Any] = {}
         fdict = funcs or {}
+        env_ctx = envmap or {}
+        meta_data = {k: v for k, v in (meta or {}).items() if v is not None}
+        hook_ctx: Dict[str, Any] = {
+            "response": resp,
+            "variables": variables,
+            "env": env_ctx,
+            "step_name": meta_data.get("step_name"),
+            "case_name": meta_data.get("case_name"),
+            "hrp_step_name": meta_data.get("hrp_step_name") or meta_data.get("step_name"),
+            "hrp_step_response": meta_data.get("hrp_step_response") or resp,
+            "hrp_step_variables": meta_data.get("hrp_step_variables") or variables,
+            "hrp_session_variables": meta_data.get("hrp_session_variables") or variables,
+            "hrp_session_env": meta_data.get("hrp_session_env") or env_ctx,
+        }
+        hook_ctx.update(meta_data)
         for entry in names or []:
-            if isinstance(entry, str) and entry.strip().startswith("${"):
-                if self.log:
-                    self.log.info(f"[HOOK] teardown expr -> {entry}")
-                import re as _re
-                m = _re.match(r"^\$\{\s*([A-Za-z_][A-Za-z0-9_]*)", entry.strip())
-                if not (m and m.group(1).startswith("teardown_hook_")):
-                    raise ValueError(f"teardown hook function in expression must start with 'teardown_hook_': {entry}")
-                ret = self.templater.eval_expr(entry, variables, fdict, envmap, extra_ctx={"response": resp, "variables": variables, "env": envmap})
-            else:
-                name = entry
-                if not (isinstance(name, str) and name.startswith("teardown_hook_")):
-                    raise ValueError(f"teardown hook function name must start with 'teardown_hook_': {name}")
-                fn = fdict.get(name)
-                if not callable(fn):
-                    if self.log:
-                        self.log.error(f"[HOOK] teardown '{name}' not found")
-                    continue
-                if self.log:
-                    self.log.info(f"[HOOK] teardown -> {name}()")
-                ret = fn(response=resp, variables=variables, env=envmap)
+            if not isinstance(entry, str):
+                raise ValueError(f"Invalid teardown hook entry type {type(entry).__name__}; expected string like '${{func(...)}}'")
+            text = entry.strip()
+            if not text:
+                raise ValueError("Invalid empty teardown hook entry")
+            if not (text.startswith("${") and text.endswith("}")):
+                raise ValueError(f"Teardown hook must use HttpRunner syntax '${{func(...)}}': {entry}")
+            import re as _re
+            m = _re.match(r"^\$\{\s*([A-Za-z_][A-Za-z0-9_]*)", text)
+            fn_label = f"{m.group(1)}()" if m else text
+            if self.log:
+                self.log.info(f"[HOOK] teardown expr -> {fn_label}")
+            ret = self.templater.eval_expr(text, variables, fdict, envmap, extra_ctx=hook_ctx)
             if isinstance(ret, dict):
                 updated.update(ret)
         return updated
@@ -194,6 +225,7 @@ class Runner:
         t0 = time.perf_counter()
         steps_results: List[StepResult] = []
         status = "passed"
+        last_resp_obj: Dict[str, Any] | None = None
 
         # Evaluate case-level variables once to fix values across steps
         base_vars_raw: Dict[str, Any] = {**(case.config.variables or {}), **(params or {})}
@@ -208,14 +240,40 @@ class Runner:
             try:
                 # suite-level
                 if getattr(case, "suite_setup_hooks", None):
-                    new_vars_suite = self._run_setup_hooks(case.suite_setup_hooks, funcs=funcs, req={}, variables={}, envmap=envmap)
+                    base_vars = ctx.get_merged(global_vars)
+                    new_vars_suite = self._run_setup_hooks(
+                        case.suite_setup_hooks,
+                        funcs=funcs,
+                        req={},
+                        variables=base_vars,
+                        envmap=envmap,
+                        meta={
+                            "case_name": case.config.name or name,
+                            "hrp_step_variables": base_vars,
+                            "hrp_session_variables": base_vars,
+                            "hrp_session_env": envmap or {},
+                        },
+                    )
                     for k, v in (new_vars_suite or {}).items():
                         ctx.set_base(k, v)
                         if self.log:
                             self.log.info(f"[HOOK] suite set var: {k} = {v!r}")
                 # case-level
                 if getattr(case, "setup_hooks", None):
-                    new_vars_case = self._run_setup_hooks(case.setup_hooks, funcs=funcs, req={}, variables={}, envmap=envmap)
+                    base_vars = ctx.get_merged(global_vars)
+                    new_vars_case = self._run_setup_hooks(
+                        case.setup_hooks,
+                        funcs=funcs,
+                        req={},
+                        variables=base_vars,
+                        envmap=envmap,
+                        meta={
+                            "case_name": case.config.name or name,
+                            "hrp_step_variables": base_vars,
+                            "hrp_session_variables": base_vars,
+                            "hrp_session_env": envmap or {},
+                        },
+                    )
                     for k, v in (new_vars_case or {}).items():
                         ctx.set_base(k, v)
                         if self.log:
@@ -245,9 +303,26 @@ class Runner:
                 # render request
                 req_dict = self._request_dict(step)
                 req_rendered = self._render(req_dict, variables, funcs, envmap)
+                step_locals_for_hook = rendered_locals if isinstance(rendered_locals, dict) else (step.variables or {})
+                session_vars_for_hook = variables
+                setup_meta = {
+                    "step_name": step.name,
+                    "case_name": case.config.name or name,
+                    "hrp_step_request": req_rendered,
+                    "hrp_step_variables": step_locals_for_hook,
+                    "hrp_session_variables": session_vars_for_hook,
+                    "hrp_session_env": envmap or {},
+                }
                 # run setup hooks (mutation allowed)
                 try:
-                    new_vars = self._run_setup_hooks(step.setup_hooks, funcs=funcs, req=req_rendered, variables=variables, envmap=envmap)
+                    new_vars = self._run_setup_hooks(
+                        step.setup_hooks,
+                        funcs=funcs,
+                        req=req_rendered,
+                        variables=variables,
+                        envmap=envmap,
+                        meta=setup_meta,
+                    )
                     for k, v in (new_vars or {}).items():
                         ctx.set_base(k, v)
                         if self.log:
@@ -335,6 +410,7 @@ class Runner:
                     continue
 
                 assert resp_obj is not None
+                last_resp_obj = resp_obj
                 if self.log:
                     hdrs = resp_obj.get("headers") or {}
                     if not self.reveal:
@@ -457,7 +533,23 @@ class Runner:
 
                 # teardown hooks
                 try:
-                    new_vars_td = self._run_teardown_hooks(step.teardown_hooks, funcs=funcs, resp=resp_obj, variables=variables, envmap=envmap)
+                    teardown_meta = {
+                        "step_name": step.name,
+                        "case_name": case.config.name or name,
+                        "hrp_step_response": resp_obj,
+                        "hrp_step_request": req_rendered,
+                        "hrp_step_variables": variables,
+                        "hrp_session_variables": ctx.get_merged(global_vars),
+                        "hrp_session_env": envmap or {},
+                    }
+                    new_vars_td = self._run_teardown_hooks(
+                        step.teardown_hooks,
+                        funcs=funcs,
+                        resp=resp_obj,
+                        variables=variables,
+                        envmap=envmap,
+                        meta=teardown_meta,
+                    )
                     for k, v in (new_vars_td or {}).items():
                         ctx.set_base(k, v)
                         if self.log:
@@ -512,9 +604,37 @@ class Runner:
             # Suite + Case teardown hooks (best-effort)
             try:
                 if getattr(case, "teardown_hooks", None):
-                    _ = self._run_teardown_hooks(case.teardown_hooks, funcs=funcs, resp={}, variables=ctx.get_merged(global_vars), envmap=envmap)
+                    session_vars = ctx.get_merged(global_vars)
+                    _ = self._run_teardown_hooks(
+                        case.teardown_hooks,
+                        funcs=funcs,
+                        resp=last_resp_obj or {},
+                        variables=session_vars,
+                        envmap=envmap,
+                        meta={
+                            "case_name": case.config.name or name,
+                            "hrp_step_response": last_resp_obj or {},
+                            "hrp_step_variables": session_vars,
+                            "hrp_session_variables": session_vars,
+                            "hrp_session_env": envmap or {},
+                        },
+                    )
                 if getattr(case, "suite_teardown_hooks", None):
-                    _ = self._run_teardown_hooks(case.suite_teardown_hooks, funcs=funcs, resp={}, variables=ctx.get_merged(global_vars), envmap=envmap)
+                    session_vars = ctx.get_merged(global_vars)
+                    _ = self._run_teardown_hooks(
+                        case.suite_teardown_hooks,
+                        funcs=funcs,
+                        resp=last_resp_obj or {},
+                        variables=session_vars,
+                        envmap=envmap,
+                        meta={
+                            "case_name": case.config.name or name,
+                            "hrp_step_response": last_resp_obj or {},
+                            "hrp_step_variables": session_vars,
+                            "hrp_session_variables": session_vars,
+                            "hrp_session_env": envmap or {},
+                        },
+                    )
             except Exception as e:
                 steps_results.append(StepResult(name="case teardown hooks", status="failed", error=f"{e}"))
             client.close()
