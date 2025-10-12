@@ -16,16 +16,15 @@ except Exception:  # pragma: no cover
 from .builtins import BUILTINS
 
 
-def _preprocess_httprunner_syntax(s: str) -> str:
-    """Convert HttpRunner-style placeholders to Jinja2:
-    - ${func(arg)} -> {{ func(arg) }}
-    - $var -> {{ var }}
-    """
-    # ${...} -> {{ ... }}
-    s = re.sub(r"\$\{([^{}]+)\}", r"{{ \1 }}", s)
-    # $var -> {{ var }} (avoid $$ and already inside {{ }})
-    s = re.sub(r"(?<!\w)\$([A-Za-z_][\w\.]*)", r"{{ \1 }}", s)
-    return s
+def _normalize_simple_tokens(text: str) -> str:
+    """Expand bare $var tokens into ${var} for downstream evaluation."""
+
+    def repl(match: re.Match[str]) -> str:
+        name = match.group(1)
+        return f"${{{name}}}"
+
+    # Skip ${...} tokens by ensuring the dollar isn't followed by {
+    return re.sub(r"\$(?!\{)([A-Za-z_][A-Za-z0-9_]*)", repl, text)
 
 
 _ALLOWED_BINOPS = {
@@ -140,7 +139,7 @@ class TemplateEngine:
     def render_value(self, value: Any, variables: Dict[str, Any], functions: Dict[str, Any] | None = None, envmap: Dict[str, Any] | None = None) -> Any:
         if isinstance(value, str):
             try:
-                text = value
+                text = _normalize_simple_tokens(value)
                 # Inject ENV function that reads from provided envmap or OS
                 def ENV(name: str, default: Any = None) -> Any:  # noqa: N802 - uppercase by design
                     if envmap is not None and name in envmap:

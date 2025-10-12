@@ -63,9 +63,9 @@ def run(
     failfast: bool = typer.Option(False, "--failfast", help="Stop on first failure"),
     report: Optional[str] = typer.Option(None, "--report", help="Write JSON report to file"),
     junit: Optional[str] = typer.Option(None, "--junit", help="Write JUnit XML to file"),
-    html: Optional[str] = typer.Option(None, "--html", help="Write HTML report to file"),
+    html: Optional[str] = typer.Option(None, "--html", help="Write HTML report to file (default reports/report-<timestamp>.html)"),
     log_level: str = typer.Option("INFO", "--log-level", help="Logging level"),
-    env_file: Optional[str] = typer.Option(None, "--env-file", help=".env file path"),
+    env_file: Optional[str] = typer.Option(None, "--env-file", help=".env file path (default .env)"),
     log_file: Optional[str] = typer.Option(None, "--log-file", help="Write console logs to file (default logs/run-<ts>.log)"),
     httpx_logs: bool = typer.Option(False, "--httpx-logs/--no-httpx-logs", help="Show httpx internal request logs", show_default=False),
     reveal_secrets: bool = typer.Option(True, "--reveal-secrets/--mask-secrets", help="Show sensitive fields (password, tokens) in plaintext logs and reports", show_default=True),
@@ -79,6 +79,12 @@ def run(
     import logging as _logging
     _httpx_logger = _logging.getLogger("httpx")
     _httpx_logger.setLevel(_logging.INFO if httpx_logs else _logging.WARNING)
+
+    # Default env file (.env) when not provided
+    env_file_explicit = env_file is not None
+    env_file = env_file or ".env"
+    if not env_file_explicit:
+        log.info(f"[ENV] Using default env file: {env_file}")
 
     # Global variables from env file and CLI overrides
     # Unified env loading (HttpRunner-like): --env <name> YAML + --env-file (kv or yaml) + OS ENV
@@ -150,16 +156,17 @@ def run(
     s = report_obj.summary
     typer.echo(f"Total: {s['total']} Passed: {s.get('passed',0)} Failed: {s.get('failed',0)} Skipped: {s.get('skipped',0)} Duration: {s.get('duration_ms',0):.1f}ms")
 
+    html_target = html or f"reports/report-{ts}.html"
+
     if report:
         write_json(report_obj, report)
         typer.echo(f"JSON report written to {report}")
     if junit:
         write_junit(report_obj, junit)
         typer.echo(f"JUnit written to {junit}")
-    if html:
-        from apirunner.reporter.html_reporter import write_html
-        write_html(report_obj, html)
-        typer.echo(f"HTML report written to {html}")
+    from apirunner.reporter.html_reporter import write_html
+    write_html(report_obj, html_target)
+    typer.echo(f"HTML report written to {html_target}")
 
     typer.echo(f"Logs written to {default_log}")
     if s.get("failed", 0) > 0:

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from typing import Any, List, Tuple
+from typing import Any, List
 from pydantic import BaseModel
 
 
 class Validator(BaseModel):
-    # triplet: [check, comparator, expect]
+    """Normalized validator item: comparator(check, expect)."""
     check: Any
     comparator: str
     expect: Any
@@ -14,11 +14,17 @@ class Validator(BaseModel):
 def normalize_validators(items: List[Any]) -> List[Validator]:
     out: List[Validator] = []
     for it in items or []:
-        if isinstance(it, (list, tuple)) and len(it) == 3:
-            out.append(Validator(check=it[0], comparator=str(it[1]), expect=it[2]))
-        elif isinstance(it, dict) and {"check", "comparator", "expect"}.issubset(set(it.keys())):
-            out.append(Validator(**it))
-        else:
-            raise ValueError(f"Invalid validator item: {it!r}")
+        if isinstance(it, Validator):
+            out.append(it)
+            continue
+        if isinstance(it, dict):
+            if len(it) != 1:
+                raise ValueError(f"Validator dict must have exactly one comparator key: {it!r}")
+            comparator, payload = next(iter(it.items()))
+            if not isinstance(payload, (list, tuple)) or len(payload) != 2:
+                raise ValueError(f"Validator payload must be a list of [check, expect]: {payload!r}")
+            check, expect = payload
+            out.append(Validator(check=check, comparator=str(comparator), expect=expect))
+            continue
+        raise ValueError(f"Invalid validator item: {it!r}")
     return out
-

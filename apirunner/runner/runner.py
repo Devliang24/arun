@@ -44,17 +44,31 @@ class Runner:
         """Return a single string where multiline content is aligned under the label's colon.
 
         Example:
-        [REQ] json: {
+        [REQUEST] json: {
                       "a": 1,
                       "b": 2
                     }
         """
-        header = f"[{section}] {label}: "
+        section_label = {
+            "REQ": "REQUEST",
+            "RESP": "RESPONSE",
+        }.get(section, section)
+        header = f"[{section_label}] {label}: "
         lines = (text or "").splitlines() or [""]
         if len(lines) == 1:
             return header + lines[0]
         pad = " " * len(header)
-        return header + lines[0] + "\n" + "\n".join(pad + ln for ln in lines[1:])
+        tail_lines = lines[1:]
+        leading_spaces = [len(ln) - len(ln.lstrip(" ")) for ln in tail_lines if ln.strip()]
+        trim = min(leading_spaces) if leading_spaces else 0
+        adjusted = []
+        for ln in tail_lines:
+            if ln.strip():
+                content = ln[trim:] if trim and len(ln) >= trim else ln.lstrip(" ")
+                adjusted.append(pad + content)
+            else:
+                adjusted.append(pad)
+        return header + lines[0].lstrip() + "\n" + "\n".join(adjusted)
 
     def _resolve_check(self, check: str, resp: Dict[str, Any]) -> Any:
         # $-style check support
@@ -264,7 +278,7 @@ class Runner:
                 if self.log:
                     self.log.info(f"[STEP] Start: {step.name}")
                     # brief request line
-                    self.log.info(f"[REQ] {req_rendered.get('method','GET')} {req_rendered.get('url')}")
+                    self.log.info(f"[REQUEST] {req_rendered.get('method','GET')} {req_rendered.get('url')}")
                     if req_rendered.get("params") is not None:
                         self.log.info(self._fmt_aligned("REQ", "params", self._fmt_json(req_rendered.get("params"))))
                     if req_rendered.get("headers"):
@@ -321,7 +335,7 @@ class Runner:
                     hdrs = resp_obj.get("headers") or {}
                     if not self.reveal:
                         hdrs = mask_headers(hdrs)
-                    self.log.info(f"[RESP] status={resp_obj.get('status_code')} elapsed={resp_obj.get('elapsed_ms'):.1f}ms")
+                    self.log.info(f"[RESPONSE] status={resp_obj.get('status_code')} elapsed={resp_obj.get('elapsed_ms'):.1f}ms")
                     self.log.info(self._fmt_aligned("RESP", "headers", self._fmt_json(hdrs)))
                     body_preview = resp_obj.get("body")
                     if isinstance(body_preview, (dict, list)):
@@ -360,10 +374,10 @@ class Runner:
                     if not passed:
                         step_failed = True
                         if self.log:
-                            self.log.error(f"[VALID] {v.check} {v.comparator} {v.expect!r} => actual={actual!r} | FAIL | {msg}")
+                            self.log.error(f"[VALIDATION] {v.check} {v.comparator} {v.expect!r} => actual={actual!r} | FAIL | {msg}")
                     else:
                         if self.log:
-                            self.log.info(f"[VALID] {v.check} {v.comparator} {v.expect!r} => actual={actual!r} | PASS")
+                            self.log.info(f"[VALIDATION] {v.check} {v.comparator} {v.expect!r} => actual={actual!r} | PASS")
 
                 # extracts ($-only syntax)
                 extracts: Dict[str, Any] = {}
