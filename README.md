@@ -31,7 +31,7 @@ DSL (YAML)
   - `variables?` (dict)
   - request: `method`, `url`, `params?`, `headers?`, `json?`, `data?`, `files?`, `auth?` (basic|bearer), `timeout?`, `verify?`, `allow_redirects?`
   - `extract?` (dict var -> `$` 表达式，仅支持 `$` 语法)
-  - `validate?` (list of `[check, comparator, expect]`；`check` 同时支持 `$` 语法)
+- `validate?` (list of comparator entries，如 `- eq: ["status_code", 200]`；`check` 支持 `$` 语法)
   - `setup_hooks?` (list[string]，在发送请求前调用 hooks 函数)
   - `teardown_hooks?` (list[string]，在收到响应后调用 hooks 函数)
   - `skip?` (bool|string)
@@ -44,7 +44,9 @@ Checks 与 Extract 语法
 - Extract 仅支持 `$` 开头（HttpRunner 风格）：
   - `$.data.access_token`, `$[0].id`
   - 特殊：`$headers.Content-Type`、`$status_code` 也可用于提取请求头/状态码
-- Check（断言）规范：
+- Check（断言）规范（单一格式）：
+  - 写法：`- <comparator>: ["<check>", <expect>]`
+    - 例如：`- eq: ["status_code", 200]`
   - 状态码与请求头不需要 `$`：`status_code`、`headers.Content-Type`
   - 响应体字段使用 `$`：`$.data.id`、`$[0].name`
 - 不再支持 `body.foo.bar` 写法，请统一使用 `$` 语法（如 `$.foo.bar`）
@@ -129,7 +131,7 @@ Project Layout
 变量与函数（语法约定）
 - 系统/环境变量仅允许通过 `ENV` 读取：`${ENV(KEY)}`，例如 `base_url: "${ENV(BASE_URL)}"`、`${ENV(USER_USERNAME)}`。
 - 调用辅助函数：仅支持 `${...}` 语法，例如：`${sum_two_int(1, 2)}`。
-- 不支持 `$var` 简写与 `{{ ... }}` 渲染，请统一使用 `${...}`。
+- 步骤内引用变量推荐使用 `$var` 简写，复杂表达式仍使用 `${...}`，禁用 `{{ ... }}`。
 
 arun_hooks.py（辅助函数）
 - 将 `arun_hooks.py` 放在用例同级或任意上级目录（就近优先），框架会自动加载其中的可调用对象并在模板中可用。
