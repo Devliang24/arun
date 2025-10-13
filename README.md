@@ -74,7 +74,7 @@ steps:
 ### 📊 企业级特性
 
 - **专业报告**：交互式 HTML 报告 + 结构化 JSON 报告
-- **通知集成**：飞书卡片/文本、邮件 HTML/附件，失败聚合通知
+- **通知集成**：飞书卡片/文本、钉钉文本/Markdown、邮件 HTML/附件，失败聚合通知
 - **安全保护**：敏感数据自动脱敏
 - **调试友好**：Rich 彩色输出、cURL 命令生成、详细日志
 
@@ -668,6 +668,23 @@ arun run testcases --report reports/run.json
 }
 ```
 
+### Allure 报告
+
+生成 Allure 原始结果（可用 Allure CLI/插件渲染成可视化报告）：
+
+```bash
+# 生成 Allure 结果
+arun run testcases --allure-results allure-results
+
+# 使用 Allure CLI 生成与打开报告（本地需安装 allure 命令）
+allure generate allure-results -o allure-report --clean
+allure open allure-report
+```
+
+说明：
+- 会为每个步骤生成请求/响应/cURL/断言/提取变量等附件（遵循 --mask-secrets 脱敏策略）。
+- “套件”分组默认按用例来源文件名归类（若可用），否则归为 APIRunner。
+
 ### 合并报告
 
 合并多个测试运行的报告：
@@ -721,6 +738,30 @@ arun run testcases --notify email --notify-attach-html --env-file .env
 - 📧 **纯文本/HTML 正文**：测试摘要 + 失败用例
 - 📎 **附件**：完整 HTML 报告（可选）
 
+#### 钉钉通知
+
+```bash
+# 环境变量配置
+export DINGTALK_WEBHOOK=https://oapi.dingtalk.com/robot/send?access_token=xxx
+# 可选：安全设置为“加签”时需配置 SECRET（自动追加 timestamp/sign）
+export DINGTALK_SECRET=your-secret
+# 可选：@ 指定手机号（逗号分隔）；或全员 @
+export DINGTALK_AT_MOBILES=13800138000,13900139000
+export DINGTALK_AT_ALL=false
+# 可选：消息样式 text/markdown（默认 text）
+export DINGTALK_STYLE=text
+
+# 运行并通知（失败才发）
+arun run testcases --notify dingtalk --notify-only failed --env-file .env
+
+# 也可多渠道同时发
+arun run testcases --notify feishu,dingtalk --notify-only always --env-file .env
+```
+
+说明：
+- 文本内容为测试摘要与失败 TOPN（默认 5）；包含报告和日志路径（若存在）。
+- 配置了 `DINGTALK_SECRET` 时，通知将按钉钉机器人加签规范使用 HMAC-SHA256 进行签名（毫秒级时间戳）。
+
 ---
 
 ## 🛠 命令行工具
@@ -740,11 +781,12 @@ arun run <path> [options]
 --failfast                    # 首次失败时停止
 --report FILE                 # 输出 JSON 报告
 --html FILE                   # 输出 HTML 报告
+--allure-results DIR          # 输出 Allure 结果目录（供 allure generate 使用）
 --log-level DEBUG             # 日志级别（INFO/DEBUG）
 --log-file FILE               # 日志文件路径
 --httpx-logs                  # 显示 httpx 内部日志
 --mask-secrets                # 脱敏敏感数据（默认 --reveal-secrets）
---notify feishu,email         # 通知渠道
+--notify feishu,email,dingtalk# 通知渠道
 --notify-only failed          # 通知策略（failed/always）
 --notify-attach-html          # 邮件附加 HTML 报告
 ```

@@ -218,7 +218,7 @@ class Runner:
                 updated.update(ret)
         return updated
 
-    def run_case(self, case: Case, global_vars: Dict[str, Any], params: Dict[str, Any], *, funcs: Dict[str, Any] | None = None, envmap: Dict[str, Any] | None = None) -> CaseInstanceResult:
+    def run_case(self, case: Case, global_vars: Dict[str, Any], params: Dict[str, Any], *, funcs: Dict[str, Any] | None = None, envmap: Dict[str, Any] | None = None, source: str | None = None) -> CaseInstanceResult:
         name = case.config.name or "Unnamed Case"
         t0 = time.perf_counter()
         steps_results: List[StepResult] = []
@@ -564,15 +564,21 @@ class Runner:
                 if not self.reveal:
                     masked_headers = mask_headers(masked_headers)
                     body_masked = mask_body(body_masked)
-                curl = None
+                # Build curl command for the step (always available in report)
+                url_rendered = resp_obj.get("url") or req_rendered.get("url")
+                curl_headers = req_rendered.get("headers") or {}
+                if not self.reveal and isinstance(curl_headers, dict):
+                    curl_headers = mask_headers(curl_headers)
+                curl_data = req_rendered.get("body") if req_rendered.get("body") is not None else req_rendered.get("data")
+                if not self.reveal and isinstance(curl_data, (dict, list)):
+                    curl_data = mask_body(curl_data)
+                curl = to_curl(
+                    req_rendered.get("method", "GET"),
+                    url_rendered,
+                    headers=curl_headers if isinstance(curl_headers, dict) else {},
+                    data=curl_data,
+                )
                 if self.log_debug:
-                    url_rendered = resp_obj.get("url") or req_rendered.get("url")
-                    curl = to_curl(
-                        req_rendered.get("method", "GET"),
-                        url_rendered,
-                        headers=req_rendered.get("headers"),
-                        data=req_rendered.get("body") or req_rendered.get("data"),
-                    )
                     self.log.debug("cURL: %s", curl)
 
                 sr = StepResult(
@@ -586,6 +592,7 @@ class Runner:
                         "headers": masked_headers,
                         "body": body_masked if isinstance(body_masked, (dict, list)) else (str(body_masked)[:2048] if body_masked else None),
                     },
+                    curl=curl,
                     asserts=assertions,
                     extracts=extracts,
                     duration_ms=resp_obj.get("elapsed_ms") or 0.0,
@@ -648,7 +655,7 @@ class Runner:
         if any(sr.status == "failed" for sr in steps_results):
             status = "failed"
 
-        return CaseInstanceResult(name=name, parameters=params or {}, steps=steps_results, status=status, duration_ms=total_ms)
+        return CaseInstanceResult(name=name, parameters=params or {}, steps=steps_results, status=status, duration_ms=total_ms, source=source)
 
     def build_report(self, results: List[CaseInstanceResult]) -> RunReport:
         total = len(results)

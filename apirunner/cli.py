@@ -62,12 +62,13 @@ def run(
     failfast: bool = typer.Option(False, "--failfast", help="Stop on first failure"),
     report: Optional[str] = typer.Option(None, "--report", help="Write JSON report to file"),
     html: Optional[str] = typer.Option(None, "--html", help="Write HTML report to file (default reports/report-<timestamp>.html)"),
+    allure_results: Optional[str] = typer.Option(None, "--allure-results", help="Write Allure results to directory (for allure generate)"),
     log_level: str = typer.Option("INFO", "--log-level", help="Logging level"),
     env_file: Optional[str] = typer.Option(None, "--env-file", help=".env file path (default .env)"),
     log_file: Optional[str] = typer.Option(None, "--log-file", help="Write console logs to file (default logs/run-<ts>.log)"),
     httpx_logs: bool = typer.Option(False, "--httpx-logs/--no-httpx-logs", help="Show httpx internal request logs", show_default=False),
     reveal_secrets: bool = typer.Option(True, "--reveal-secrets/--mask-secrets", help="Show sensitive fields (password, tokens) in plaintext logs and reports", show_default=True),
-    notify: Optional[str] = typer.Option(None, "--notify", help="Notify channels, comma-separated: feishu,email"),
+    notify: Optional[str] = typer.Option(None, "--notify", help="Notify channels, comma-separated: feishu,email,dingtalk"),
     notify_only: str = typer.Option("failed", "--notify-only", help="Notify policy: failed|always"),
     notify_attach_html: bool = typer.Option(False, "--notify-attach-html/--no-notify-attach-html", help="Attach HTML report in email (if email enabled)", show_default=False),
 ):
@@ -146,7 +147,7 @@ def run(
             if c.config.base_url and ("{{" in c.config.base_url or "${" in c.config.base_url):
                 c.config.base_url = templater.render_value(c.config.base_url, global_vars, funcs, envmap=env_store)
             log.info(f"[CASE] Start: {c.config.name or 'Unnamed'} | params={ps}")
-            res = runner.run_case(c, global_vars=global_vars, params=ps, funcs=funcs, envmap=env_store)
+            res = runner.run_case(c, global_vars=global_vars, params=ps, funcs=funcs, envmap=env_store, source=meta.get("file"))
             log.info(f"[CASE] Result: {res.name} | status={res.status} | duration={res.duration_ms:.1f}ms")
             instance_results.append(res)
             if failfast and res.status == "failed":
@@ -166,12 +167,22 @@ def run(
     write_html(report_obj, html_target)
     typer.echo(f"HTML report written to {html_target}")
 
+    if allure_results:
+        try:
+            from apirunner.reporter.allure_reporter import write_allure_results
+            write_allure_results(report_obj, allure_results)
+            typer.echo(f"Allure results written to {allure_results}")
+        except Exception as e:
+            log = get_logger("apirunner.cli")
+            log.error(f"Failed to write Allure results: {e}")
+
     # Notifications (best-effort)
     try:
         from apirunner.notifier import (
             NotifyContext,
             FeishuNotifier,
             EmailNotifier,
+            DingTalkNotifier,
             build_summary_text,
         )
 
@@ -209,6 +220,18 @@ def run(
                             attach_html=bool(notify_attach_html or (os.environ.get("NOTIFY_ATTACH_HTML", "").lower() in {"1","true","yes"})),
                             html_body=(os.environ.get("NOTIFY_HTML_BODY", "true").lower() != "false"),
                         )
+                    )
+
+            if "dingtalk" in channels:
+                dw = os.environ.get("DINGTALK_WEBHOOK", "").strip()
+                if dw:
+                    ds = os.environ.get("DINGTALK_SECRET")
+                    mobiles = os.environ.get("DINGTALK_AT_MOBILES", "").strip()
+                    at_mobiles = [m.strip() for m in mobiles.split(",") if m.strip()]
+                    at_all = os.environ.get("DINGTALK_AT_ALL", "").lower() in {"1", "true", "yes"}
+                    style = os.environ.get("DINGTALK_STYLE", "text").lower().strip()
+                    notifiers.append(
+                        DingTalkNotifier(webhook=dw, secret=ds, at_mobiles=at_mobiles, at_all=at_all, style=style)
                     )
 
             for n in notifiers:

@@ -28,6 +28,8 @@ env/
 # Testing & Reports
 logs/
 reports/
+allure-results/
+allure-report/
 *.log
 .coverage
 htmlcov/
