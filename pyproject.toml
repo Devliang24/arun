@@ -20,3 +20,7 @@ dependencies = [
 
 [project.scripts]
 arun = "apirunner.cli:app"
+
+[tool.setuptools.packages.find]
+include = ["apirunner*"]
+exclude = ["spec*", "testcases*", "testsuites*"]
