@@ -204,32 +204,33 @@ body:
 变量查找顺序（**从高到低**）：
 
 ```
-1. CLI 覆盖      --vars key=value
-2. 步骤变量      steps[].variables
-3. 配置变量      config.variables
-4. 参数         parameters (参数化)
-5. 提取变量      steps[].extract (上一步提取)
-6. 环境变量      ${ENV(KEY)}
+1. CLI 覆盖      --vars key=value (最高优先级)
+2. 步骤变量      steps[].variables (当前步骤内有效)
+3. 配置变量      config.variables (用例级全局)
+4. 参数变量      parameters (参数化测试时注入)
+5. 提取变量      steps[].extract (从上一步响应提取，存入会话变量)
 ```
+
+> **注意**：`${ENV(KEY)}` 用于读取操作系统环境变量，不属于变量作用域的一部分，而是模板引擎的内置函数。
 
 示例：
 
 ```yaml
 config:
   variables:
-    user_id: 100        # 优先级 3
+    user_id: 100        # 优先级 3：配置变量
 
 parameters:
-  user_id: [1, 2]       # 优先级 4（会被参数化覆盖）
+  user_id: [1, 2]       # 优先级 4：参数变量会被配置变量覆盖
 
 steps:
   - name: 登录
     extract:
-      user_id: $.data.id  # 优先级 5（从响应提取）
+      user_id: $.data.id  # 优先级 5：提取变量存入会话，供后续步骤使用
 
   - name: 获取用户
     variables:
-      user_id: 999      # 优先级 2（步骤级最高）
+      user_id: 999      # 优先级 2：步骤变量（当前步骤内最高）
     request:
       url: /users/$user_id  # 使用 999
 ```
@@ -516,13 +517,15 @@ steps:
 
 #### 3. 压缩模式（并行数组）
 
+使用连字符分隔的变量名（如 `username-password`）将多个值打包成组，每组值对应一个测试实例。
+
 ```yaml
 parameters:
-  - username-password:
-      - [alice, pass123]
-      - [bob, secret456]
-      - [charlie, pwd789]
-  # 生成 3 个测试实例，参数成对使用
+  - username-password:        # 连字符分隔的变量名
+      - [alice, pass123]      # 第 1 组：username=alice, password=pass123
+      - [bob, secret456]      # 第 2 组：username=bob, password=secret456
+      - [charlie, pwd789]     # 第 3 组：username=charlie, password=pwd789
+  # 生成 3 个测试实例，每组参数成对使用
 
 steps:
   - name: 登录
@@ -530,9 +533,11 @@ steps:
       method: POST
       url: /api/login
       body:
-        username: $username
-        password: $password
+        username: $username   # 使用第 1 个变量
+        password: $password   # 使用第 2 个变量
 ```
+
+> **提示**：压缩模式适合多个参数需要成对出现的场景（如用户名和密码、坐标 x 和 y 等）。
 
 ### SQL 验证
 
@@ -681,9 +686,32 @@ allure generate allure-results -o allure-report --clean
 allure open allure-report
 ```
 
-说明：
-- 会为每个步骤生成请求/响应/cURL/断言/提取变量等附件（遵循 --mask-secrets 脱敏策略）。
-- “套件”分组默认按用例来源文件名归类（若可用），否则归为 APIRunner。
+#### Allure CLI 安装
+
+**macOS / Linux:**
+```bash
+# 使用 Homebrew (macOS/Linux)
+brew install allure
+
+# 或使用 Scoop (Windows)
+scoop install allure
+
+# 或手动下载
+# 1. 从 https://github.com/allure-framework/allure2/releases 下载最新版本
+# 2. 解压并添加 bin 目录到 PATH
+```
+
+**验证安装：**
+```bash
+allure --version
+```
+
+#### 特性说明
+
+- **附件丰富**：为每个步骤生成请求/响应/cURL/断言/提取变量等附件（遵循 `--mask-secrets` 脱敏策略）
+- **套件分组**：默认按用例来源文件名归类（若可用），否则归为 "APIRunner"
+- **趋势分析**：多次运行后可查看历史趋势（需保留 `allure-report/history` 目录）
+- **CI/CD 集成**：可配合 Jenkins/GitLab CI 的 Allure 插件自动生成并展示报告
 
 ### 合并报告
 
@@ -1176,7 +1204,7 @@ pip install pymysql
 
 **解决方案**：
 
-> **注意**：本项目根目录已提供 `arun_hooks.py` 示例文件，包含常用函数。如遇到 Hooks 未加载问题，请检查：
+> **注意**：本项目根目录已提供 `arun_hooks.py` 示例文件，包含常用函数。
 
 1. 确认 `arun_hooks.py` 在项目根目录
 2. 检查文件名拼写（不是 `hooks.py`）
