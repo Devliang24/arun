@@ -12,7 +12,7 @@ APIRunner is a minimal HTTP API test runner with a YAML-based DSL. It supports `
 - Custom hooks via `arun_hooks.py` for helper functions
 - Tag-based test filtering
 - Parameterized testing (enumerate/matrix)
-- JSON/JUnit/HTML reporting
+- JSON/HTML reporting
 
 ## Development Commands
 
@@ -37,7 +37,6 @@ arun run testcases -k "smoke" --env-file .env
 arun run testcases \
   --env-file .env \
   --report reports/run.json \
-  --junit reports/junit.xml \
   --html reports/report.html \
   --log-level debug
 
@@ -77,7 +76,7 @@ Runner (runner/runner.py)
   ↓
 Reporters (reporter/)
   - json_reporter.py: structured JSON output
-  - junit_reporter.py: JUnit XML for CI/CD
+  - html_reporter.py: interactive HTML report
   - html_reporter.py: interactive HTML report
 ```
 

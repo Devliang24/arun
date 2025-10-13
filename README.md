@@ -23,7 +23,7 @@ APIRunner 提供简化的、Python 风格的 API 测试方法，一流支持：
 - **模板**：仅支持 `${...}` Dollar 风格表达式
 - **智能提取**：基于 JMESPath 的 JSON 响应提取
 - **灵活 Hooks**：自定义 Python 函数，用于 setup、teardown 和请求签名
-- **丰富报告**：JSON、JUnit XML 和交互式 HTML 报告
+- **丰富报告**：JSON 和交互式 HTML 报告
 - **SQL 验证**：内置数据库断言支持
 - **CI/CD 就绪**：专为无缝集成流水线而设计
 
@@ -53,7 +53,7 @@ APIRunner 提供简化的、Python 风格的 API 测试方法，一流支持：
   - 支持多数据库连接
 - **专业报告**：
   - 详细的 JSON 报告，包含完整请求/响应日志
-  - JUnit XML，用于 CI/CD 集成
+  
   - 交互式 HTML 报告，支持过滤和搜索
 - **安全特性**：
   - 自动敏感数据脱敏
@@ -168,7 +168,6 @@ arun run testcases --vars base_url=http://localhost:8000 --vars debug=true
 arun run testcases \
   --env-file .env \
   --report reports/run.json \
-  --junit reports/junit.xml \
   --html reports/report.html \
   --log-level debug
 ```
@@ -211,10 +210,16 @@ python -m apirunner.cli run testcases --env-file .env --notify email --notify-on
 arun check testcases
 ```
 
+YAML 风格规范：
+- `steps` 中相邻步骤之间保留一行空行，提升可读性
+- 如未满足，可使用 `arun fix` 自动修复
+
 **自动修复 YAML 风格：**
 ```bash
 # 将 hooks 迁移到新的基于 config 的格式
 arun fix testcases
+
+# 同时会自动修复 steps 之间的空行（如缺失）
 ```
 
 **合并报告：**
@@ -232,7 +237,6 @@ arun report reports/run1.json reports/run2.json -o reports/merged.json
 | `--vars k=v` | 变量覆盖（可重复） |
 | `--failfast` | 首次失败时停止 |
 | `--report FILE` | 写入 JSON 报告 |
-| `--junit FILE` | 写入 JUnit XML 报告 |
 | `--html FILE` | 写入 HTML 报告 |
 | `--log-level LEVEL` | 日志级别（INFO、DEBUG） |
 | `--env-file FILE` | 环境文件路径（默认：`.env`） |
@@ -755,7 +759,7 @@ apirunner/
 │   │   └── report.py      # Report 模型
 │   ├── reporter/          # 报告生成
 │   │   ├── json_reporter.py
-│   │   ├── junit_reporter.py
+│   │   ├── (已移除) junit_reporter.py
 │   │   ├── html_reporter.py
 │   │   └── merge.py
 │   ├── db/                # 数据库支持
@@ -815,7 +819,7 @@ apirunner/
 │ 4. Reporters (reporter/)                                    │
 │    ├─ 聚合结果                                             │
 │    ├─ 生成 JSON 报告（json_reporter.py）                   │
-│    ├─ 生成 JUnit XML（junit_reporter.py）                  │
+│    ├─ （已移除）生成 JUnit XML                             │
 │    ├─ 生成 HTML 报告（html_reporter.py）                   │
 │    └─ 写入日志（utils/logging.py）                         │
 └─────────────────────────────────────────────────────────────┘
@@ -1155,20 +1159,7 @@ arun run testcases --report reports/run.json
 }
 ```
 
-### JUnit XML 报告
-
-CI/CD 兼容的 XML 输出：
-
-```bash
-arun run testcases --junit reports/junit.xml
-```
-
-集成平台：
-- Jenkins
-- GitLab CI
-- GitHub Actions
-- CircleCI
-- Azure DevOps
+<!-- JUnit XML 报告功能已移除 -->
 
 ### HTML 报告
 

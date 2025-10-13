@@ -15,7 +15,6 @@ from apirunner.loader.env import load_environment
 from apirunner.models.case import Case
 from apirunner.models.report import RunReport
 from apirunner.reporter.json_reporter import write_json
-from apirunner.reporter.junit_reporter import write_junit
 from apirunner.reporter.merge import merge_reports
 from apirunner.runner.runner import Runner
 from apirunner.templating.engine import TemplateEngine
@@ -62,7 +61,6 @@ def run(
     vars: List[str] = typer.Option([], "--vars", help="Variable overrides k=v (repeatable)"),
     failfast: bool = typer.Option(False, "--failfast", help="Stop on first failure"),
     report: Optional[str] = typer.Option(None, "--report", help="Write JSON report to file"),
-    junit: Optional[str] = typer.Option(None, "--junit", help="Write JUnit XML to file"),
     html: Optional[str] = typer.Option(None, "--html", help="Write HTML report to file (default reports/report-<timestamp>.html)"),
     log_level: str = typer.Option("INFO", "--log-level", help="Logging level"),
     env_file: Optional[str] = typer.Option(None, "--env-file", help=".env file path (default .env)"),
@@ -164,9 +162,6 @@ def run(
     if report:
         write_json(report_obj, report)
         typer.echo(f"JSON report written to {report}")
-    if junit:
-        write_junit(report_obj, junit)
-        typer.echo(f"JUnit written to {junit}")
     from apirunner.reporter.html_reporter import write_html
     write_html(report_obj, html_target)
     typer.echo(f"HTML report written to {html_target}")
@@ -255,10 +250,48 @@ def check(
     if not files:
         typer.echo("No YAML test files found.")
         raise typer.Exit(code=2)
+    # spacing check helper
+    def _check_steps_spacing(filepath: Path) -> tuple[bool, str | None]:
+        try:
+            text = Path(filepath).read_text(encoding="utf-8")
+        except Exception as e:
+            return False, f"read error: {e}"
+        lines = text.splitlines()
+        import re as _re
+        i = 0
+        while i < len(lines):
+            m = _re.match(r"^(\s*)steps:\s*$", lines[i])
+            if not m:
+                i += 1
+                continue
+            base = len(m.group(1))
+            step_indent = base + 2
+            seen_first = False
+            j = i + 1
+            while j < len(lines):
+                ln = lines[j]
+                # end steps block
+                if ln.strip() and (len(ln) - len(ln.lstrip(" ")) <= base) and not ln.lstrip().startswith("-"):
+                    break
+                if ln.startswith(" " * step_indent + "-"):
+                    if seen_first:
+                        prev = lines[j - 1] if j - 1 >= 0 else ""
+                        if prev.strip() != "":
+                            return False, f"steps spacing error near line {j+1}: add a blank line between step items"
+                    else:
+                        seen_first = True
+                j += 1
+            i = j
+        return True, None
+
     ok = 0
     for f in files:
         try:
             load_yaml_file(f)
+            spacing_ok, spacing_msg = _check_steps_spacing(Path(f))
+            if not spacing_ok:
+                typer.echo(f"FAIL: {f} -> {spacing_msg}")
+                raise typer.Exit(code=2)
             ok += 1
             typer.echo(f"OK: {f}")
         except Exception as e:
@@ -295,6 +328,42 @@ def fix(
         return changed
 
     import yaml as _yaml
+    import re as _re
+    def _fix_steps_spacing(filepath: Path) -> bool:
+        try:
+            text = Path(filepath).read_text(encoding="utf-8")
+        except Exception:
+            return False
+        lines = text.splitlines()
+        changed = False
+        i = 0
+        while i < len(lines):
+            m = _re.match(r"^(\s*)steps:\s*$", lines[i])
+            if not m:
+                i += 1
+                continue
+            base = len(m.group(1))
+            step_indent = base + 2
+            seen_first = False
+            j = i + 1
+            while j < len(lines):
+                ln = lines[j]
+                if ln.strip() and (len(ln) - len(ln.lstrip(" ")) <= base) and not ln.lstrip().startswith("-"):
+                    break
+                if ln.startswith(" " * step_indent + "-"):
+                    if seen_first:
+                        prev = lines[j - 1] if j - 1 >= 0 else ""
+                        if prev.strip() != "":
+                            lines.insert(j, "")
+                            changed = True
+                            j += 1
+                    else:
+                        seen_first = True
+                j += 1
+            i = j
+        if changed:
+            Path(filepath).write_text("\n".join(lines) + ("\n" if text.endswith("\n") else ""), encoding="utf-8")
+        return changed
     changed_files = []
     for f in files:
         raw = Path(f).read_text(encoding="utf-8")
@@ -343,6 +412,9 @@ def fix(
 
         if modified:
             Path(f).write_text(_yaml.safe_dump(obj, sort_keys=False, allow_unicode=True), encoding="utf-8")
+            changed_files.append(str(f))
+        # steps spacing fix always attempted
+        if _fix_steps_spacing(Path(f)) and str(f) not in changed_files:
             changed_files.append(str(f))
 
     if changed_files:

@@ -27,6 +27,7 @@ steps:
       - in: [status_code, [200, 201]]
       - eq: [$.success, true]
       - eq: [$.message, "用户注册成功"]
+
   - name: login
     request:
       method: POST
