@@ -1,15 +1,14 @@
 config:
-  name: "Hook Contexts Demo"
+  name: "Hook 上下文演示"
   base_url: ${ENV(BASE_URL)}
   setup_hooks:
     - ${setup_hook_sign_request($request)}
   teardown_hooks:
     - ${teardown_hook_capture_request_id($response)}
 steps:
-  - name: get root with hooks
+  - name: 携带 Hooks 的根请求
     request:
       method: GET
       url: /
     validate:
       - eq: [status_code, 200]
-

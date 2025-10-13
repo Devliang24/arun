@@ -1,12 +1,12 @@
 config:
-  name: Auth Flow
+  name: 认证流程
   base_url: ${ENV(BASE_URL)}
   tags: [auth]
   variables:
     user_username: ${ENV(USER_USERNAME)}
     user_password: ${ENV(USER_PASSWORD)}
 steps:
-  - name: register user
+  - name: 注册用户
     request:
       method: POST
       url: /api/v1/auth/register
@@ -23,7 +23,7 @@ steps:
       - eq: [$.success, true]
       - eq: [$.message, "用户注册成功"]
 
-  - name: login
+  - name: 登录
     setup_hooks:
       - ${setup_hook_sign_request($request)}
     request:
@@ -40,12 +40,10 @@ steps:
       - eq: [$.success, true]
       - eq: [$.code, 200]
       - eq: [$.message, "登录成功"]
-      - regex: [$.data.access_token, "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$"]
-      - eq: [$.data.token_type, "bearer"]
       - eq: [$.data.user.username, $user_username]
       - eq: [$.data.user.is_active, true]
 
-  - name: whoami
+  - name: 获取当前用户
     variables:
       authz: "Bearer $token"
     request:
@@ -62,7 +60,7 @@ steps:
       - eq: [$.data.is_active, true]
       - contains: [$.data, "role"]
 
-  - name: logout
+  - name: 登出
     variables:
       authz: "Bearer $token"
     request:

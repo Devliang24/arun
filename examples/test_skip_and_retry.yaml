@@ -1,13 +1,14 @@
 config:
-  name: "Skip and Retry"
+  name: "跳过与重试"
   base_url: ${ENV(BASE_URL)}
 steps:
-  - name: skip this step
+  - name: 跳过该步骤
     skip: "maintenance"
     request:
       method: GET
       url: /
-  - name: flaky but retry
+
+  - name: 不稳定但重试
     retry: 2
     retry_backoff: 0.5
     request:
@@ -15,4 +16,3 @@ steps:
       url: /
     validate:
       - eq: [status_code, 200]
-

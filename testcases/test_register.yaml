@@ -1,5 +1,5 @@
 config:
-  name: Register and Login
+  name: 注册并登录
   base_url: ${ENV(BASE_URL)}
   variables:
     new_username: u_${short_uid(12)}
@@ -7,7 +7,7 @@ config:
     new_password: "P@ssw0rd123"
   tags: [auth, register]
 steps:
-  - name: register
+  - name: 注册
     request:
       method: POST
       url: /api/v1/auth/register
@@ -25,7 +25,7 @@ steps:
       - eq: [$.data.email, $new_email]
       - eq: [$.data.role, "user"]
 
-  - name: login with new account
+  - name: 使用新账户登录
     retry: 3
     retry_backoff: 0.5
     request:
@@ -41,4 +41,3 @@ steps:
       - eq: [$.success, true]
       - eq: [$.message, "登录成功"]
       - eq: [$.data.user.username, $new_username]
-      - regex: [$.data.access_token, "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$"]

@@ -1,9 +1,9 @@
 config:
-  name: Catalog
+  name: 商品目录
   base_url: ${ENV(BASE_URL)}
   tags: [catalog]
 steps:
-  - name: list categories
+  - name: 获取分类列表
     request:
       method: GET
       url: /api/v1/categories/
@@ -16,7 +16,7 @@ steps:
       - gt: ["$.data[0].id", 0]
       - contains: ["$.data[0]", "name"]
 
-  - name: list products
+  - name: 获取商品列表
     request:
       method: GET
       url: /api/v1/products/
@@ -31,7 +31,7 @@ steps:
       - gt: ["$.data.items[0].price", 0.0]
       - contains: ["$.data.items[0]", "name"]
 
-  - name: product detail
+  - name: 获取商品详情
     request:
       method: GET
       url: /api/v1/products/$product_id

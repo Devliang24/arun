@@ -1,11 +1,11 @@
 config:
-  name: "Example: Login + WhoAmI (Auto Bearer)"
+  name: "示例：登录 + 当前用户（自动 Bearer）"
   base_url: ${ENV(BASE_URL)}
   variables:
     user_username: ${ENV(USER_USERNAME)}
     user_password: ${ENV(USER_PASSWORD)}
 steps:
-  - name: login
+  - name: 登录
     request:
       method: POST
       url: /api/v1/auth/login
@@ -19,7 +19,7 @@ steps:
       - eq: [$.success, true]
       - eq: [$.message, "登录成功"]
 
-  - name: whoami (Authorization 自动注入)
+  - name: 获取当前用户（自动注入鉴权）
     request:
       method: GET
       url: /api/v1/users/me

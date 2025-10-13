@@ -1,10 +1,10 @@
 config:
-  name: "Headers Merge"
+  name: "请求头合并"
   base_url: ${ENV(BASE_URL)}
   headers:
     Accept-Language: "zh-CN"
 steps:
-  - name: override header at step
+  - name: 步骤级覆盖请求头
     request:
       method: GET
       url: /
@@ -12,4 +12,3 @@ steps:
         Accept-Language: "en-US"
     validate:
       - eq: [status_code, 200]
-

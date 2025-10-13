@@ -1,12 +1,11 @@
 config:
-  name: "Negative: Unauthorized"
+  name: "未授权访问（负例）"
   base_url: ${ENV(BASE_URL)}
 steps:
-  - name: get cart without token
+  - name: 未携带 Token 访问购物车
     request:
       method: GET
       url: /api/v1/cart/
     validate:
       - in: [status_code, [401, 403]]
       - contains: [$.message, "Not authenticated"]
-

@@ -1,8 +1,8 @@
 config:
-  name: "Assertions Showcase"
+  name: "断言示例"
   base_url: ${ENV(BASE_URL)}
 steps:
-  - name: list products
+  - name: 获取产品列表
     request:
       method: GET
       url: /api/v1/products/
@@ -16,7 +16,7 @@ steps:
       - gt: ["$.data.items[0].price", 0.0]
       - regex: [$.message, "产品|列表|成功"]
 
-  - name: product detail
+  - name: 获取产品详情
     request:
       method: GET
       url: /api/v1/products/$first_id
@@ -26,4 +26,3 @@ steps:
       - eq: [$.code, 200]
       - eq: [$.data.id, $first_id]
       - contains: [$.data, "stock"]
-

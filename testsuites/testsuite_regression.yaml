@@ -1,17 +1,16 @@
 config:
-  name: "Regression Testsuite"
+  name: "回归套件"
   base_url: ${ENV(BASE_URL)}
   tags: [regression]
 
 testcases:
-  - name: Auth Flow
+  - name: 认证流程
     testcase: testcases/test_auth.yaml
-  - name: Catalog
+  - name: 商品目录
     testcase: testcases/test_catalog.yaml
-  - name: Cart
+  - name: 购物车
     testcase: testcases/test_cart.yaml
-  - name: E2E Purchase (param)
+  - name: 端到端下单（参数化）
     testcase: testcases/test_e2e_purchase.yaml
     parameters:
       quantity: [1, 2]
-

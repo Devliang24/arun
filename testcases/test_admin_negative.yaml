@@ -1,12 +1,12 @@
 config:
-  name: Admin Negative
+  name: 管理员权限负例
   base_url: ${ENV(BASE_URL)}
   tags: [admin, negative]
   variables:
     user_username: ${ENV(USER_USERNAME)}
     user_password: ${ENV(USER_PASSWORD)}
 steps:
-  - name: register user
+  - name: 注册用户
     request:
       method: POST
       url: /api/v1/auth/register
@@ -23,7 +23,7 @@ steps:
       - eq: [$.success, true]
       - eq: [$.message, "用户注册成功"]
 
-  - name: login
+  - name: 登录
     request:
       method: POST
       url: /api/v1/auth/login
@@ -38,7 +38,7 @@ steps:
       - eq: [$.message, "登录成功"]
       - eq: [$.data.user.username, $user_username]
 
-  - name: create category forbidden
+  - name: 创建分类被拒绝
     variables:
       authz: Bearer $token
     request:

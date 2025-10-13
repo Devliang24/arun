@@ -1,8 +1,8 @@
 config:
-  name: "Multipart Upload (Template)"
+  name: "多部分上传（模板）"
   base_url: ${ENV(BASE_URL)}
 steps:
-  - name: demo upload (skipped)
+  - name: 上传演示（跳过）
     skip: "template"
     request:
       method: POST

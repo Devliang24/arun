@@ -1,8 +1,8 @@
 config:
-  name: "Form URL-Encoded (Template)"
+  name: "表单 URL 编码（模板）"
   base_url: ${ENV(BASE_URL)}
 steps:
-  - name: demo form (skipped)
+  - name: 表单演示（跳过）
     skip: "template"
     request:
       method: POST
@@ -12,4 +12,3 @@ steps:
       data:
         a: 1
         b: two
-

@@ -1,9 +1,9 @@
 config:
-  name: Health Checks
+  name: 健康检查
   base_url: ${ENV(BASE_URL)}
   tags: [health]
 steps:
-  - name: get health
+  - name: 获取健康状态
     request:
       method: GET
       url: /health
@@ -16,7 +16,7 @@ steps:
       - eq: [$.data.status, "healthy"]
       - contains: [$.data, "service"]
 
-  - name: get root
+  - name: 获取根信息
     request:
       method: GET
       url: /

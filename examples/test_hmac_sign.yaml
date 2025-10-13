@@ -1,12 +1,12 @@
 config:
-  name: "Example: HMAC Sign"
+  name: "HMAC 加签示例"
   base_url: ${ENV(BASE_URL)}
   setup_hooks:
     - ${setup_hook_hmac_sign($request)}
   variables:
     APP_SECRET: ${ENV(APP_SECRET)}
 steps:
-  - name: signed get
+  - name: 签名请求
     request:
       method: GET
       url: /

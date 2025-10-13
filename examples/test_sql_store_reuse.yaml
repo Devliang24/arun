@@ -1,8 +1,8 @@
 config:
-  name: "SQL Store and Reuse"
+  name: "SQL 存储与复用"
   base_url: ${ENV(BASE_URL)}
 steps:
-  - name: register (skip if no DB DSN)
+  - name: 注册（无 DSN 则跳过）
     skip: ${not ENV(MYSQL_DSN)}
     request:
       method: POST
@@ -13,7 +13,8 @@ steps:
         password: "P@ssw0rd123"
     extract:
       new_username: $.data.username
-  - name: login
+
+  - name: 登录
     skip: ${not ENV(MYSQL_DSN)}
     request:
       method: POST
@@ -23,7 +24,8 @@ steps:
         password: "P@ssw0rd123"
     extract:
       token: $.data.access_token
-  - name: create order and store
+
+  - name: 创建订单并存储
     skip: ${not ENV(MYSQL_DSN)}
     request:
       method: POST
@@ -39,7 +41,8 @@ steps:
           - eq: [status, pending]
         store:
           db_status: status
-  - name: reuse stored status
+
+  - name: 复用存储的状态
     skip: ${not ENV(MYSQL_DSN)}
     request:
       method: GET

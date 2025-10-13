@@ -1,8 +1,8 @@
 config:
-  name: "Static Bearer Auth"
+  name: "静态 Bearer 鉴权"
   base_url: ${ENV(BASE_URL)}
 steps:
-  - name: whoami with static token
+  - name: 使用静态 Token 查询用户
     skip: ${not ENV(STATIC_BEARER)}
     request:
       method: GET
@@ -12,4 +12,3 @@ steps:
         token: ${ENV(STATIC_BEARER)}
     validate:
       - eq: [status_code, 200]
-

@@ -1,11 +1,10 @@
 config:
-  name: "Smoke Testsuite"
+  name: "冒烟套件"
   base_url: ${ENV(BASE_URL)}
   tags: [smoke]
 
 testcases:
-  - name: Health Checks
+  - name: 健康检查
     testcase: testcases/test_health.yaml
-  - name: Catalog Basics
+  - name: 目录基础
     testcase: testcases/test_catalog.yaml
-

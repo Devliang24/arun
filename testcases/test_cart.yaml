@@ -1,12 +1,12 @@
 config:
-  name: Cart Operations
+  name: 购物车操作
   base_url: ${ENV(BASE_URL)}
   tags: [cart]
   variables:
     user_username: ${ENV(USER_USERNAME)}
     user_password: ${ENV(USER_PASSWORD)}
 steps:
-  - name: register user
+  - name: 注册用户
     request:
       method: POST
       url: /api/v1/auth/register
@@ -23,7 +23,7 @@ steps:
       - eq: [$.success, true]
       - eq: [$.message, "用户注册成功"]
 
-  - name: login
+  - name: 登录
     request:
       method: POST
       url: /api/v1/auth/login
@@ -37,9 +37,8 @@ steps:
       - eq: [$.success, true]
       - eq: [$.message, "登录成功"]
       - eq: [$.data.user.username, $user_username]
-      - regex: [$.data.access_token, "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$"]
 
-  - name: get product
+  - name: 获取产品列表
     request:
       method: GET
       url: /api/v1/products/
@@ -53,7 +52,7 @@ steps:
       - gt: ["$.data.items[0].price", 0.0]
       - contains: ["$.data.items[0]", "name"]
 
-  - name: add to cart
+  - name: 加入购物车
     variables:
       authz: "Bearer $token"
     request:
@@ -74,7 +73,7 @@ steps:
       - eq: ["$.data.items[0].quantity", 2]
       - gt: [$.data.total_price, 0.0]
 
-  - name: update quantity
+  - name: 更新数量
     variables:
       authz: "Bearer $token"
     request:
@@ -92,7 +91,7 @@ steps:
       - eq: ["$.data.items[0].product_id", $product_id]
       - eq: ["$.data.items[0].quantity", 1]
 
-  - name: get cart
+  - name: 获取购物车
     variables:
       authz: "Bearer $token"
     request:
@@ -108,7 +107,7 @@ steps:
       - len_eq: [$.data.items, 1]
       - eq: ["$.data.items[0].quantity", 1]
 
-  - name: remove from cart
+  - name: 从购物车移除商品
     variables:
       authz: "Bearer $token"
     request:

@@ -1,9 +1,9 @@
 config:
-  name: Category Detail
+  name: 分类详情
   base_url: ${ENV(BASE_URL)}
   tags: [catalog]
 steps:
-  - name: list categories
+  - name: 获取分类列表
     request:
       method: GET
       url: /api/v1/categories/
@@ -17,7 +17,7 @@ steps:
       - gt: ["$.data[0].id", 0]
       - contains: ["$.data[0]", "name"]
 
-  - name: get category by id
+  - name: 根据ID获取分类
     request:
       method: GET
       url: /api/v1/categories/$category_id

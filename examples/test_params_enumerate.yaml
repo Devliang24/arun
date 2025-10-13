@@ -1,14 +1,13 @@
 config:
-  name: "Parameters Enumerate"
+  name: "参数化：枚举"
   base_url: ${ENV(BASE_URL)}
 parameters:
   - { a: 1, b: "x" }
   - { a: 2, b: "y" }
 steps:
-  - name: enumerated params
+  - name: 枚举参数
     request:
       method: GET
       url: /?a=$a&b=$b
     validate:
       - eq: [status_code, 200]
-

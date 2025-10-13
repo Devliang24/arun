@@ -632,6 +632,17 @@ steps:
 arun run testcases --html reports/report.html
 ```
 
+截图预览（统一浅色风格）
+
+```bash
+# 生成并预览（示例使用引用型 testsuite）
+python -m apirunner.cli run testsuites/testsuite_smoke.yaml \
+  --env-file .env \
+  --html reports/report.html
+
+# 打开：reports/report.html
+```
+
 **特性**：
 - 📈 摘要仪表板：总数、通过、失败、跳过、耗时（随筛选动态更新）
 - 🔍 详细断言：每个断言的期望值、实际值、结果（支持“仅失败断言”）
@@ -640,7 +651,7 @@ arun run testcases --html reports/report.html
   - 状态筛选：通过/失败/跳过
   - 仅失败断言、仅失败断言步骤、展开/折叠全部、仅失败用例
 - 🧩 JSON 可读性：请求/响应/提取变量采用轻量 JSON 语法高亮（零依赖）
-- 🎨 GitHub 主题：默认浅色 GitHub（不提供主题切换）
+- 🎨 GitHub 主题：默认浅色 GitHub（不提供主题切换；已统一为单一风格）
 
 ### JSON 报告
 
@@ -1066,14 +1077,14 @@ steps:
 
 ```yaml
 config:
-  name: Smoke Testsuite
+  name: 冒烟套件
   base_url: ${ENV(BASE_URL)}
   tags: [smoke]
 
 testcases:
-  - name: Health Checks
+  - name: 健康检查
     testcase: testcases/test_health.yaml
-  - name: Catalog Basics
+  - name: 目录基础
     testcase: testcases/test_catalog.yaml
 ```
 
@@ -1081,12 +1092,12 @@ testcases:
 
 ```yaml
 config:
-  name: Regression Testsuite
+  name: 回归套件
   base_url: ${ENV(BASE_URL)}
   tags: [regression]
 
 testcases:
-  - name: E2E Purchase (param)
+  - name: 端到端下单（参数化）
     testcase: testcases/test_e2e_purchase.yaml
     parameters:
       quantity: [1, 2]
@@ -1297,10 +1308,6 @@ arun check testcases
 
 ### DSL 完整语法
 
-详细的 DSL 语法、架构设计、开发指南请参考：
-
-👉 **[CLAUDE.md](CLAUDE.md)** - 完整技术文档
-
 ### 内置函数
 
 | 函数 | 说明 | 示例 |
@@ -1410,7 +1417,6 @@ arun run testcases --env-file .env
 
 ### 社区资源
 
-- **技术文档**：[CLAUDE.md](CLAUDE.md)
 - **示例集合**：[examples/](examples/)
 - **问题追踪**：[GitHub Issues](https://github.com/your-org/apirunner/issues)
 - **变更日志**：查看提交历史
