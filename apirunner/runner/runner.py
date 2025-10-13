@@ -395,11 +395,39 @@ class Runner:
                     status = "failed"
                     if self.log:
                         self.log.error(f"[STEP] Request error: {last_error}")
+
+                    # Build request summary (method/url/params/headers/body/data)
+                    req_summary = {
+                        k: v
+                        for k, v in (req_rendered or {}).items()
+                        if k in ("method", "url", "params", "headers", "body", "data")
+                    }
+                    # Build cURL even on error for better diagnostics
+                    url_rendered = (req_rendered or {}).get("url")
+                    curl_headers = (req_rendered or {}).get("headers") or {}
+                    if not self.reveal and isinstance(curl_headers, dict):
+                        curl_headers = mask_headers(curl_headers)
+                    curl_data = (req_rendered or {}).get("body")
+                    if curl_data is None:
+                        curl_data = (req_rendered or {}).get("data")
+                    if not self.reveal and isinstance(curl_data, (dict, list)):
+                        curl_data = mask_body(curl_data)
+                    curl_cmd = to_curl(
+                        (req_rendered or {}).get("method", "GET"),
+                        url_rendered,
+                        headers=curl_headers if isinstance(curl_headers, dict) else {},
+                        data=curl_data,
+                    )
+
                     steps_results.append(
                         StepResult(
                             name=step.name,
                             status="failed",
+                            request=req_summary,
+                            response={"error": f"Request error: {last_error}"},
+                            curl=curl_cmd,
                             error=f"Request error: {last_error}",
+                            duration_ms=0.0,
                         )
                     )
                     if self.failfast:
