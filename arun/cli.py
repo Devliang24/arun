@@ -15,7 +15,6 @@ from arun.loader.env import load_environment
 from arun.models.case import Case
 from arun.models.report import RunReport
 from arun.reporter.json_reporter import write_json
-from arun.reporter.merge import merge_reports
 from arun.runner.runner import Runner
 from arun.templating.engine import TemplateEngine
 from arun.utils.logging import setup_logging, get_logger
@@ -246,16 +245,6 @@ def run(
     typer.echo(f"Logs written to {default_log}")
     if s.get("failed", 0) > 0:
         raise typer.Exit(code=1)
-
-
-@app.command("report")
-def report_merge(
-    inputs: List[str] = typer.Argument(..., help="Input JSON reports"),
-    output: str = typer.Option("reports/merged.json", "-o", "--output", help="Output JSON filepath"),
-):
-    merged = merge_reports(inputs)
-    write_json(merged, output)
-    typer.echo(f"Merged report written to {output}")
 
 
 @app.command("check")

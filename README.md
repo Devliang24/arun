@@ -727,19 +727,6 @@ allure --version
 - **趋势分析**：多次运行后可查看历史趋势（需保留 `allure-report/history` 目录）
 - **CI/CD 集成**：可配合 Jenkins/GitLab CI 的 Allure 插件自动生成并展示报告
 
-### 合并报告
-
-合并多个测试运行的报告：
-
-```bash
-# 并行运行
-arun run testcases/smoke --report reports/smoke.json
-arun run testcases/regression --report reports/regression.json
-
-# 合并结果
-arun report reports/smoke.json reports/regression.json -o reports/merged.json
-```
-
 ### 通知集成
 
 #### 飞书通知
@@ -889,19 +876,6 @@ arun fix testcases --only-hooks
 **修复内容**：
 - 将 suite/case 级 hooks 移到 `config.setup_hooks/teardown_hooks`
 - 确保 `steps` 中相邻步骤之间有一个空行
-
-### arun report
-
-合并多个 JSON 报告：
-
-```bash
-arun report <input1.json> <input2.json> ... -o <output.json>
-
-# 示例
-arun report reports/run1.json reports/run2.json -o reports/merged.json
-```
-
----
 
 ## 💻 实战示例
 
