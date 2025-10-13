@@ -208,7 +208,7 @@ body:
 2. 步骤变量      steps[].variables (当前步骤内有效)
 3. 配置变量      config.variables (用例级全局)
 4. 参数变量      parameters (参数化测试时注入)
-5. 提取变量      steps[].extract (从上一步响应提取，存入会话变量)
+5. 提取变量      steps[].extract (从当前步骤响应提取，存入会话供后续步骤使用)
 ```
 
 > **注意**：`${ENV(KEY)}` 用于读取操作系统环境变量，不属于变量作用域的一部分，而是模板引擎的内置函数。
@@ -218,21 +218,28 @@ body:
 ```yaml
 config:
   variables:
-    user_id: 100        # 优先级 3：配置变量
+    user_id: 100        # 优先级 3：配置变量（用例级全局）
 
 parameters:
   user_id: [1, 2]       # 优先级 4：参数变量会被配置变量覆盖
 
 steps:
   - name: 登录
-    extract:
-      user_id: $.data.id  # 优先级 5：提取变量存入会话，供后续步骤使用
-
-  - name: 获取用户
-    variables:
-      user_id: 999      # 优先级 2：步骤变量（当前步骤内最高）
     request:
-      url: /users/$user_id  # 使用 999
+      url: /api/login
+    extract:
+      user_id: $.data.id  # 优先级 5：从响应提取，存入会话
+                          # 提取后对本步骤及后续所有步骤可见
+
+  - name: 创建订单
+    request:
+      url: /api/orders/$user_id  # 使用提取的 user_id（来自登录响应）
+
+  - name: 查看订单详情
+    variables:
+      user_id: 999      # 优先级 2：步骤变量（仅当前步骤内最高）
+    request:
+      url: /api/users/$user_id  # 使用 999（步骤变量覆盖提取变量）
 ```
 
 ---
@@ -809,14 +816,15 @@ arun run <path> [options]
 --vars key=value              # 变量覆盖（可重复）
 --failfast                    # 首次失败时停止
 --report FILE                 # 输出 JSON 报告
---html FILE                   # 输出 HTML 报告
+--html FILE                   # 输出 HTML 报告（默认 reports/report-<timestamp>.html）
 --allure-results DIR          # 输出 Allure 结果目录（供 allure generate 使用）
---log-level DEBUG             # 日志级别（INFO/DEBUG）
---log-file FILE               # 日志文件路径
+--log-level DEBUG             # 日志级别（INFO/DEBUG，默认 INFO）
+--log-file FILE               # 日志文件路径（默认 logs/run-<timestamp>.log）
 --httpx-logs                  # 显示 httpx 内部日志
---mask-secrets                # 脱敏敏感数据（默认 --reveal-secrets）
+--reveal-secrets              # 显示敏感数据明文（默认选项）
+--mask-secrets                # 脱敏敏感数据（生产环境推荐）
 --notify feishu,email,dingtalk# 通知渠道
---notify-only failed          # 通知策略（failed/always）
+--notify-only failed          # 通知策略（failed/always，默认 failed）
 --notify-attach-html          # 邮件附加 HTML 报告
 ```
 
@@ -1296,14 +1304,14 @@ arun check testcases
 
 | 函数 | 说明 | 示例 |
 |------|------|------|
-| `ENV(key, default)` | 读取环境变量 | `${ENV(BASE_URL)}` |
-| `now()` | 当前 UTC 时间 | `${now()}` |
-| `uuid()` | 生成 UUID | `${uuid()}` |
-| `random_int(min, max)` | 随机整数 | `${random_int(1, 100)}` |
-| `base64_encode(s)` | Base64 编码 | `${base64_encode('text')}` |
-| `hmac_sha256(key, msg)` | HMAC-SHA256 | `${hmac_sha256($secret, $data)}` |
+| `ENV(key, default)` | 读取环境变量<br>支持可选默认值参数 | `${ENV(BASE_URL)}`<br>`${ENV(TIMEOUT, 30)}` |
+| `now()` | 当前 UTC 时间（ISO 8601 格式） | `${now()}` → `2025-01-15T08:30:00` |
+| `uuid()` | 生成标准 UUID v4 | `${uuid()}` → `550e8400-e29b-...` |
+| `random_int(min, max)` | 生成范围内随机整数（含边界） | `${random_int(1, 100)}` → `42` |
+| `base64_encode(s)` | Base64 编码字符串或字节 | `${base64_encode('hello')}` → `aGVsbG8=` |
+| `hmac_sha256(key, msg)` | HMAC-SHA256 哈希（返回十六进制） | `${hmac_sha256($secret, $data)}` |
 
-> **注意**：以上函数由框架内置提供，无需额外配置。
+> **注意**：以上函数由框架内置提供（`arun/templating/builtins.py`），无需额外配置或导入。
 
 ### 项目自带辅助函数
 
