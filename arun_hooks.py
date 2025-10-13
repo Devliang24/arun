@@ -1,9 +1,8 @@
 """
 示例 hooks：在 YAML 模板中可调用以下函数。
 
-支持用法：
-- Jinja2: {{ ts() }}, {{ md5('abc') }}, {{ sign('demo', 123) }}
-- 表达式: ${ts()}, ${md5('abc')}, ${sign('demo', 123)}
+支持用法（仅 Dollar 表达式）：
+- ${ts()}, ${md5('abc')}, ${sign('demo', 123)}
 """
 
 import hashlib

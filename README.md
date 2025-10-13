@@ -20,7 +20,7 @@ APIRunner 是一个现代化的、极简的 HTTP API 测试运行器，专为简
 
 APIRunner 提供简化的、Python 风格的 API 测试方法，一流支持：
 - **YAML 优先**：声明式测试用例，人类可读的 YAML 格式
-- **双重模板**：同时支持 `${...}` 表达式和 Jinja2 (`{{ ... }}`) 语法
+- **模板**：仅支持 `${...}` Dollar 风格表达式
 - **智能提取**：基于 JMESPath 的 JSON 响应提取
 - **灵活 Hooks**：自定义 Python 函数，用于 setup、teardown 和请求签名
 - **丰富报告**：JSON、JUnit XML 和交互式 HTML 报告
@@ -34,7 +34,6 @@ APIRunner 提供简化的、Python 风格的 API 测试方法，一流支持：
 - **声明式 YAML DSL**：使用清晰、可维护的 YAML 语法编写测试
 - **强大的模板引擎**：
   - `${...}` 表达式：`${variable}`、`${function()}`
-  - Jinja2 模板：`{{ variable }}`、`{{ function() }}`
   - 环境变量注入：`${ENV(VAR_NAME)}`
 - **高级响应处理**：
   - 基于 JMESPath 的提取：`$.data.user.id`
@@ -131,7 +130,6 @@ HTML report written to reports/report.html
 APIRunner 依赖项极少：
 - `httpx` (>=0.27) - 现代 HTTP 客户端
 - `pydantic` (>=2.6) - 数据验证
-- `jinja2` (>=3.1) - 模板引擎
 - `jmespath` (>=1.0) - JSON 提取
 - `PyYAML` (>=6.0) - YAML 解析
 - `rich` (>=13.7) - 美观的终端输出
@@ -365,9 +363,9 @@ cases:
 
 ### 模板系统
 
-APIRunner 支持双重模板语法：
+APIRunner 仅支持 Dollar 风格：
 
-#### Dollar 风格（推荐）
+#### Dollar 风格
 
 ```yaml
 # 变量引用
@@ -386,20 +384,6 @@ json:
   user_id: ${int($user_id) + 1}        # 算术运算
 ```
 
-#### Jinja2 风格（备选）
-
-```yaml
-# 变量引用
-url: /users/{{ user_id }}
-
-# 函数调用
-headers:
-  X-Timestamp: {{ ts() }}
-  X-Signature: {{ sign(app_key, ts()) }}
-
-# 过滤器和逻辑
-message: {{ username | upper }}
-```
 
 **变量优先级**（从高到低）：
 1. CLI 覆盖：`--vars key=value`
@@ -839,7 +823,7 @@ apirunner/
 
 ### 关键设计决策
 
-1. **双重模板**：同时支持 `${...}` 和 Jinja2 (`{{ ... }}`)，提供灵活性和迁移路径
+1. **Dollar 模板**：仅支持 `${...}` 表达式，语法简单明确
 2. **不可变作用域**：变量上下文使用基于堆栈的方法，在步骤之间实现干净隔离
 3. **类型保留**：单 token 模板 (`${var}`) 保留原生类型（int、bool 等），而不是字符串化
 4. **Hook 签名**：灵活的 hook 签名允许函数仅声明所需的参数

@@ -4,11 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-APIRunner is a minimal HTTP API test runner with a YAML-based DSL. It supports `${...}`-style expressions, Jinja2 templating, JMESPath extraction, and multiple report formats.
+APIRunner is a minimal HTTP API test runner with a YAML-based DSL. It supports `${...}`-style expressions, JMESPath extraction, and multiple report formats.
 
 **Key Features:**
 - YAML test cases with declarative syntax
-- Dual templating: Jinja2 (`{{ var }}`) and `${...}` expressions (`$var`, `${func()}`)
+- Dollar-style templating: `${...}` expressions (`$var`, `${func()}`)
 - Custom hooks via `arun_hooks.py` for helper functions
 - Tag-based test filtering
 - Parameterized testing (enumerate/matrix)
@@ -83,11 +83,7 @@ Reporters (reporter/)
 
 ### Templating System
 
-**Dual Syntax Support** (`apirunner/templating/engine.py`):
-1. **Jinja2**: `{{ ts() }}`, `{{ user_id }}`, `{{ sign(app_key, timestamp) }}`
-2. **Dollar expressions**: `${ts()}`, `$user_id`, `${sign($app_key, $timestamp)}`
-
-Rendering supports `${...}` via safe AST evaluation and also supports Jinja2.
+**Templating** (`apirunner/templating/engine.py`): Only Dollar expressions `${...}` are supported.
 
 **Variable Scoping** (priority order, highest to lowest):
 1. CLI overrides: `--vars key=value`
@@ -104,7 +100,7 @@ Implementation: `apirunner/templating/context.py` (VarContext with push/pop stac
 - Searches upward from test file for `arun_hooks.py` (or `hooks.py`)
 - Configurable via `ARUN_HOOKS_FILE` env var (comma-separated list)
 - Auto-loads all callable objects (non-underscore prefixed)
-- Functions available in templates as `{{ my_function(arg) }}`
+- Functions available in templates via Dollar syntax: `${my_function(arg)}`
 
 Example `arun_hooks.py`:
 ```python

@@ -74,14 +74,7 @@ class FeishuNotifier(Notifier):
             if self.style == "card":
                 payload = self._card_payload(report, ctx)
             else:
-                text = build_text_message(
-                    report,
-                    html_path=ctx.html_path,
-                    log_path=ctx.log_path,
-                    topn=ctx.topn,
-                    template_path=ctx.text_template,
-                    html=False,
-                )
+                text = build_text_message(report, html_path=ctx.html_path, log_path=ctx.log_path, topn=ctx.topn)
                 if self.mentions:
                     text = f"提醒: {self.mentions}\n" + text
                 payload = {"msg_type": "text", "content": {"text": text}}

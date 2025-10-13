@@ -5,13 +5,6 @@ import re
 import ast
 import operator as op
 import os
-try:
-    from jinja2 import Environment, StrictUndefined  # type: ignore
-    JINJA_AVAILABLE = True
-except Exception:  # pragma: no cover
-    Environment = None  # type: ignore
-    StrictUndefined = None  # type: ignore
-    JINJA_AVAILABLE = False
 
 from .builtins import BUILTINS
 
@@ -133,7 +126,7 @@ def _render_text_without_jinja(text: str, ctx: Dict[str, Any]) -> str:
 
 class TemplateEngine:
     def __init__(self) -> None:
-        # Disable Jinja2 rendering for business templates; we only honor ${...}
+        # Only support ${...} / $var dollar-style expressions
         self.env = None
 
     def render_value(self, value: Any, variables: Dict[str, Any], functions: Dict[str, Any] | None = None, envmap: Dict[str, Any] | None = None) -> Any:

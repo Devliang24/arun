@@ -1,29 +1,8 @@
 from __future__ import annotations
 
-from typing import List, Tuple, Optional, Dict, Any
+from typing import List, Tuple
 
 from apirunner.models.report import RunReport, CaseInstanceResult, StepResult
-
-
-def _collect_context(report: RunReport, *, html_path: Optional[str], log_path: Optional[str], topn: int) -> Dict[str, Any]:
-    s = report.summary or {}
-    return {
-        "summary": {
-            "total": s.get("total", 0),
-            "passed": s.get("passed", 0),
-            "failed": s.get("failed", 0),
-            "skipped": s.get("skipped", 0),
-            "duration_ms": s.get("duration_ms", 0.0),
-        },
-        "cases": report.cases,
-        "failures": [
-            {"name": n, "step": st, "message": msg}
-            for (n, st, msg) in collect_failures(report, topn=topn)
-        ],
-        "html_path": html_path,
-        "log_path": log_path,
-        "topn": topn,
-    }
 
 
 def collect_failures(report: RunReport, topn: int = 5) -> List[Tuple[str, str, str]]:
@@ -75,24 +54,6 @@ def build_summary_text(report: RunReport, *, html_path: str | None, log_path: st
     return "\n".join(lines)
 
 
-def build_text_message(report: RunReport, *, html_path: Optional[str], log_path: Optional[str], topn: int = 5, template_path: Optional[str] = None, html: bool = False) -> str:
-    """Build notification text (or HTML) using optional Jinja2 template.
-
-    Template context keys:
-    - summary: {total, passed, failed, skipped, duration_ms}
-    - cases: list of CaseInstanceResult
-    - failures: list of {name, step, message}
-    - html_path, log_path, topn
-    """
-    if template_path:
-        try:
-            from jinja2 import Environment, FileSystemLoader, StrictUndefined  # type: ignore
-
-            env = Environment(loader=FileSystemLoader("."), undefined=StrictUndefined, autoescape=html)
-            tmpl = env.get_template(template_path)
-            ctx = _collect_context(report, html_path=html_path, log_path=log_path, topn=topn)
-            return tmpl.render(**ctx)
-        except Exception:
-            # fall back to built-in
-            pass
+def build_text_message(report: RunReport, *, html_path: str | None, log_path: str | None, topn: int = 5) -> str:
+    # Only Dollar-style rendering is supported for test templates; notifications use built-in summary text
     return build_summary_text(report, html_path=html_path, log_path=log_path, topn=topn)
