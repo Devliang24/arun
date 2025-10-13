@@ -204,6 +204,8 @@ python -m apirunner.cli run testcases --env-file .env --notify email --notify-on
 - `MAIL_FROM`、`MAIL_TO`
 - `NOTIFY_ATTACH_HTML`：附加 HTML 报告（true/false）
 - `NOTIFY_HTML_BODY`：发送 HTML 正文（true/false）
+- `NOTIFY_TEMPLATE`：Jinja2 文本模板（自定义通知正文）
+- `NOTIFY_HTML_TEMPLATE`：Jinja2 HTML 模板（自定义邮件正文）
 
 **验证 YAML 语法：**
 ```bash

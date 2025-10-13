@@ -8,7 +8,7 @@ from email.message import EmailMessage
 from typing import Optional
 
 from .base import Notifier, NotifyContext
-from .format import build_summary_text
+from .format import build_summary_text, build_text_message
 from apirunner.models.report import RunReport
 
 
@@ -43,7 +43,14 @@ class EmailNotifier(Notifier):
             return
         s = report.summary or {}
         subject = f"[APIRunner] 测试结果: {s.get('failed',0)}/{s.get('total',0)} 失败"
-        body = build_summary_text(report, html_path=ctx.html_path, log_path=ctx.log_path, topn=ctx.topn)
+        body = build_text_message(
+            report,
+            html_path=ctx.html_path,
+            log_path=ctx.log_path,
+            topn=ctx.topn,
+            template_path=ctx.text_template,
+            html=False,
+        )
 
         msg = EmailMessage()
         msg["Subject"] = subject
@@ -76,7 +83,21 @@ class EmailNotifier(Notifier):
             if ctx.log_path:
                 html_lines.append(f"<p>日志: {_esc(ctx.log_path)}</p>")
             html_lines.append("</body></html>")
-            msg.add_alternative("\n".join(html_lines), subtype="html")
+            if ctx.html_template:
+                try:
+                    html_text = build_text_message(
+                        report,
+                        html_path=ctx.html_path,
+                        log_path=ctx.log_path,
+                        topn=ctx.topn,
+                        template_path=ctx.html_template,
+                        html=True,
+                    )
+                    msg.add_alternative(html_text, subtype="html")
+                except Exception:
+                    msg.add_alternative("\n".join(html_lines), subtype="html")
+            else:
+                msg.add_alternative("\n".join(html_lines), subtype="html")
 
         if self.attach_html and ctx.html_path and os.path.isfile(ctx.html_path):
             ctype, _ = mimetypes.guess_type(ctx.html_path)

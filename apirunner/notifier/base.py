@@ -12,9 +12,10 @@ class NotifyContext:
     log_path: Optional[str] = None
     notify_only: str = "failed"  # or "always"
     topn: int = 5
+    text_template: Optional[str] = None
+    html_template: Optional[str] = None
 
 
 class Notifier:
     def send(self, report: RunReport, ctx: NotifyContext) -> None:  # pragma: no cover - integration
         raise NotImplementedError
-

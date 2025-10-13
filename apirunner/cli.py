@@ -188,7 +188,14 @@ def run(
             (policy == "always") or (policy == "failed" and (s.get("failed", 0) or 0) > 0)
         )
         if channels and should_send:
-            ctx = NotifyContext(html_path=html_target, log_path=default_log, notify_only=policy, topn=topn)
+            ctx = NotifyContext(
+                html_path=html_target,
+                log_path=default_log,
+                notify_only=policy,
+                topn=topn,
+                text_template=os.environ.get("NOTIFY_TEMPLATE"),
+                html_template=os.environ.get("NOTIFY_HTML_TEMPLATE"),
+            )
             notifiers = []
 
             if "feishu" in channels:
