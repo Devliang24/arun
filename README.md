@@ -1058,6 +1058,52 @@ steps:
 
 ---
 
+## 🧩 Testsuite（引用用例）
+
+除内联的 Suite（在一个文件的 `cases:` 中直接编写多个用例）外，还支持类似 HttpRunner 的“引用型 Testsuite”：在 `testsuites/` 目录下的 testsuite 文件通过 `testcases:` 引用 `testcases/` 下的单用例文件，并可在条目级覆盖名称、注入变量或提供参数化。
+
+示例（`testsuites/testsuite_smoke.yaml`）：
+
+```yaml
+config:
+  name: Smoke Testsuite
+  base_url: ${ENV(BASE_URL)}
+  tags: [smoke]
+
+testcases:
+  - name: Health Checks
+    testcase: testcases/test_health.yaml
+  - name: Catalog Basics
+    testcase: testcases/test_catalog.yaml
+```
+
+示例（带条目级参数化）：
+
+```yaml
+config:
+  name: Regression Testsuite
+  base_url: ${ENV(BASE_URL)}
+  tags: [regression]
+
+testcases:
+  - name: E2E Purchase (param)
+    testcase: testcases/test_e2e_purchase.yaml
+    parameters:
+      quantity: [1, 2]
+```
+
+运行：
+
+```bash
+arun run testsuites --env-file .env
+arun run testsuites -k "smoke" --env-file .env
+```
+
+说明：
+- `testsuite` 文件与内联 `suite` 文件可共存。推荐优先使用 `testsuite`（引用型），`suite`（内联型）作为兼容形式继续支持。
+- 条目级 `variables` 覆盖用例 `config.variables`（优先级：Suite.config.variables < Case.config.variables < Item.variables < CLI/Step）。
+- 条目级 `parameters` 会覆盖用例自带的参数化配置。
+
 ## 🔗 CI/CD 集成
 
 ### GitHub Actions

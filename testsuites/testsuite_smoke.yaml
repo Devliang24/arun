@@ -1,0 +1,11 @@
+config:
+  name: "Smoke Testsuite"
+  base_url: ${ENV(BASE_URL)}
+  tags: [smoke]
+
+testcases:
+  - name: Health Checks
+    testcase: testcases/test_health.yaml
+  - name: Catalog Basics
+    testcase: testcases/test_catalog.yaml
+

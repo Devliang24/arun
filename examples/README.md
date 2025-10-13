@@ -10,9 +10,13 @@
   - 演示在用例的 `config.setup_hooks/config.teardown_hooks` 中声明 hooks。
   - 运行：`arun run examples/test_case_hooks.yaml --env-file .env`
 
-- 套件级 hooks（写在 suite 的 config 内）：`suite_hooks.yaml`
-  - 演示在套件的 `config.setup_hooks/config.teardown_hooks` 中声明 hooks；套件内的用例在各自 `config` 中声明用例级 hooks。
-  - 运行：`arun run examples/suite_hooks.yaml --env-file .env`
+- 引用型 Testsuite（在 `testsuites/` 下，通过 `testcases:` 引用用例）
+  - 冒烟套件：`testsuites/testsuite_smoke.yaml`
+    - 运行：`arun run testsuites/testsuite_smoke.yaml --env-file .env`
+  - 回归套件：`testsuites/testsuite_regression.yaml`
+    - 运行：`arun run testsuites/testsuite_regression.yaml --env-file .env`
+  - 权限套件：`testsuites/testsuite_permissions.yaml`
+    - 运行：`arun run testsuites/testsuite_permissions.yaml --env-file .env`
 
 - 提取 token 并自动注入 Authorization：`test_login_whoami.yaml`
   - 第一步登录提取 `token`，第二步访问 `GET /api/v1/users/me`；未手动写 `Authorization` 头，运行器会自动注入 `Bearer $token`。
@@ -29,7 +33,7 @@
 注意
 - 若运行登录相关示例失败，请先检查 `.env` 的用户名/密码是否有效，或直接使用“自注册 + 登录”示例。
  - 参数化（矩阵参数）：`test_params_matrix.yaml`
-   - 展示 `parameters` 的使用，按组合生成多组用例执行。
+   - 展示 `parameters` 的使用，按组合生成多组用例执行（也支持在 testsuite 条目级通过 `parameters` 覆盖）。
    - 运行：`arun run examples/test_params_matrix.yaml --env-file .env`
 
  - SQL 校验（需要数据库连接）：`test_sql_validate.yaml`
@@ -49,7 +53,7 @@
 - 参数化进阶
   - 压缩参数（zipped）：`test_params_zipped.yaml`
   - 枚举参数（enumerate）：`test_params_enumerate.yaml`
-  - 套件级参数化：`suite_params.yaml`
+  - Testsuite 条目级参数化示例：`testsuites/testsuite_regression.yaml`
 
 - Headers 合并与覆盖：`test_headers_merge.yaml`
   - 演示 `config.headers` 与 `step.headers` 的覆盖关系（示例仅检查 200）。

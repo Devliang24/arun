@@ -1,0 +1,17 @@
+config:
+  name: "Regression Testsuite"
+  base_url: ${ENV(BASE_URL)}
+  tags: [regression]
+
+testcases:
+  - name: Auth Flow
+    testcase: testcases/test_auth.yaml
+  - name: Catalog
+    testcase: testcases/test_catalog.yaml
+  - name: Cart
+    testcase: testcases/test_cart.yaml
+  - name: E2E Purchase (param)
+    testcase: testcases/test_e2e_purchase.yaml
+    parameters:
+      quantity: [1, 2]
+

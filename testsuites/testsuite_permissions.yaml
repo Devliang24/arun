@@ -1,0 +1,14 @@
+config:
+  name: "Permissions Testsuite"
+  base_url: ${ENV(BASE_URL)}
+  tags: [permission]
+
+testcases:
+  - name: Unauthenticated Access Denied
+    testcase: testcases/test_health.yaml
+    variables:
+      # Override base_url per case if needed; kept for structure
+      dummy: 0
+  - name: User Not Admin (403)
+    testcase: testcases/test_admin_negative.yaml
+
