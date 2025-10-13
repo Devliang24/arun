@@ -48,6 +48,9 @@ def _normalize_case_dict(d: Dict[str, Any]) -> Dict[str, Any]:
         new_steps: List[Dict[str, Any]] = []
         for s in dd["steps"]:
             ss = dict(s)
+            # Disallow legacy request.json field (no compatibility)
+            if isinstance(ss.get("request"), dict) and "json" in ss["request"]:
+                raise LoadError("Invalid request field 'json': use 'body' instead")
             if "validate" in ss:
                 ss["validate"] = [v.model_dump() for v in normalize_validators(ss["validate"])]
                 # enforce $-only for body checks

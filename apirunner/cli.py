@@ -302,12 +302,14 @@ def check(
 
 @app.command("fix")
 def fix(
-    path: str = typer.Argument(..., help="File or directory to auto-fix YAML (move hooks to config.*)"),
+    path: str = typer.Argument(..., help="File or directory to auto-fix YAML (move hooks to config.* / spacing)"),
+    only_spacing: bool = typer.Option(False, "--only-spacing", help="Only fix steps spacing (do not move hooks)"),
+    only_hooks: bool = typer.Option(False, "--only-hooks", help="Only move hooks into config.* (do not change spacing)"),
 ):
-    """Auto-fix YAML files to the new hooks convention.
+    """Auto-fix YAML files for style and structure.
 
-    - Suite-level hooks must be under `config.setup_hooks/config.teardown_hooks`.
-    - Case-level hooks must be under `config.setup_hooks/config.teardown_hooks`.
+    - Move suite/case-level hooks under `config.setup_hooks/config.teardown_hooks`.
+    - Ensure a single blank line between adjacent steps items under `steps:`.
     """
     files = discover([path])
     if not files:
@@ -375,46 +377,44 @@ def fix(
         if not isinstance(obj, dict):
             continue
         modified = False
-        # Suite vs Case
-        if "cases" in obj and isinstance(obj["cases"], list):
-            cfg = obj.get("config") or {}
-            if not isinstance(cfg, dict):
-                cfg = {}
-            # move suite top-level hooks into config
-            if _merge_hooks(cfg, obj, level="suite"):
-                obj["config"] = cfg
-                modified = True
-            # each case inside suite
-            new_cases = []
-            for c in obj["cases"]:
-                if not isinstance(c, dict):
-                    new_cases.append(c)
-                    continue
-                c_cfg = c.get("config") or {}
-                if not isinstance(c_cfg, dict):
-                    c_cfg = {}
-                if _merge_hooks(c_cfg, c, level="case"):
-                    c["config"] = c_cfg
+        if not only_spacing:
+            # Suite vs Case: move hooks
+            if "cases" in obj and isinstance(obj["cases"], list):
+                cfg = obj.get("config") or {}
+                if not isinstance(cfg, dict):
+                    cfg = {}
+                if _merge_hooks(cfg, obj, level="suite"):
+                    obj["config"] = cfg
                     modified = True
-                new_cases.append(c)
-            obj["cases"] = new_cases
-        elif "steps" in obj and isinstance(obj["steps"], list):
-            # single case file
-            cfg = obj.get("config") or {}
-            if not isinstance(cfg, dict):
-                cfg = {}
-            if _merge_hooks(cfg, obj, level="case"):
-                obj["config"] = cfg
-                modified = True
-        else:
-            # not a recognized test file
-            continue
+                new_cases = []
+                for c in obj["cases"]:
+                    if not isinstance(c, dict):
+                        new_cases.append(c)
+                        continue
+                    c_cfg = c.get("config") or {}
+                    if not isinstance(c_cfg, dict):
+                        c_cfg = {}
+                    if _merge_hooks(c_cfg, c, level="case"):
+                        c["config"] = c_cfg
+                        modified = True
+                    new_cases.append(c)
+                obj["cases"] = new_cases
+            elif "steps" in obj and isinstance(obj["steps"], list):
+                cfg = obj.get("config") or {}
+                if not isinstance(cfg, dict):
+                    cfg = {}
+                if _merge_hooks(cfg, obj, level="case"):
+                    obj["config"] = cfg
+                    modified = True
+            else:
+                # not a recognized test file; still attempt spacing fix later
+                pass
 
-        if modified:
+        if modified and not only_spacing:
             Path(f).write_text(_yaml.safe_dump(obj, sort_keys=False, allow_unicode=True), encoding="utf-8")
             changed_files.append(str(f))
-        # steps spacing fix always attempted
-        if _fix_steps_spacing(Path(f)) and str(f) not in changed_files:
+        # steps spacing fix unless only_hooks
+        if not only_hooks and _fix_steps_spacing(Path(f)) and str(f) not in changed_files:
             changed_files.append(str(f))
 
     if changed_files:

@@ -7,7 +7,7 @@ steps:
     request:
       method: POST
       url: /api/v1/orders/
-      json:
+      body:
         shipping_address: "No.9 Demo Road"
     extract:
       order_id: $.data.order_id

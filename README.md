@@ -201,8 +201,7 @@ python -m apirunner.cli run testcases --env-file .env --notify email --notify-on
 - `MAIL_FROM`、`MAIL_TO`
 - `NOTIFY_ATTACH_HTML`：附加 HTML 报告（true/false）
 - `NOTIFY_HTML_BODY`：发送 HTML 正文（true/false）
-- `NOTIFY_TEMPLATE`：Jinja2 文本模板（自定义通知正文）
-- `NOTIFY_HTML_TEMPLATE`：Jinja2 HTML 模板（自定义邮件正文）
+<!-- 自定义通知模板（Jinja2）已移除，仅保留内置摘要通知 -->
 
 **验证 YAML 语法：**
 ```bash
@@ -220,6 +219,12 @@ YAML 风格规范：
 arun fix testcases
 
 # 同时会自动修复 steps 之间的空行（如缺失）
+
+# 仅修复空行（不迁移 hooks）
+arun fix testcases --only-spacing
+
+# 仅迁移 hooks（不修复空行）
+arun fix testcases --only-hooks
 ```
 
 **合并报告：**
@@ -284,7 +289,7 @@ steps:
         limit: 10
       headers:                            # 可选：请求头（与 config 合并）
         Content-Type: application/json
-      json:                               # 可选：JSON 请求体
+      body:                               # 可选：请求体（通常为 JSON）
         username: ${ENV(USER_USERNAME)}
         email: user@example.com
       data:                               # 可选：表单数据
@@ -384,7 +389,7 @@ headers:
 base_url: ${ENV(BASE_URL)}              # 从环境读取
 
 # 复杂表达式
-json:
+body:
   user_id: ${int($user_id) + 1}        # 算术运算
 ```
 
@@ -618,7 +623,7 @@ steps:
     request:
       method: POST
       url: /api/orders
-      json:
+      body:
         sku: "PRODUCT-123"
         quantity: 2
     extract:
@@ -694,7 +699,7 @@ steps:
     request:
       method: POST
       url: /api/auth/login
-      json:
+      body:
         username: ${ENV(USER_USERNAME)}
         password: ${ENV(USER_PASSWORD)}
     extract:
@@ -851,7 +856,7 @@ steps:
     request:
       method: POST
       url: /api/v1/auth/login
-      json:
+      body:
         username: $username
         password: $password
     extract:
@@ -950,7 +955,7 @@ steps:
     request:
       method: POST
       url: /api/orders
-      json:
+      body:
         product_id: "PROD-001"
         quantity: 5
         shipping_address: "上海市黄浦区XX路123号"
@@ -1006,7 +1011,7 @@ cases:
         request:
           method: POST
           url: /api/$api_version/users/register
-          json:
+          body:
             username: test_user_${short_uid(8)}
             email: test_${short_uid()}@example.com
             password: SecurePass123!
@@ -1024,7 +1029,7 @@ cases:
         request:
           method: POST
           url: /api/$api_version/auth/login
-          json:
+          body:
             username: ${ENV(USER_USERNAME)}
             password: ${ENV(USER_PASSWORD)}
         extract:

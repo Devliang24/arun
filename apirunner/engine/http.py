@@ -20,7 +20,8 @@ class HTTPClient:
         url = req.get("url", "")
         params = req.get("params")
         headers = req.get("headers") or {}
-        json_data = req.get("json")
+        # 'body' holds JSON object or raw content from test step
+        json_data = req.get("body")
         data = req.get("data")
         files = req.get("files")
         timeout = req.get("timeout", self.timeout)
@@ -74,4 +75,3 @@ class HTTPClient:
             "url": str(resp.request.url),
             "method": str(resp.request.method),
         }
-

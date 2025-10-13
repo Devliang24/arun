@@ -45,7 +45,7 @@ class Runner:
         """Return a single string where multiline content is aligned with fixed small indent.
 
         Example:
-        [REQUEST] json: {
+        [REQUEST] body: {
           "a": 1,
           "b": 2
         }
@@ -363,11 +363,11 @@ class Runner:
                         if not self.reveal:
                             hdrs_out = mask_headers(hdrs_out)
                         self.log.info(self._fmt_aligned("REQ", "headers", self._fmt_json(hdrs_out)))
-                    if req_rendered.get("json") is not None:
-                        body = req_rendered.get("json")
+                    if req_rendered.get("body") is not None:
+                        body = req_rendered.get("body")
                         if isinstance(body, (dict, list)) and not self.reveal:
                             body = mask_body(body)
-                        self.log.info(self._fmt_aligned("REQ", "json", self._fmt_json(body)))
+                        self.log.info(self._fmt_aligned("REQ", "body", self._fmt_json(body)))
                     if req_rendered.get("data") is not None:
                         data = req_rendered.get("data")
                         if isinstance(data, (dict, list)) and not self.reveal:
@@ -567,14 +567,19 @@ class Runner:
                 curl = None
                 if self.log_debug:
                     url_rendered = resp_obj.get("url") or req_rendered.get("url")
-                    curl = to_curl(req_rendered.get("method", "GET"), url_rendered, headers=req_rendered.get("headers"), data=req_rendered.get("json") or req_rendered.get("data"))
+                    curl = to_curl(
+                        req_rendered.get("method", "GET"),
+                        url_rendered,
+                        headers=req_rendered.get("headers"),
+                        data=req_rendered.get("body") or req_rendered.get("data"),
+                    )
                     self.log.debug("cURL: %s", curl)
 
                 sr = StepResult(
                     name=step.name,
                     status="failed" if step_failed else "passed",
                     request={
-                        k: v for k, v in req_rendered.items() if k in ("method", "url", "params", "headers", "json", "data")
+                        k: v for k, v in req_rendered.items() if k in ("method", "url", "params", "headers", "body", "data")
                     },
                     response={
                         "status_code": resp_obj.get("status_code"),

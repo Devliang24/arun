@@ -11,7 +11,8 @@ class StepRequest(BaseModel):
     url: str
     params: Optional[Dict[str, Any]] = None
     headers: Optional[Dict[str, str]] = None
-    json_: Optional[Any] = Field(default=None, alias="json")
+    # Request body (JSON or raw), previously named 'json' in YAML
+    body: Optional[Any] = None
     data: Optional[Any] = None
     files: Optional[Any] = None
     auth: Optional[Dict[str, str]] = None  # {type: basic|bearer, username, password, token}

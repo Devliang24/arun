@@ -10,7 +10,7 @@ steps:
     request:
       method: POST
       url: /api/v1/auth/register
-      json:
+      body:
         username: u_${short_uid(12)}
         email: u_${uid()}@example.com
         password: "P@ssw0rd123"
@@ -29,7 +29,7 @@ steps:
     request:
       method: POST
       url: /api/v1/auth/login
-      json:
+      body:
         username: $user_username
         password: $user_password
     extract:

@@ -11,7 +11,7 @@ steps:
     request:
       method: POST
       url: /api/v1/auth/register
-      json:
+      body:
         username: $new_username
         email: $new_email
         password: $new_password
@@ -31,7 +31,7 @@ steps:
     request:
       method: POST
       url: /api/v1/auth/login
-      json:
+      body:
         username: $new_username
         password: $new_password
     extract:
