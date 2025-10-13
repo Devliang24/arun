@@ -25,6 +25,7 @@ class EmailNotifier(Notifier):
         use_ssl: bool = True,
         timeout: float = 8.0,
         attach_html: bool = False,
+        html_body: bool = True,
     ) -> None:
         self.smtp_host = smtp_host
         self.smtp_port = int(smtp_port)
@@ -35,6 +36,7 @@ class EmailNotifier(Notifier):
         self.use_ssl = use_ssl
         self.timeout = timeout
         self.attach_html = attach_html
+        self.html_body = html_body
 
     def send(self, report: RunReport, ctx: NotifyContext) -> None:  # pragma: no cover - integration
         if not (self.smtp_host and self.mail_from and self.mail_to):
@@ -47,7 +49,34 @@ class EmailNotifier(Notifier):
         msg["Subject"] = subject
         msg["From"] = self.mail_from
         msg["To"] = self.mail_to
+        # Plain text
         msg.set_content(body)
+        # HTML alternative
+        if self.html_body:
+            from html import escape as _esc
+            s = report.summary or {}
+            total = s.get("total", 0)
+            passed = s.get("passed", 0)
+            failed = s.get("failed", 0)
+            skipped = s.get("skipped", 0)
+            dur = f"{(s.get('duration_ms', 0.0) or 0.0)/1000.0:.1f}s"
+            # Build simple HTML
+            fails = []
+            from .format import collect_failures
+            for name, step, msg_txt in collect_failures(report, topn=ctx.topn):
+                fails.append(f"<li><b>{_esc(name)}</b>: {_esc(step)} → {_esc(str(msg_txt))}</li>")
+            html_lines = [
+                "<html><body>",
+                "<h3>APIRunner 测试结果</h3>",
+                f"<p>总 {total} | 通过 {passed} | 失败 {failed} | 跳过 {skipped} | {dur}</p>",
+                "<ul>" + ("".join(fails) or "<li>无失败</li>") + "</ul>",
+            ]
+            if ctx.html_path:
+                html_lines.append(f"<p>报告: {_esc(ctx.html_path)}</p>")
+            if ctx.log_path:
+                html_lines.append(f"<p>日志: {_esc(ctx.log_path)}</p>")
+            html_lines.append("</body></html>")
+            msg.add_alternative("\n".join(html_lines), subtype="html")
 
         if self.attach_html and ctx.html_path and os.path.isfile(ctx.html_path):
             ctype, _ = mimetypes.guess_type(ctx.html_path)
@@ -76,4 +105,3 @@ class EmailNotifier(Notifier):
         except Exception:
             # best-effort, ignore failures
             return
-

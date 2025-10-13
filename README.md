@@ -2,103 +2,103 @@
 
 <div align="center">
 
-**A lightweight, powerful HTTP API testing framework with YAML-based DSL**
+**轻量级、强大的 HTTP API 测试框架，基于 YAML DSL**
 
 [![Python Version](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-[Features](#features) • [Quick Start](#quick-start) • [Documentation](#documentation) • [Examples](#examples)
+[功能特性](#功能特性) • [快速开始](#快速开始) • [使用文档](#使用文档) • [示例](#示例)
 
 </div>
 
 ---
 
-## Overview
+## 项目概述
 
-APIRunner is a modern, minimal HTTP API test runner designed for simplicity and power. Write your API tests in clean YAML syntax, leverage powerful templating and extraction capabilities, and generate comprehensive test reports—all without writing a single line of code.
+APIRunner 是一个现代化的、极简的 HTTP API 测试运行器，专为简洁性和强大功能而设计。使用清晰的 YAML 语法编写 API 测试，利用强大的模板和提取能力，生成全面的测试报告——无需编写一行代码。
 
-APIRunner offers a streamlined, Pythonic approach to API testing with first-class support for:
-- **YAML-First**: Declarative test cases in human-readable YAML
-- **Dual Templating**: Both `${...}` expression and Jinja2 (`{{ ... }}`) syntax
-- **Smart Extraction**: JMESPath-powered JSON response extraction
-- **Flexible Hooks**: Custom Python functions for setup, teardown, and request signing
-- **Rich Reporting**: JSON, JUnit XML, and interactive HTML reports
-- **SQL Validation**: Built-in database assertion support
-- **CI/CD Ready**: Designed for seamless integration with your pipeline
+APIRunner 提供简化的、Python 风格的 API 测试方法，一流支持：
+- **YAML 优先**：声明式测试用例，人类可读的 YAML 格式
+- **双重模板**：同时支持 `${...}` 表达式和 Jinja2 (`{{ ... }}`) 语法
+- **智能提取**：基于 JMESPath 的 JSON 响应提取
+- **灵活 Hooks**：自定义 Python 函数，用于 setup、teardown 和请求签名
+- **丰富报告**：JSON、JUnit XML 和交互式 HTML 报告
+- **SQL 验证**：内置数据库断言支持
+- **CI/CD 就绪**：专为无缝集成流水线而设计
 
-## Features
+## 功能特性
 
-### Core Capabilities
+### 核心能力
 
-- **Declarative YAML DSL**: Write tests in clean, maintainable YAML syntax
-- **Powerful Templating Engine**:
-  - `${...}` expressions: `${variable}`, `${function()}`
-  - Jinja2 templates: `{{ variable }}`, `{{ function() }}`
-  - Environment variable injection: `${ENV(VAR_NAME)}`
-- **Advanced Response Handling**:
-  - JMESPath-based extraction: `$.data.user.id`
-  - Rich assertion library: `eq`, `contains`, `regex`, `lt`, `gt`, etc.
-  - Automatic token/auth injection
-- **Test Organization**:
-  - Tag-based filtering with logical expressions
-  - Parameterized testing (enumerate, matrix, zipped)
-  - Suite-level and case-level configuration inheritance
-- **Custom Hooks System**:
-  - Setup/teardown hooks at suite, case, and step levels
-  - Request signing and authentication hooks
-  - Custom validation and data transformation
-- **Database Integration**:
-  - SQL response validation
-  - Query results stored as variables
-  - Multiple database connection support
-- **Professional Reporting**:
-  - Detailed JSON reports with full request/response logs
-  - JUnit XML for CI/CD integration
-  - Interactive HTML reports with filtering and search
-- **Security Features**:
-  - Automatic sensitive data masking
-  - Configurable secret revelation for debugging
-- **Developer Experience**:
-  - Fast execution with connection pooling
-  - Retry logic with exponential backoff
-  - Rich console output with color coding
-  - Curl command generation for debugging
+- **声明式 YAML DSL**：使用清晰、可维护的 YAML 语法编写测试
+- **强大的模板引擎**：
+  - `${...}` 表达式：`${variable}`、`${function()}`
+  - Jinja2 模板：`{{ variable }}`、`{{ function() }}`
+  - 环境变量注入：`${ENV(VAR_NAME)}`
+- **高级响应处理**：
+  - 基于 JMESPath 的提取：`$.data.user.id`
+  - 丰富的断言库：`eq`、`contains`、`regex`、`lt`、`gt` 等
+  - 自动 token/认证注入
+- **测试组织**：
+  - 基于标签的过滤，支持逻辑表达式
+  - 参数化测试（枚举、矩阵、压缩）
+  - 套件级和用例级配置继承
+- **自定义 Hooks 系统**：
+  - 套件、用例和步骤级别的 setup/teardown hooks
+  - 请求签名和认证 hooks
+  - 自定义验证和数据转换
+- **数据库集成**：
+  - SQL 响应验证
+  - 查询结果存储为变量
+  - 支持多数据库连接
+- **专业报告**：
+  - 详细的 JSON 报告，包含完整请求/响应日志
+  - JUnit XML，用于 CI/CD 集成
+  - 交互式 HTML 报告，支持过滤和搜索
+- **安全特性**：
+  - 自动敏感数据脱敏
+  - 可配置的密钥显示（用于调试）
+- **开发者体验**：
+  - 快速执行，连接池
+  - 重试逻辑，指数退避
+  - 丰富的控制台输出，带颜色编码
+  - Curl 命令生成，用于调试
 
-## Quick Start
+## 快速开始
 
-### Installation
+### 安装
 
 ```bash
-# Clone the repository
+# 克隆仓库
 git clone https://github.com/your-org/apirunner.git
 cd apirunner
 
-# Install in development mode
+# 开发模式安装
 pip install -e .
 
-# Verify installation
+# 验证安装
 arun --help
 ```
 
-### Your First Test
+### 第一个测试
 
-1. **Create environment file** (`.env`):
+1. **创建环境文件** (`.env`)：
 ```env
 BASE_URL=https://api.example.com
 USER_USERNAME=test_user
 USER_PASSWORD=test_pass
 ```
 
-2. **Write a test case** (`testcases/test_health.yaml`):
+2. **编写测试用例** (`testcases/test_health.yaml`)：
 ```yaml
 config:
-  name: Health Check
+  name: 健康检查
   base_url: ${ENV(BASE_URL)}
   tags: [smoke, health]
 
 steps:
-  - name: Check API health
+  - name: 检查 API 健康状态
     request:
       method: GET
       url: /health
@@ -108,223 +108,241 @@ steps:
       - contains: [$.data, "version"]
 ```
 
-3. **Run the test**:
+3. **运行测试**：
 ```bash
 arun run testcases/test_health.yaml --env-file .env --html reports/report.html
 ```
 
-4. **View results**:
+4. **查看结果**：
 ```
 Total: 1 Passed: 1 Failed: 0 Skipped: 0 Duration: 145.3ms
 HTML report written to reports/report.html
 ```
 
-## Installation
+## 安装
 
-### Requirements
+### 环境要求
 
-- Python 3.10 or higher
-- pip (Python package installer)
+- Python 3.10 或更高版本
+- pip（Python 包管理器）
 
-### Dependencies
+### 依赖项
 
-APIRunner has minimal dependencies:
-- `httpx` (>=0.27) - Modern HTTP client
-- `pydantic` (>=2.6) - Data validation
-- `jinja2` (>=3.1) - Template engine
-- `jmespath` (>=1.0) - JSON extraction
-- `PyYAML` (>=6.0) - YAML parsing
-- `rich` (>=13.7) - Beautiful terminal output
-- `typer` (>=0.12) - CLI framework
+APIRunner 依赖项极少：
+- `httpx` (>=0.27) - 现代 HTTP 客户端
+- `pydantic` (>=2.6) - 数据验证
+- `jinja2` (>=3.1) - 模板引擎
+- `jmespath` (>=1.0) - JSON 提取
+- `PyYAML` (>=6.0) - YAML 解析
+- `rich` (>=13.7) - 美观的终端输出
+- `typer` (>=0.12) - CLI 框架
 
-### Installation Methods
+### 安装方法
 
-**Development Installation:**
+**开发模式安装：**
 ```bash
 git clone https://github.com/your-org/apirunner.git
 cd apirunner
 pip install -e .
 ```
 
-**From Source:**
+**从源码安装：**
 ```bash
 pip install git+https://github.com/your-org/apirunner.git
 ```
 
-## Usage
+## 使用说明
 
-### Basic Commands
+### 基本命令
 
-**Run tests:**
+**运行测试：**
 ```bash
-# Run all tests in a directory
+# 运行目录中的所有测试
 arun run testcases --env-file .env
 
-# Run with tag filtering
+# 使用标签过滤
 arun run testcases -k "smoke and not slow" --env-file .env
 
-# Run with variable overrides
+# 使用变量覆盖
 arun run testcases --vars base_url=http://localhost:8000 --vars debug=true
 
-# Generate all report types
+# 生成所有类型的报告
 arun run testcases \
   --env-file .env \
   --report reports/run.json \
   --junit reports/junit.xml \
   --html reports/report.html \
   --log-level debug
+```
 
-**Notifications (optional):**
+**通知功能（可选）：**
 ```bash
-# Send Feishu notification on failure only
+# 仅在失败时发送飞书通知
 ARUN_NOTIFY_ONLY=failed FEISHU_WEBHOOK=https://open.feishu.cn/xxx \
 python -m apirunner.cli run testcases --env-file .env --notify feishu
 
-# Send email notification always (attach HTML report)
+# 始终发送邮件通知（附带 HTML 报告）
 SMTP_HOST=smtp.example.com SMTP_PORT=465 SMTP_USER=noreply@example.com \
 SMTP_PASS=app-pass MAIL_FROM=noreply@example.com MAIL_TO=qa@example.com \
 python -m apirunner.cli run testcases --env-file .env --notify email --notify-only always --notify-attach-html
 ```
-```
 
-**Validate YAML syntax:**
+环境变量说明：
+- `ARUN_NOTIFY`：默认通知渠道（如果未提供 `--notify`），例如 `feishu,email`
+- `ARUN_NOTIFY_ONLY`：通知策略，`failed`（默认）或 `always`
+- `NOTIFY_TOPN`：包含的失败用例数量（默认 5）
+
+飞书选项：
+- `FEISHU_WEBHOOK`（必需）
+- `FEISHU_SECRET`（可选）
+- `FEISHU_MENTION`（可选，逗号分隔）
+- `FEISHU_STYLE`：`text`（默认）或 `card`
+- `REPORT_URL`：HTML 报告的公开 URL（用于卡片按钮）
+
+邮件选项：
+- `SMTP_HOST`、`SMTP_PORT`、`SMTP_USER`、`SMTP_PASS`
+- `MAIL_FROM`、`MAIL_TO`
+- `NOTIFY_ATTACH_HTML`：附加 HTML 报告（true/false）
+- `NOTIFY_HTML_BODY`：发送 HTML 正文（true/false）
+
+**验证 YAML 语法：**
 ```bash
-# Check YAML files without running tests
+# 检查 YAML 文件但不运行测试
 arun check testcases
 ```
 
-**Auto-fix YAML style:**
+**自动修复 YAML 风格：**
 ```bash
-# Migrate hooks to new config-based format
+# 将 hooks 迁移到新的基于 config 的格式
 arun fix testcases
 ```
 
-**Merge reports:**
+**合并报告：**
 ```bash
-# Combine multiple JSON reports
+# 合并多个 JSON 报告
 arun report reports/run1.json reports/run2.json -o reports/merged.json
 ```
 
-### Command-Line Options
+### 命令行选项
 
-| Option | Description |
-|--------|-------------|
-| `path` | File or directory to run (required) |
-| `-k EXPR` | Tag filter expression (e.g., `"smoke and not slow"`) |
-| `--vars k=v` | Variable overrides (repeatable) |
-| `--failfast` | Stop on first failure |
-| `--report FILE` | Write JSON report |
-| `--junit FILE` | Write JUnit XML report |
-| `--html FILE` | Write HTML report |
-| `--log-level LEVEL` | Logging level (INFO, DEBUG) |
-| `--env-file FILE` | Environment file path (default: `.env`) |
-| `--log-file FILE` | Log file path (default: `logs/run-<timestamp>.log`) |
-| `--httpx-logs` | Show httpx internal logs |
-| `--mask-secrets` | Hide sensitive data in logs/reports |
+| 选项 | 描述 |
+|------|------|
+| `path` | 要运行的文件或目录（必需） |
+| `-k EXPR` | 标签过滤表达式（例如 `"smoke and not slow"`） |
+| `--vars k=v` | 变量覆盖（可重复） |
+| `--failfast` | 首次失败时停止 |
+| `--report FILE` | 写入 JSON 报告 |
+| `--junit FILE` | 写入 JUnit XML 报告 |
+| `--html FILE` | 写入 HTML 报告 |
+| `--log-level LEVEL` | 日志级别（INFO、DEBUG） |
+| `--env-file FILE` | 环境文件路径（默认：`.env`） |
+| `--log-file FILE` | 日志文件路径（默认：`logs/run-<timestamp>.log`） |
+| `--httpx-logs` | 显示 httpx 内部日志 |
+| `--mask-secrets` | 在日志/报告中隐藏敏感数据 |
 
-## Documentation
+## 使用文档
 
-### DSL Syntax Reference
+### DSL 语法参考
 
-#### Test Case Structure
+#### 测试用例结构
 
 ```yaml
 config:
-  name: Test Case Name                    # Required
-  base_url: https://api.example.com       # Optional (can use ${ENV(BASE_URL)})
-  variables:                              # Optional case-level variables
+  name: 测试用例名称                        # 必需
+  base_url: https://api.example.com       # 可选（可使用 ${ENV(BASE_URL)}）
+  variables:                              # 可选：用例级变量
     user_id: 12345
     api_key: secret
-  headers:                                # Optional default headers
+  headers:                                # 可选：默认请求头
     X-API-Version: "v1"
-  timeout: 30.0                           # Optional request timeout (seconds)
-  verify: true                            # Optional SSL verification
-  tags: [smoke, regression]               # Optional tags for filtering
-  setup_hooks:                            # Optional case setup hooks
+  timeout: 30.0                           # 可选：请求超时时间（秒）
+  verify: true                            # 可选：SSL 验证
+  tags: [smoke, regression]               # 可选：用于过滤的标签
+  setup_hooks:                            # 可选：用例 setup hooks
     - ${setup_function()}
-  teardown_hooks:                         # Optional case teardown hooks
+  teardown_hooks:                         # 可选：用例 teardown hooks
     - ${teardown_function()}
 
-parameters:                               # Optional parameterization
-  env: [dev, staging]                     # Matrix: generates 2 test instances
-  region: [us, eu]                        # Matrix: 2 x 2 = 4 instances total
+parameters:                               # 可选：参数化
+  env: [dev, staging]                     # 矩阵：生成 2 个测试实例
+  region: [us, eu]                        # 矩阵：2 x 2 = 4 个实例总计
 
 steps:
-  - name: Step Name                       # Required
-    variables:                            # Optional step-level variables
+  - name: 步骤名称                         # 必需
+    variables:                            # 可选：步骤级变量
       custom_id: abc123
 
-    request:                              # Required
-      method: POST                        # Required: GET, POST, PUT, DELETE, etc.
-      url: /api/users                     # Required: absolute or relative to base_url
-      params:                             # Optional query parameters
+    request:                              # 必需
+      method: POST                        # 必需：GET、POST、PUT、DELETE 等
+      url: /api/users                     # 必需：绝对路径或相对于 base_url
+      params:                             # 可选：查询参数
         page: 1
         limit: 10
-      headers:                            # Optional headers (merged with config)
+      headers:                            # 可选：请求头（与 config 合并）
         Content-Type: application/json
-      json:                               # Optional JSON body
+      json:                               # 可选：JSON 请求体
         username: ${ENV(USER_USERNAME)}
         email: user@example.com
-      data:                               # Optional form data
+      data:                               # 可选：表单数据
         key: value
-      files:                              # Optional file uploads
+      files:                              # 可选：文件上传
         file: /path/to/file.pdf
-      auth:                               # Optional authentication
-        type: bearer                      # bearer or basic
+      auth:                               # 可选：认证
+        type: bearer                      # bearer 或 basic
         token: ${ENV(API_TOKEN)}
-      timeout: 10.0                       # Optional request-specific timeout
-      verify: true                        # Optional SSL verification
-      allow_redirects: true               # Optional redirect handling
+      timeout: 10.0                       # 可选：请求特定的超时时间
+      verify: true                        # 可选：SSL 验证
+      allow_redirects: true               # 可选：重定向处理
 
-    extract:                              # Optional response extraction
-      user_id: $.data.user.id            # JMESPath expression ($ required)
-      token: $.data.access_token         # Stored for use in subsequent steps
+    extract:                              # 可选：响应提取
+      user_id: $.data.user.id            # JMESPath 表达式（必须以 $ 开头）
+      token: $.data.access_token         # 存储供后续步骤使用
 
-    validate:                             # Optional assertions
-      - eq: [status_code, 200]           # Status code check
-      - eq: [$.success, true]            # Response body check
-      - contains: [$.message, "success"] # Substring check
-      - regex: [$.email, ".*@.*\\.com"]  # Regex pattern
-      - lt: [$elapsed_ms, 2000]          # Response time check
+    validate:                             # 可选：断言
+      - eq: [status_code, 200]           # 状态码检查
+      - eq: [$.success, true]            # 响应体检查
+      - contains: [$.message, "success"] # 子字符串检查
+      - regex: [$.email, ".*@.*\\.com"]  # 正则表达式模式
+      - lt: [$elapsed_ms, 2000]          # 响应时间检查
 
-    sql_validate:                         # Optional SQL validation
+    sql_validate:                         # 可选：SQL 验证
       - query: "SELECT status FROM users WHERE id='$user_id'"
         expect:
           - eq: [status, "active"]
-        store:                            # Store query results as variables
+        store:                            # 将查询结果存储为变量
           db_status: status
 
-    setup_hooks:                          # Optional step setup hooks
+    setup_hooks:                          # 可选：步骤 setup hooks
       - ${sign_request($request)}
 
-    teardown_hooks:                       # Optional step teardown hooks
+    teardown_hooks:                       # 可选：步骤 teardown hooks
       - ${validate_response($response)}
 
-    skip: false                           # Optional: skip this step
-    retry: 3                              # Optional: retry count on failure
-    retry_backoff: 0.5                    # Optional: initial backoff (seconds)
+    skip: false                           # 可选：跳过此步骤
+    retry: 3                              # 可选：失败时重试次数
+    retry_backoff: 0.5                    # 可选：初始退避时间（秒）
 ```
 
-#### Suite Structure
+#### 测试套件结构
 
 ```yaml
 config:
-  name: Test Suite Name
+  name: 测试套件名称
   base_url: ${ENV(BASE_URL)}
   variables:
     suite_var: value
   tags: [integration]
-  setup_hooks:                            # Suite-level setup (runs once)
+  setup_hooks:                            # 套件级 setup（运行一次）
     - ${suite_setup()}
-  teardown_hooks:                         # Suite-level teardown (runs once)
+  teardown_hooks:                         # 套件级 teardown（运行一次）
     - ${suite_teardown()}
 
 cases:
   - config:
-      name: Case 1
+      name: 用例 1
       tags: [smoke]
     steps:
-      - name: Step 1
+      - name: 步骤 1
         request:
           method: GET
           url: /api/endpoint
@@ -332,10 +350,10 @@ cases:
           - eq: [status_code, 200]
 
   - config:
-      name: Case 2
+      name: 用例 2
       tags: [regression]
     steps:
-      - name: Step 1
+      - name: 步骤 1
         request:
           method: POST
           url: /api/endpoint
@@ -343,105 +361,105 @@ cases:
           - eq: [status_code, 201]
 ```
 
-### Templating System
+### 模板系统
 
-APIRunner supports dual templating syntax:
+APIRunner 支持双重模板语法：
 
-#### Dollar Style (Recommended)
+#### Dollar 风格（推荐）
 
 ```yaml
-# Variable reference
-url: /users/$user_id                    # Simple variable
+# 变量引用
+url: /users/$user_id                    # 简单变量
 
-# Function call
+# 函数调用
 headers:
-  X-Timestamp: ${ts()}                  # Current timestamp
-  X-Signature: ${sign($app_key, ts())} # Custom function
+  X-Timestamp: ${ts()}                  # 当前时间戳
+  X-Signature: ${sign($app_key, ts())} # 自定义函数
 
-# Environment variable
-base_url: ${ENV(BASE_URL)}              # Read from environment
+# 环境变量
+base_url: ${ENV(BASE_URL)}              # 从环境读取
 
-# Complex expression
+# 复杂表达式
 json:
-  user_id: ${int($user_id) + 1}        # Arithmetic
+  user_id: ${int($user_id) + 1}        # 算术运算
 ```
 
-#### Jinja2 Style (Alternative)
+#### Jinja2 风格（备选）
 
 ```yaml
-# Variable reference
+# 变量引用
 url: /users/{{ user_id }}
 
-# Function call
+# 函数调用
 headers:
   X-Timestamp: {{ ts() }}
   X-Signature: {{ sign(app_key, ts()) }}
 
-# Filters and logic
+# 过滤器和逻辑
 message: {{ username | upper }}
 ```
 
-**Variable Precedence** (highest to lowest):
-1. CLI overrides: `--vars key=value`
-2. Step-level: `steps[].variables`
-3. Config-level: `config.variables`
-4. Parameters: `parameters`
-5. Extracts: `steps[].extract`
-6. Environment: `${ENV(KEY)}`
+**变量优先级**（从高到低）：
+1. CLI 覆盖：`--vars key=value`
+2. 步骤级：`steps[].variables`
+3. 配置级：`config.variables`
+4. 参数：`parameters`
+5. 提取：`steps[].extract`
+6. 环境：`${ENV(KEY)}`
 
-### Assertions (Validators)
+### 断言（验证器）
 
-| Comparator | Description | Example |
-|------------|-------------|---------|
-| `eq` | Equal | `- eq: [status_code, 200]` |
-| `ne` | Not equal | `- ne: [$.error, null]` |
-| `lt` | Less than | `- lt: [$elapsed_ms, 1000]` |
-| `le` | Less than or equal | `- le: [$.price, 100]` |
-| `gt` | Greater than | `- gt: [$.count, 0]` |
-| `ge` | Greater than or equal | `- ge: [$.age, 18]` |
-| `contains` | Contains substring/element | `- contains: [$.message, "success"]` |
-| `not_contains` | Does not contain | `- not_contains: [$.errors, "fatal"]` |
-| `regex` | Regex match | `- regex: [$.email, ".*@example\\.com"]` |
-| `len_eq` | Length equals | `- len_eq: [$.items, 10]` |
-| `in` | Element in collection | `- in: ["admin", $.roles]` |
-| `not_in` | Element not in collection | `- not_in: ["banned", $.statuses]` |
+| 比较器 | 描述 | 示例 |
+|--------|------|------|
+| `eq` | 等于 | `- eq: [status_code, 200]` |
+| `ne` | 不等于 | `- ne: [$.error, null]` |
+| `lt` | 小于 | `- lt: [$elapsed_ms, 1000]` |
+| `le` | 小于或等于 | `- le: [$.price, 100]` |
+| `gt` | 大于 | `- gt: [$.count, 0]` |
+| `ge` | 大于或等于 | `- ge: [$.age, 18]` |
+| `contains` | 包含子字符串/元素 | `- contains: [$.message, "success"]` |
+| `not_contains` | 不包含 | `- not_contains: [$.errors, "fatal"]` |
+| `regex` | 正则匹配 | `- regex: [$.email, ".*@example\\.com"]` |
+| `len_eq` | 长度等于 | `- len_eq: [$.items, 10]` |
+| `in` | 元素在集合中 | `- in: ["admin", $.roles]` |
+| `not_in` | 元素不在集合中 | `- not_in: ["banned", $.statuses]` |
 
-**Check Targets:**
-- `status_code` - HTTP status code
-- `headers.Header-Name` - Response header (case-insensitive)
-- `$.path.to.field` - JSON body field (JMESPath)
-- `$[0].id` - Array element
-- `$elapsed_ms` - Response time in milliseconds
+**检查目标：**
+- `status_code` - HTTP 状态码
+- `headers.Header-Name` - 响应头（不区分大小写）
+- `$.path.to.field` - JSON 响应体字段（JMESPath）
+- `$[0].id` - 数组元素
+- `$elapsed_ms` - 响应时间（毫秒）
 
-### Extraction (JMESPath)
+### 提取（JMESPath）
 
-Extract data from responses to use in subsequent steps:
+从响应中提取数据供后续步骤使用：
 
 ```yaml
 extract:
-  # Extract single field
+  # 提取单个字段
   user_id: $.data.user.id
 
-  # Extract from array
+  # 从数组提取
   first_item: $[0].name
 
-  # Extract nested field
+  # 提取嵌套字段
   access_token: $.data.auth.access_token
 
-  # Extract header
+  # 提取响应头
   rate_limit: $headers.X-RateLimit-Remaining
 
-  # Extract status code
+  # 提取状态码
   status: $status_code
 ```
 
-Extracted variables are automatically available in all subsequent steps.
+提取的变量自动在所有后续步骤中可用。
 
-### Parameterization
+### 参数化
 
-Run the same test with multiple input combinations:
+使用多个输入组合运行相同的测试：
 
-#### Enumerate (List of Dicts)
+#### 枚举（字典列表）
 
 ```yaml
 parameters:
@@ -449,20 +467,20 @@ parameters:
   - {username: bob, role: user}
   - {username: charlie, role: guest}
 
-# Generates 3 test instances
+# 生成 3 个测试实例
 ```
 
-#### Matrix (Cartesian Product)
+#### 矩阵（笛卡尔积）
 
 ```yaml
 parameters:
   env: [dev, staging, prod]
   region: [us, eu, asia]
 
-# Generates 3 × 3 = 9 test instances
+# 生成 3 × 3 = 9 个测试实例
 ```
 
-#### Zipped (Parallel Arrays)
+#### 压缩（并行数组）
 
 ```yaml
 parameters:
@@ -471,22 +489,22 @@ parameters:
       - [bob, secret456]
       - [charlie, pwd789]
 
-# Generates 3 test instances with paired values
+# 生成 3 个测试实例，值成对出现
 ```
 
-### Hooks System
+### Hooks 系统
 
-Hooks are Python functions that run at specific points in the test lifecycle.
+Hooks 是在测试生命周期特定点运行的 Python 函数。
 
-#### Hook Types
+#### Hook 类型
 
-1. **Suite Hooks** (in `config.setup_hooks` / `config.teardown_hooks`)
-2. **Case Hooks** (in `config.setup_hooks` / `config.teardown_hooks`)
-3. **Step Hooks** (in `steps[].setup_hooks` / `steps[].teardown_hooks`)
+1. **套件 Hooks**（在 `config.setup_hooks` / `config.teardown_hooks` 中）
+2. **用例 Hooks**（在 `config.setup_hooks` / `config.teardown_hooks` 中）
+3. **步骤 Hooks**（在 `steps[].setup_hooks` / `steps[].teardown_hooks` 中）
 
-#### Creating Custom Hooks
+#### 创建自定义 Hooks
 
-Create `arun_hooks.py` in your project root:
+在项目根目录创建 `arun_hooks.py`：
 
 ```python
 import time
@@ -494,72 +512,72 @@ import hashlib
 import hmac
 
 def ts() -> int:
-    """Return current Unix timestamp"""
+    """返回当前 Unix 时间戳"""
     return int(time.time())
 
 def md5(s: str) -> str:
-    """Calculate MD5 hash"""
+    """计算 MD5 哈希"""
     return hashlib.md5(s.encode()).hexdigest()
 
 def setup_hook_sign_request(request: dict, variables: dict, env: dict) -> dict:
     """
-    Setup hook: sign the request with HMAC-SHA256
+    Setup hook：使用 HMAC-SHA256 签名请求
 
     Args:
-        request: Request dict (mutable, modify in-place)
-        variables: Current variables dict
-        env: Environment variables dict
+        request: 请求字典（可变，可原地修改）
+        variables: 当前变量字典
+        env: 环境变量字典
 
     Returns:
-        Dict of new variables to inject (or None)
+        要注入的新变量字典（或 None）
     """
     secret = env.get('APP_SECRET', '').encode()
     method = request.get('method', 'GET')
     url = request.get('url', '')
     timestamp = str(ts())
 
-    # Calculate signature
+    # 计算签名
     raw = f"{method}|{url}|{timestamp}".encode()
     sig = hmac.new(secret, raw, hashlib.sha256).hexdigest()
 
-    # Modify request headers
+    # 修改请求头
     headers = request.setdefault('headers', {})
     headers['X-Timestamp'] = timestamp
     headers['X-Signature'] = sig
 
-    # Return new variables
+    # 返回新变量
     return {'last_signature': sig, 'last_timestamp': timestamp}
 
 def teardown_hook_assert_status_ok(response: dict, variables: dict, env: dict) -> None:
     """
-    Teardown hook: verify response status is 200
+    Teardown hook：验证响应状态为 200
 
     Args:
-        response: Response dict with status_code, headers, body, etc.
-        variables: Current variables dict
-        env: Environment variables dict
+        response: 响应字典，包含 status_code、headers、body 等
+        variables: 当前变量字典
+        env: 环境变量字典
 
     Returns:
-        None (or dict of new variables)
+        None（或新变量字典）
 
     Raises:
-        AssertionError: If status code is not 200
+        AssertionError: 如果状态码不是 200
     """
     if response.get('status_code') != 200:
         raise AssertionError(f"Expected 200, got {response.get('status_code')}")
 ```
 
-#### Using Hooks in YAML
+#### 在 YAML 中使用 Hooks
 
 ```yaml
 config:
-  name: Signed Request Test
+  name: 签名请求测试
   base_url: ${ENV(BASE_URL)}
   setup_hooks:
     - ${setup_hook_sign_request($request)}
 
 steps:
-  - name: Make signed request
+  - name: 发起签名请求
     setup_hooks:
       - ${setup_hook_sign_request($request)}
     request:
@@ -571,26 +589,26 @@ steps:
       - eq: [status_code, 200]
 ```
 
-**Hook Context Variables:**
-- `$request` / `$step_request` - Request dict
-- `$response` / `$step_response` - Response dict
-- `$step_name` - Current step name
-- `$step_variables` - Step-level variables
-- `$session_variables` - All session variables
-- `$session_env` - Environment variables
+**Hook 上下文变量：**
+- `$request` / `$step_request` - 请求字典
+- `$response` / `$step_response` - 响应字典
+- `$step_name` - 当前步骤名称
+- `$step_variables` - 步骤级变量
+- `$session_variables` - 所有会话变量
+- `$session_env` - 环境变量
 
-### SQL Validation
+### SQL 验证
 
-Validate API responses against database state:
+根据数据库状态验证 API 响应：
 
-#### Setup
+#### 设置
 
-Install a database driver:
+安装数据库驱动：
 ```bash
-pip install pymysql  # For MySQL/MariaDB
+pip install pymysql  # 用于 MySQL/MariaDB
 ```
 
-Configure connection in `.env`:
+在 `.env` 中配置连接：
 ```env
 MYSQL_HOST=localhost
 MYSQL_PORT=3306
@@ -598,15 +616,15 @@ MYSQL_USER=test_user
 MYSQL_PASSWORD=test_pass
 MYSQL_DB=test_db
 
-# Or use DSN
+# 或使用 DSN
 MYSQL_DSN=mysql://user:pass@localhost:3306/test_db
 ```
 
-#### Usage
+#### 使用
 
 ```yaml
 steps:
-  - name: Create order
+  - name: 创建订单
     request:
       method: POST
       url: /api/orders
@@ -617,72 +635,72 @@ steps:
       order_id: $.data.order_id
 
     sql_validate:
-      # Query 1: Verify order status
+      # 查询 1：验证订单状态
       - query: "SELECT status, total FROM orders WHERE id='$order_id'"
         expect:
           - eq: [status, "pending"]
           - gt: [total, 0]
-        store:                         # Store results as variables
+        store:                         # 将结果存储为变量
           db_status: status
           db_total: total
 
-      # Query 2: Verify order items
+      # 查询 2：验证订单项
       - query: "SELECT COUNT(*) AS cnt FROM order_items WHERE order_id='$order_id'"
         expect:
           - ge: [cnt, 1]
-        allow_empty: false             # Fail if query returns no rows
+        allow_empty: false             # 如果查询返回无行则失败
 
-      # Query 3: Override DSN for different database
+      # 查询 3：覆盖 DSN 用于不同数据库
       - query: "SELECT audit_log FROM audit_db.logs WHERE order_id='$order_id'"
         dsn: mysql://user:pass@audit-host:3306/audit_db
         expect:
           - contains: [audit_log, "order_created"]
 ```
 
-**SQL Validation Options:**
-- `query` - SQL query (required, supports variable interpolation)
-- `expect` - Assertions on query results (optional)
-- `store` - Store column values as variables (optional)
-- `allow_empty` / `optional` - Allow empty result set (default: false)
-- `dsn` - Override database connection (optional)
+**SQL 验证选项：**
+- `query` - SQL 查询（必需，支持变量插值）
+- `expect` - 对查询结果的断言（可选）
+- `store` - 将列值存储为变量（可选）
+- `allow_empty` / `optional` - 允许空结果集（默认：false）
+- `dsn` - 覆盖数据库连接（可选）
 
-### Tag Filtering
+### 标签过滤
 
-Filter test execution using logical tag expressions:
+使用逻辑标签表达式过滤测试执行：
 
 ```bash
-# Run tests with 'smoke' tag
+# 运行带有 'smoke' 标签的测试
 arun run testcases -k "smoke"
 
-# Run tests with both 'smoke' AND 'regression' tags
+# 运行同时带有 'smoke' 和 'regression' 标签的测试
 arun run testcases -k "smoke and regression"
 
-# Run tests with either 'smoke' OR 'p0' tags
+# 运行带有 'smoke' 或 'p0' 标签的测试
 arun run testcases -k "smoke or p0"
 
-# Run all tests EXCEPT 'slow' ones
+# 运行除 'slow' 之外的所有测试
 arun run testcases -k "not slow"
 
-# Complex expression
+# 复杂表达式
 arun run testcases -k "(smoke or regression) and not slow and not flaky"
 ```
 
-**Tag Expression Syntax:**
-- `and` - Logical AND (higher precedence)
-- `or` - Logical OR
-- `not` - Logical NOT
-- `( )` - Grouping (left-to-right evaluation)
-- Case-insensitive matching
+**标签表达式语法：**
+- `and` - 逻辑与（优先级更高）
+- `or` - 逻辑或
+- `not` - 逻辑非
+- `( )` - 分组（从左到右求值）
+- 不区分大小写匹配
 
-### Auto-Injection Features
+### 自动注入功能
 
-#### Bearer Token Auto-Injection
+#### Bearer Token 自动注入
 
-When a variable named `token` is extracted, APIRunner automatically injects `Authorization: Bearer {token}` header in subsequent requests (unless explicitly overridden):
+当提取名为 `token` 的变量时，APIRunner 会在后续请求中自动注入 `Authorization: Bearer {token}` 头（除非显式覆盖）：
 
 ```yaml
 steps:
-  - name: Login
+  - name: 登录
     request:
       method: POST
       url: /api/auth/login
@@ -690,156 +708,156 @@ steps:
         username: ${ENV(USER_USERNAME)}
         password: ${ENV(USER_PASSWORD)}
     extract:
-      token: $.data.access_token        # Extract token
+      token: $.data.access_token        # 提取 token
     validate:
       - eq: [status_code, 200]
 
-  - name: Get user profile
+  - name: 获取用户资料
     request:
       method: GET
       url: /api/users/me
-      # No need to manually set Authorization header!
-      # APIRunner automatically adds: Authorization: Bearer {token}
+      # 无需手动设置 Authorization 头！
+      # APIRunner 自动添加：Authorization: Bearer {token}
     validate:
       - eq: [status_code, 200]
 ```
 
-### Retry and Backoff
+### 重试和退避
 
-Configure automatic retry for flaky endpoints:
+为不稳定的端点配置自动重试：
 
 ```yaml
 steps:
-  - name: Flaky endpoint
+  - name: 不稳定的端点
     request:
       method: GET
       url: /api/sometimes-fails
-    retry: 3                            # Retry up to 3 times
-    retry_backoff: 0.5                  # Initial backoff: 0.5s
-                                        # Exponential: 0.5s, 1.0s, 2.0s (max)
+    retry: 3                            # 最多重试 3 次
+    retry_backoff: 0.5                  # 初始退避：0.5 秒
+                                        # 指数退避：0.5s、1.0s、2.0s（最大值）
     validate:
       - eq: [status_code, 200]
 ```
 
-## Architecture
+## 架构
 
-### Project Structure
+### 项目结构
 
 ```
 apirunner/
-├── apirunner/              # Core package
-│   ├── cli.py             # CLI entry point
-│   ├── engine/            # HTTP client
+├── apirunner/              # 核心包
+│   ├── cli.py             # CLI 入口点
+│   ├── engine/            # HTTP 客户端
 │   │   └── http.py
-│   ├── loader/            # YAML parsing & discovery
-│   │   ├── collector.py   # Test file discovery
-│   │   ├── yaml_loader.py # YAML parsing
-│   │   ├── hooks.py       # Hook loading
-│   │   └── env.py         # Environment loading
-│   ├── runner/            # Test execution
-│   │   ├── runner.py      # Main runner
-│   │   ├── assertions.py  # Assertion logic
-│   │   └── extractors.py  # JMESPath extraction
-│   ├── templating/        # Template engine
-│   │   ├── engine.py      # Dual-syntax rendering
-│   │   ├── context.py     # Variable scoping
-│   │   └── builtins.py    # Built-in functions
-│   ├── models/            # Pydantic models
-│   │   ├── case.py        # Case & Suite models
-│   │   ├── step.py        # Step model
-│   │   ├── config.py      # Config model
-│   │   └── report.py      # Report models
-│   ├── reporter/          # Report generation
+│   ├── loader/            # YAML 解析和发现
+│   │   ├── collector.py   # 测试文件发现
+│   │   ├── yaml_loader.py # YAML 解析
+│   │   ├── hooks.py       # Hook 加载
+│   │   └── env.py         # 环境加载
+│   ├── runner/            # 测试执行
+│   │   ├── runner.py      # 主运行器
+│   │   ├── assertions.py  # 断言逻辑
+│   │   └── extractors.py  # JMESPath 提取
+│   ├── templating/        # 模板引擎
+│   │   ├── engine.py      # 双语法渲染
+│   │   ├── context.py     # 变量作用域
+│   │   └── builtins.py    # 内置函数
+│   ├── models/            # Pydantic 模型
+│   │   ├── case.py        # Case 和 Suite 模型
+│   │   ├── step.py        # Step 模型
+│   │   ├── config.py      # Config 模型
+│   │   └── report.py      # Report 模型
+│   ├── reporter/          # 报告生成
 │   │   ├── json_reporter.py
 │   │   ├── junit_reporter.py
 │   │   ├── html_reporter.py
 │   │   └── merge.py
-│   ├── db/                # Database support
+│   ├── db/                # 数据库支持
 │   │   └── sql_validate.py
-│   └── utils/             # Utilities
-│       ├── logging.py     # Rich logging
-│       ├── mask.py        # Secret masking
-│       └── curl.py        # Curl generation
-├── testcases/             # Test case files
-├── testsuites/            # Test suite files
-├── examples/              # Example tests
-├── arun_hooks.py          # Custom hook functions
-├── .env                   # Environment variables
-└── reports/               # Generated reports
+│   └── utils/             # 工具
+│       ├── logging.py     # Rich 日志
+│       ├── mask.py        # 秘密脱敏
+│       └── curl.py        # Curl 生成
+├── testcases/             # 测试用例文件
+├── testsuites/            # 测试套件文件
+├── examples/              # 示例测试
+├── arun_hooks.py          # 自定义 hook 函数
+├── .env                   # 环境变量
+└── reports/               # 生成的报告
 ```
 
-### Execution Flow
+### 执行流程
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ 1. CLI (cli.py)                                             │
-│    ├─ Parse arguments                                       │
-│    ├─ Load environment (.env, --env-file, --vars)          │
-│    └─ Discover test files (collector.py)                   │
+│    ├─ 解析参数                                              │
+│    ├─ 加载环境（.env、--env-file、--vars）                 │
+│    └─ 发现测试文件（collector.py）                         │
 └────────────────────┬────────────────────────────────────────┘
                      ▼
 ┌─────────────────────────────────────────────────────────────┐
 │ 2. Loader (loader/)                                         │
-│    ├─ Parse YAML (yaml_loader.py)                          │
-│    ├─ Validate models (models/)                            │
-│    ├─ Expand parameters (enumerate/matrix/zipped)          │
-│    ├─ Load custom hooks (hooks.py → arun_hooks.py)         │
-│    └─ Apply tag filters                                    │
+│    ├─ 解析 YAML（yaml_loader.py）                          │
+│    ├─ 验证模型（models/）                                  │
+│    ├─ 展开参数（枚举/矩阵/压缩）                           │
+│    ├─ 加载自定义 hooks（hooks.py → arun_hooks.py）         │
+│    └─ 应用标签过滤                                         │
 └────────────────────┬────────────────────────────────────────┘
                      ▼
 ┌─────────────────────────────────────────────────────────────┐
 │ 3. Runner (runner/runner.py)                               │
-│    ├─ Initialize VarContext (variable scoping)             │
-│    ├─ Execute suite/case setup hooks                       │
+│    ├─ 初始化 VarContext（变量作用域）                      │
+│    ├─ 执行套件/用例 setup hooks                            │
 │    │                                                        │
-│    └─ For each step:                                       │
-│        ├─ Push step variables to context                   │
-│        ├─ Render templates (templating/engine.py)          │
-│        ├─ Execute setup hooks                              │
-│        ├─ Send HTTP request (engine/http.py)               │
-│        ├─ Extract variables (extractors.py)                │
-│        ├─ Run assertions (assertions.py)                   │
-│        ├─ Execute SQL validations (db/sql_validate.py)     │
-│        ├─ Execute teardown hooks                           │
-│        └─ Pop step context                                 │
+│    └─ 对每个步骤：                                         │
+│        ├─ 将步骤变量推入上下文                             │
+│        ├─ 渲染模板（templating/engine.py）                 │
+│        ├─ 执行 setup hooks                                 │
+│        ├─ 发送 HTTP 请求（engine/http.py）                 │
+│        ├─ 提取变量（extractors.py）                        │
+│        ├─ 运行断言（assertions.py）                        │
+│        ├─ 执行 SQL 验证（db/sql_validate.py）              │
+│        ├─ 执行 teardown hooks                              │
+│        └─ 弹出步骤上下文                                   │
 │                                                             │
-│    ├─ Execute suite/case teardown hooks                    │
-│    └─ Build case result                                    │
+│    ├─ 执行套件/用例 teardown hooks                         │
+│    └─ 构建用例结果                                         │
 └────────────────────┬────────────────────────────────────────┘
                      ▼
 ┌─────────────────────────────────────────────────────────────┐
 │ 4. Reporters (reporter/)                                    │
-│    ├─ Aggregate results                                    │
-│    ├─ Generate JSON report (json_reporter.py)              │
-│    ├─ Generate JUnit XML (junit_reporter.py)               │
-│    ├─ Generate HTML report (html_reporter.py)              │
-│    └─ Write logs (utils/logging.py)                        │
+│    ├─ 聚合结果                                             │
+│    ├─ 生成 JSON 报告（json_reporter.py）                   │
+│    ├─ 生成 JUnit XML（junit_reporter.py）                  │
+│    ├─ 生成 HTML 报告（html_reporter.py）                   │
+│    └─ 写入日志（utils/logging.py）                         │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Key Design Decisions
+### 关键设计决策
 
-1. **Dual Templating**: Support both `${...}` and Jinja2 (`{{ ... }}`) for flexibility and migration paths
-2. **Immutable Scoping**: Variable contexts use a stack-based approach for clean isolation between steps
-3. **Type Preservation**: Single-token templates (`${var}`) preserve native types (int, bool, etc.) instead of stringifying
-4. **Hook Signatures**: Flexible hook signatures allow functions to declare only needed parameters
-5. **Fail-Fast Option**: `--failfast` stops execution on first failure for rapid feedback
-6. **Secret Masking**: Automatic masking of sensitive fields (configurable with `--reveal-secrets`)
+1. **双重模板**：同时支持 `${...}` 和 Jinja2 (`{{ ... }}`)，提供灵活性和迁移路径
+2. **不可变作用域**：变量上下文使用基于堆栈的方法，在步骤之间实现干净隔离
+3. **类型保留**：单 token 模板 (`${var}`) 保留原生类型（int、bool 等），而不是字符串化
+4. **Hook 签名**：灵活的 hook 签名允许函数仅声明所需的参数
+5. **快速失败选项**：`--failfast` 在首次失败时停止执行，以获得快速反馈
+6. **秘密脱敏**：自动脱敏敏感字段（可使用 `--reveal-secrets` 配置）
 
-## Examples
+## 示例
 
-### Example 1: Login Flow with Token Auto-Injection
+### 示例 1：登录流程与 Token 自动注入
 
 ```yaml
 config:
-  name: Login and Access Protected Resource
+  name: 登录并访问受保护资源
   base_url: ${ENV(BASE_URL)}
   variables:
     username: ${ENV(USER_USERNAME)}
     password: ${ENV(USER_PASSWORD)}
 
 steps:
-  - name: User login
+  - name: 用户登录
     request:
       method: POST
       url: /api/v1/auth/login
@@ -854,21 +872,21 @@ steps:
       - eq: [$.success, true]
       - eq: [$.message, "登录成功"]
 
-  - name: Get user profile
+  - name: 获取用户资料
     request:
       method: GET
       url: /api/v1/users/me
-      # Authorization: Bearer {token} automatically injected
+      # Authorization: Bearer {token} 自动注入
     validate:
       - eq: [status_code, 200]
       - eq: [$.data.user.id, var:user_id]
 ```
 
-### Example 2: Parameterized Testing
+### 示例 2：参数化测试
 
 ```yaml
 config:
-  name: Multi-Environment Health Check
+  name: 多环境健康检查
   tags: [smoke, health]
 
 parameters:
@@ -876,7 +894,7 @@ parameters:
   region: [us, eu]
 
 steps:
-  - name: Check health endpoint
+  - name: 检查健康端点
     variables:
       base_url: https://${env}-${region}.example.com
     request:
@@ -888,9 +906,9 @@ steps:
       - contains: [$.data.region, $region]
 ```
 
-### Example 3: Request Signing with Hooks
+### 示例 3：使用 Hooks 进行请求签名
 
-**arun_hooks.py:**
+**arun_hooks.py：**
 ```python
 import time
 import hmac
@@ -912,14 +930,14 @@ def setup_hook_hmac_sign(request: dict, variables: dict, env: dict) -> dict:
     return {'last_signature': signature}
 ```
 
-**test_signed_request.yaml:**
+**test_signed_request.yaml：**
 ```yaml
 config:
-  name: Signed API Request
+  name: 签名 API 请求
   base_url: ${ENV(BASE_URL)}
 
 steps:
-  - name: Make signed request
+  - name: 发起签名请求
     setup_hooks:
       - ${setup_hook_hmac_sign($request)}
     request:
@@ -930,22 +948,22 @@ steps:
       - eq: [$.authenticated, true]
 ```
 
-### Example 4: SQL Validation
+### 示例 4：SQL 验证
 
 ```yaml
 config:
-  name: Order Creation with Database Verification
+  name: 订单创建与数据库验证
   base_url: ${ENV(BASE_URL)}
 
 steps:
-  - name: Create order
+  - name: 创建订单
     request:
       method: POST
       url: /api/orders
       json:
         product_id: "PROD-001"
         quantity: 5
-        shipping_address: "123 Main St, City, 12345"
+        shipping_address: "上海市黄浦区XX路123号"
     extract:
       order_id: $.data.order_id
       total_price: $.data.total_price
@@ -973,11 +991,11 @@ steps:
           - ge: [item_count, 1]
 ```
 
-### Example 5: Test Suite with Inheritance
+### 示例 5：带继承的测试套件
 
 ```yaml
 config:
-  name: User Management Test Suite
+  name: 用户管理测试套件
   base_url: ${ENV(BASE_URL)}
   variables:
     api_version: v1
@@ -991,10 +1009,10 @@ config:
 
 cases:
   - config:
-      name: User Registration
+      name: 用户注册
       tags: [registration]
     steps:
-      - name: Register new user
+      - name: 注册新用户
         request:
           method: POST
           url: /api/$api_version/users/register
@@ -1009,10 +1027,10 @@ cases:
           - eq: [$.success, true]
 
   - config:
-      name: User Login
+      name: 用户登录
       tags: [auth]
     steps:
-      - name: Login with credentials
+      - name: 使用凭据登录
         request:
           method: POST
           url: /api/$api_version/auth/login
@@ -1026,85 +1044,85 @@ cases:
           - eq: [$.success, true]
 ```
 
-### More Examples
+### 更多示例
 
-Check the `examples/` directory for additional examples:
-- `test_params_matrix.yaml` - Matrix parameterization
-- `test_params_enumerate.yaml` - Enumeration parameterization
-- `test_assertions_showcase.yaml` - All assertion types
-- `test_perf_timing.yaml` - Performance assertions
-- `test_skip_and_retry.yaml` - Skip and retry logic
-- `test_negative_auth.yaml` - Negative test cases
-- `suite_hooks.yaml` - Suite-level hooks
-- And many more...
+查看 `examples/` 目录获取更多示例：
+- `test_params_matrix.yaml` - 矩阵参数化
+- `test_params_enumerate.yaml` - 枚举参数化
+- `test_assertions_showcase.yaml` - 所有断言类型
+- `test_perf_timing.yaml` - 性能断言
+- `test_skip_and_retry.yaml` - 跳过和重试逻辑
+- `test_negative_auth.yaml` - 负面测试用例
+- `suite_hooks.yaml` - 套件级 hooks
+- 以及更多...
 
-Run all examples:
+运行所有示例：
 ```bash
 arun run examples --env-file .env --html reports/examples.html
 ```
 
-## Environment Configuration
+## 环境配置
 
-### Environment File Format
+### 环境文件格式
 
-**.env (KEY=VALUE format):**
+**.env（KEY=VALUE 格式）：**
 ```env
-# API Configuration
+# API 配置
 BASE_URL=https://api.example.com
 API_VERSION=v1
 
-# Authentication
+# 认证
 USER_USERNAME=test_user
 USER_PASSWORD=test_password
 API_KEY=your-api-key-here
 APP_SECRET=your-hmac-secret
 
-# Database (for SQL validation)
+# 数据库（用于 SQL 验证）
 MYSQL_HOST=localhost
 MYSQL_PORT=3306
 MYSQL_USER=db_user
 MYSQL_PASSWORD=db_password
 MYSQL_DB=test_database
 
-# Or use DSN
+# 或使用 DSN
 MYSQL_DSN=mysql://user:pass@localhost:3306/test_db
 
-# Feature Flags
+# 功能标志
 ENABLE_RETRY=true
 MAX_RETRY_COUNT=3
 ```
 
-**Environment variables in YAML:**
+**YAML 中的环境变量：**
 ```yaml
 config:
-  base_url: ${ENV(BASE_URL)}      # Read from environment
+  base_url: ${ENV(BASE_URL)}      # 从环境读取
   variables:
-    api_key: ${ENV(API_KEY)}      # Inject into variables
-    version: ${ENV(API_VERSION, v1)}  # With default value
+    api_key: ${ENV(API_KEY)}      # 注入到变量中
+    version: ${ENV(API_VERSION, v1)}  # 带默认值
 ```
 
-### Variable Precedence
+### 变量优先级
 
-When the same variable is defined in multiple places:
+当同一变量在多个地方定义时：
 
-1. **CLI overrides** (`--vars key=value`) - Highest priority
-2. **Step variables** (`steps[].variables`)
-3. **Config variables** (`config.variables`)
-4. **Parameters** (`parameters`)
-5. **Extracted variables** (`steps[].extract`)
-6. **Environment** (`${ENV(KEY)}`) - Lowest priority
+1. **CLI 覆盖** (`--vars key=value`) - 最高优先级
+2. **步骤变量** (`steps[].variables`)
+3. **配置变量** (`config.variables`)
+4. **参数** (`parameters`)
+5. **提取的变量** (`steps[].extract`)
+6. **环境** (`${ENV(KEY)}`) - 最低优先级
 
-## Reporting
+## 报告
 
-### JSON Report
+### JSON 报告
 
-Structured JSON output with full request/response details:
+结构化 JSON 输出，包含完整的请求/响应详情：
 
 ```bash
 arun run testcases --report reports/run.json
 ```
 
-**Example output:**
+**示例输出：**
 ```json
 {
   "summary": {
@@ -1116,13 +1134,13 @@ arun run testcases --report reports/run.json
   },
   "cases": [
     {
-      "name": "Health Check",
+      "name": "健康检查",
       "status": "passed",
       "duration_ms": 145.3,
       "parameters": {},
       "steps": [
         {
-          "name": "Check API health",
+          "name": "检查 API 健康状态",
           "status": "passed",
           "request": {
             "method": "GET",
@@ -1151,126 +1169,126 @@ arun run testcases --report reports/run.json
 }
 ```
 
-### JUnit XML Report
+### JUnit XML 报告
 
-CI/CD-compatible XML output:
+CI/CD 兼容的 XML 输出：
 
 ```bash
 arun run testcases --junit reports/junit.xml
 ```
 
-Integrates with:
+集成平台：
 - Jenkins
 - GitLab CI
 - GitHub Actions
 - CircleCI
 - Azure DevOps
 
-### HTML Report
+### HTML 报告
 
-Interactive HTML report with search and filtering:
+带搜索和过滤的交互式 HTML 报告：
 
 ```bash
 arun run testcases --html reports/report.html
 ```
 
-Features:
-- Summary dashboard with pass/fail statistics
-- Expandable test case details
-- Request/response inspection
-- Assertion results with diff view
-- Search and filter capabilities
-- Responsive design
+功能：
+- 带通过/失败统计的摘要仪表板
+- 可展开的测试用例详情
+- 请求/响应检查
+- 带差异视图的断言结果
+- 搜索和过滤功能
+- 响应式设计
 
-### Report Merging
+### 报告合并
 
-Combine multiple test runs:
+合并多个测试运行：
 
 ```bash
-# Run tests in parallel jobs
+# 并行任务运行测试
 arun run testcases/smoke --report reports/smoke.json
 arun run testcases/regression --report reports/regression.json
 
-# Merge reports
+# 合并报告
 arun report reports/smoke.json reports/regression.json -o reports/merged.json
 ```
 
-## Advanced Topics
+## 高级主题
 
-### Test File Discovery
+### 测试文件发现
 
-APIRunner discovers test files using these rules:
+APIRunner 使用以下规则发现测试文件：
 
-1. **Directory-based**: Files in `testcases/` or `testsuites/` directories
-2. **Name-based**: Files matching `test_*.yaml` (cases) or `suite_*.yaml` (suites)
+1. **基于目录**：位于 `testcases/` 或 `testsuites/` 目录中的文件
+2. **基于名称**：匹配 `test_*.yaml`（用例）或 `suite_*.yaml`（套件）的文件
 
-**Custom hooks file discovery:**
-- Search upward from test file for `arun_hooks.py`
-- Configurable via `ARUN_HOOKS_FILE` environment variable
+**自定义 hooks 文件发现：**
+- 从测试文件向上搜索 `arun_hooks.py`
+- 可通过 `ARUN_HOOKS_FILE` 环境变量配置
 
 ```bash
-# Use custom hooks file
+# 使用自定义 hooks 文件
 ARUN_HOOKS_FILE=custom_hooks.py arun run testcases
 ```
 
-### Sensitive Data Handling
+### 敏感数据处理
 
-**Automatic masking** (default):
+**自动脱敏**（默认）：
 ```bash
-arun run testcases --env-file .env  # Secrets masked in logs/reports
+arun run testcases --env-file .env  # 日志/报告中脱敏密钥
 ```
 
-**Reveal secrets for debugging:**
+**为调试显示密钥：**
 ```bash
 arun run testcases --env-file .env --reveal-secrets
 ```
 
-Masked fields:
-- `Authorization` header
-- `password` fields
-- `*token*` fields (access_token, refresh_token, etc.)
-- `*secret*` fields
-- `*key*` fields (api_key, etc.)
+脱敏字段：
+- `Authorization` 头
+- `password` 字段
+- `*token*` 字段（access_token、refresh_token 等）
+- `*secret*` 字段
+- `*key*` 字段（api_key 等）
 
-### Performance Testing
+### 性能测试
 
-Assert on response times:
+对响应时间进行断言：
 
 ```yaml
 steps:
-  - name: Performance-critical endpoint
+  - name: 性能关键端点
     request:
       method: GET
       url: /api/data
     validate:
       - eq: [status_code, 200]
-      - lt: [$elapsed_ms, 500]    # Must respond in < 500ms
+      - lt: [$elapsed_ms, 500]    # 必须在 500ms 内响应
 ```
 
-### Debugging
+### 调试
 
-**Enable debug logging:**
+**启用调试日志：**
 ```bash
 arun run testcases --log-level debug --log-file debug.log
 ```
 
-**Show httpx internal logs:**
+**显示 httpx 内部日志：**
 ```bash
 arun run testcases --httpx-logs
 ```
 
-**Generate curl commands:**
-Debug logs automatically include curl equivalents for all requests:
+**生成 curl 命令：**
+调试日志自动包含所有请求的 curl 等效命令：
 ```
 [DEBUG] cURL: curl -X POST 'https://api.example.com/login' -H 'Content-Type: application/json' -d '{"username":"test","password":"***"}'
 ```
 
-## CI/CD Integration
+## CI/CD 集成
 
 ### GitHub Actions
 
 ```yaml
-name: API Tests
+name: API 测试
 
 on: [push, pull_request]
 
@@ -1280,16 +1298,16 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Set up Python
+      - name: 设置 Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
 
-      - name: Install dependencies
+      - name: 安装依赖
         run: |
           pip install -e .
 
-      - name: Run API tests
+      - name: 运行 API 测试
         env:
           BASE_URL: ${{ secrets.API_BASE_URL }}
           USER_USERNAME: ${{ secrets.TEST_USERNAME }}
@@ -1300,13 +1318,13 @@ jobs:
             --html reports/report.html \
             --mask-secrets
 
-      - name: Publish test results
+      - name: 发布测试结果
         uses: EnricoMi/publish-unit-test-result-action@v2
         if: always()
         with:
           files: reports/junit.xml
 
-      - name: Upload HTML report
+      - name: 上传 HTML 报告
         uses: actions/upload-artifact@v3
         if: always()
         with:
@@ -1357,13 +1375,13 @@ pipeline {
     }
 
     stages {
-        stage('Setup') {
+        stage('设置') {
             steps {
                 sh 'pip install -e .'
             }
         }
 
-        stage('Test') {
+        stage('测试') {
             steps {
                 sh '''
                     arun run testcases \
@@ -1381,43 +1399,43 @@ pipeline {
             publishHTML([
                 reportDir: 'reports',
                 reportFiles: 'report.html',
-                reportName: 'API Test Report'
+                reportName: 'API 测试报告'
             ])
         }
     }
 }
 ```
 
-## Development
+## 开发
 
-### Setting Up Development Environment
+### 设置开发环境
 
 ```bash
-# Clone repository
+# 克隆仓库
 git clone https://github.com/your-org/apirunner.git
 cd apirunner
 
-# Create virtual environment
+# 创建虚拟环境
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+source venv/bin/activate  # Windows：venv\Scripts\activate
 
-# Install in editable mode with dev dependencies
+# 以可编辑模式安装，包括开发依赖
 pip install -e .
 
-# Verify installation
+# 验证安装
 arun --help
 ```
 
-### Running Tests
+### 运行测试
 
 ```bash
-# Run all tests
+# 运行所有测试
 arun run testcases --env-file .env
 
-# Run specific tags
+# 运行特定标签
 arun run testcases -k "smoke" --env-file .env
 
-# Run with full reporting
+# 运行并生成完整报告
 arun run testcases \
   --env-file .env \
   --report reports/run.json \
@@ -1426,119 +1444,119 @@ arun run testcases \
   --log-level debug
 ```
 
-### Code Style
+### 代码风格
 
-This project uses:
-- `black` for code formatting
-- `ruff` for linting
-- `mypy` for type checking
+本项目使用：
+- `black` 用于代码格式化
+- `ruff` 用于代码检查
+- `mypy` 用于类型检查
 
 ### Git Hooks
 
-Auto-fix YAML formatting on commit:
+在提交时自动修复 YAML 格式：
 
 ```bash
-# Make pre-commit hook executable
+# 使 pre-commit hook 可执行
 chmod +x scripts/pre-commit-fix-hooks.sh
 
-# Install hook
+# 安装 hook
 ln -sf ../../scripts/pre-commit-fix-hooks.sh .git/hooks/pre-commit
 ```
 
-This automatically runs `arun fix` to migrate hooks to the new config-based format.
+这会自动运行 `arun fix` 将 hooks 迁移到新的基于 config 的格式。
 
-## Notes
+## 说明
 
-APIRunner focuses on a minimal core with practical features for everyday API testing without extra bloat.
+APIRunner 专注于最小化核心和实用功能，用于日常 API 测试，没有额外的臃肿。
 
-## Troubleshooting
+## 故障排查
 
-### Common Issues
+### 常见问题
 
-**Issue: `ModuleNotFoundError: No module named 'apirunner'`**
+**问题：`ModuleNotFoundError: No module named 'apirunner'`**
 ```bash
-# Solution: Install in editable mode
+# 解决方案：以可编辑模式安装
 pip install -e .
 ```
 
-**Issue: `No YAML test files found`**
+**问题：`No YAML test files found`**
 ```bash
-# Solution: Ensure files follow naming convention
-# - Located in testcases/ or testsuites/ directories, OR
-# - Named test_*.yaml or suite_*.yaml
+# 解决方案：确保文件遵循命名约定
+# - 位于 testcases/ 或 testsuites/ 目录中，或
+# - 命名为 test_*.yaml 或 suite_*.yaml
 ```
 
-**Issue: `Invalid check 'body.field': use '$' syntax`**
+**问题：`Invalid check 'body.field': use '$' syntax`**
 ```bash
-# Old syntax (deprecated):
+# 旧语法（已弃用）：
 validate:
   - eq: [body.user.id, 123]
 
-# New syntax (required):
+# 新语法（必需）：
 validate:
   - eq: [$.user.id, 123]
 ```
 
-**Issue: Hooks not loading**
+**问题：Hooks 未加载**
 ```bash
-# Ensure arun_hooks.py is in project root or parent directory
-# Or specify explicitly:
+# 确保 arun_hooks.py 在项目根目录或父目录中
+# 或显式指定：
 ARUN_HOOKS_FILE=path/to/hooks.py arun run testcases
 ```
 
-**Issue: SQL validation fails with connection error**
+**问题：SQL 验证失败，连接错误**
 ```bash
-# Install database driver
-pip install pymysql  # For MySQL
+# 安装数据库驱动
+pip install pymysql  # 用于 MySQL
 
-# Verify environment variables
+# 验证环境变量
 echo $MYSQL_HOST $MYSQL_USER $MYSQL_DB
 
-# Or use DSN
+# 或使用 DSN
 export MYSQL_DSN=mysql://user:pass@host:3306/db
 ```
 
-## Contributing
+## 贡献
 
-We welcome contributions! Here's how to get started:
+我们欢迎贡献！以下是入门方法：
 
-1. **Fork the repository**
-2. **Create a feature branch**: `git checkout -b feature/your-feature`
-3. **Make your changes**
-4. **Run tests**: `arun run testcases --env-file .env`
-5. **Commit**: `git commit -m "feat: add amazing feature"`
-6. **Push**: `git push origin feature/your-feature`
-7. **Open a Pull Request**
+1. **Fork 仓库**
+2. **创建功能分支**：`git checkout -b feature/your-feature`
+3. **进行更改**
+4. **运行测试**：`arun run testcases --env-file .env`
+5. **提交**：`git commit -m "feat: add amazing feature"`
+6. **推送**：`git push origin feature/your-feature`
+7. **打开 Pull Request**
 
-### Contribution Guidelines
+### 贡献指南
 
-- Follow existing code style (black, ruff)
-- Add tests for new features
-- Update documentation
-- Write clear commit messages
-- Keep changes focused and atomic
+- 遵循现有代码风格（black、ruff）
+- 为新功能添加测试
+- 更新文档
+- 编写清晰的提交消息
+- 保持更改集中和原子化
 
-## License
+## 许可证
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+本项目采用 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件。
 
-## Acknowledgments
+## 致谢
 
-- Built with [httpx](https://www.python-httpx.org/), [pydantic](https://pydantic-docs.helpmanual.io/), [rich](https://rich.readthedocs.io/)
-- Thanks to all contributors
+- 使用 [httpx](https://www.python-httpx.org/)、[pydantic](https://pydantic-docs.helpmanual.io/)、[rich](https://rich.readthedocs.io/) 构建
+- 感谢所有贡献者
 
-## Support
+## 支持
 
-- **Documentation**: See [CLAUDE.md](CLAUDE.md) for detailed technical documentation
-- **Examples**: Check the `examples/` directory for sample tests
-- **Issues**: Report bugs and request features on [GitHub Issues](https://github.com/your-org/apirunner/issues)
+- **文档**：详细技术文档见 [CLAUDE.md](CLAUDE.md)
+- **示例**：查看 `examples/` 目录获取示例测试
+- **问题**：在 [GitHub Issues](https://github.com/your-org/apirunner/issues) 上报告 bug 和请求功能
 
 ---
 
 <div align="center">
 
-**Built with ❤️ by the APIRunner Team**
+**由 APIRunner 团队用 ❤️ 构建**
 
-[⬆ Back to Top](#apirunner)
+[⬆ 回到顶部](#apirunner)
 
 </div>

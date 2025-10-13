@@ -196,7 +196,8 @@ def run(
                 if fw:
                     fs = os.environ.get("FEISHU_SECRET")
                     fm = os.environ.get("FEISHU_MENTION")
-                    notifiers.append(FeishuNotifier(webhook=fw, secret=fs, mentions=fm))
+                    style = os.environ.get("FEISHU_STYLE", "text").lower().strip()
+                    notifiers.append(FeishuNotifier(webhook=fw, secret=fs, mentions=fm, style=style))
 
             if "email" in channels:
                 host = os.environ.get("SMTP_HOST", "").strip()
@@ -211,6 +212,7 @@ def run(
                             mail_to=os.environ.get("MAIL_TO"),
                             use_ssl=(os.environ.get("SMTP_SSL", "true").lower() != "false"),
                             attach_html=bool(notify_attach_html or (os.environ.get("NOTIFY_ATTACH_HTML", "").lower() in {"1","true","yes"})),
+                            html_body=(os.environ.get("NOTIFY_HTML_BODY", "true").lower() != "false"),
                         )
                     )
 
