@@ -73,10 +73,10 @@ steps:
 
 ### 📊 企业级特性
 
-- **专业报告**：交互式 HTML 报告 + 结构化 JSON 报告
+- **专业报告**：交互式 HTML 报告（可复制 JSON/cURL）+ 结构化 JSON 报告 + Allure 集成
 - **通知集成**：飞书卡片/文本、钉钉文本/Markdown、邮件 HTML/附件，失败聚合通知
-- **安全保护**：敏感数据自动脱敏
-- **调试友好**：Rich 彩色输出、cURL 命令生成、详细日志
+- **安全保护**：敏感数据自动脱敏（headers/body/环境变量）
+- **调试友好**：Rich 彩色输出、cURL 命令生成（格式化 JSON + 自动 Content-Type）、详细日志、错误步骤详情
 
 ---
 
@@ -86,8 +86,8 @@ steps:
 
 ```bash
 # 克隆项目
-git clone https://github.com/your-org/apirunner.git
-cd apirunner
+git clone https://github.com/Devliang24/arun.git
+cd arun
 
 # 安装（开发模式）
 pip install -e .
@@ -645,13 +645,16 @@ python -m apirunner.cli run testsuites/testsuite_smoke.yaml \
 
 **特性**：
 - 📈 摘要仪表板：总数、通过、失败、跳过、耗时（随筛选动态更新）
-- 🔍 详细断言：每个断言的期望值、实际值、结果（支持“仅失败断言”）
-- 📦 请求/响应/提取变量：完整 JSON（支持一键复制）
+- 🔍 详细断言：每个断言的期望值、实际值、结果（支持"仅失败断言"）
+- 📦 请求/响应/提取变量/cURL：完整 JSON 和命令（支持一键复制，带视觉反馈）
+  - ✅ 复制成功：绿色高亮提示"已复制"
+  - ⚠️ 复制失败：橙色提示"已选中，按 Ctrl/Cmd+C"自动选中文本
+  - 🎯 精准复制：基于原始数据，确保 JSON 格式准确无误
 - 🎛️ 交互增强：
   - 状态筛选：通过/失败/跳过
   - 仅失败断言、仅失败断言步骤、展开/折叠全部、仅失败用例
 - 🧩 JSON 可读性：请求/响应/提取变量采用轻量 JSON 语法高亮（零依赖）
-- 🎨 GitHub 主题：默认浅色 GitHub（不提供主题切换；已统一为单一风格）
+- 🎨 GitHub 主题：默认浅色 GitHub 风格，简洁专业
 
 ### JSON 报告
 
@@ -1288,12 +1291,19 @@ arun run testcases --httpx-logs
 
 #### 3. 查看 cURL 命令
 
-调试日志自动包含每个请求的 cURL 等效命令：
+调试日志和 HTML 报告都包含每个请求的 cURL 等效命令（使用 `--data-raw` 确保 payload 不被修改，JSON 自动格式化提升可读性）：
 
-```
+```bash
+# 调试日志示例
 [DEBUG] cURL: curl -X POST 'https://api.example.com/login' \
   -H 'Content-Type: application/json' \
-  -d '{"username":"test","password":"***"}'
+  --data-raw '{
+  "username": "test",
+  "password": "***"
+}'
+
+# HTML 报告中可一键复制 cURL 命令
+# JSON 自动格式化（indent=2）+ 自动添加 Content-Type
 ```
 
 #### 4. 验证 YAML 语法
@@ -1397,8 +1407,8 @@ arun check testcases
 
 ```bash
 # 克隆仓库
-git clone https://github.com/your-org/apirunner.git
-cd apirunner
+git clone https://github.com/Devliang24/arun.git
+cd arun
 
 # 创建虚拟环境
 python -m venv venv
@@ -1418,7 +1428,7 @@ arun run testcases --env-file .env
 ### 社区资源
 
 - **示例集合**：[examples/](examples/)
-- **问题追踪**：[GitHub Issues](https://github.com/your-org/apirunner/issues)
+- **问题追踪**：[GitHub Issues](https://github.com/Devliang24/arun/issues)
 - **变更日志**：查看提交历史
 
 ---
