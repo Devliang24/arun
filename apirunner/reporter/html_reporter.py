@@ -53,7 +53,7 @@ def _build_step(step: StepResult) -> str:
     curl = step.curl or ""
 
     head = (
-        f"<div class='st-head' onclick=\"toggleStepBody(this)\">"
+        f"<div class='st-head' onclick=\"window.toggleStepBody && window.toggleStepBody(this)\">"
         f"<div><b>步骤：</b>{_escape_html(step.name)}</div>"
         f"<div><span class='pill {step.status}'>" + step.status + "</span>"
         f"<span class='muted' style='margin-left:8px;'>{step.duration_ms:.1f} ms</span>"
@@ -66,24 +66,34 @@ def _build_step(step: StepResult) -> str:
         "<div class='grid' style='margin-top:8px;'>"
         + (
             "<div class='panel' data-section='request'>"
-            "<div class='p-head'><span>请求</span><span class='actions'><button onclick=\"copyPanel(this)\">复制</button></span></div>"
-            f"<pre><code>{_escape_html(req_json)}</code></pre>"
+            "<div class='p-head'><span>请求</span><span class='actions'><button onclick=\"window.copyPanel && window.copyPanel(this)\">复制</button></span></div>"
+            f"<pre data-raw=\"{_escape_html(req_json)}\"><code>{_escape_html(req_json)}</code></pre>"
             "</div>"
         )
         + (
             "<div class='panel' data-section='response'>"
-            "<div class='p-head'><span>响应</span><span class='actions'><button onclick=\"copyPanel(this)\">复制</button></span></div>"
-            f"<pre><code>{_escape_html(resp_json)}</code></pre>"
+            "<div class='p-head'><span>响应</span><span class='actions'><button onclick=\"window.copyPanel && window.copyPanel(this)\">复制</button></span></div>"
+            f"<pre data-raw=\"{_escape_html(resp_json)}\"><code>{_escape_html(resp_json)}</code></pre>"
             "</div>"
         )
         + "</div>"
     )
 
+    # Error panel (if any)
+    if step.error:
+        err_text = _escape_html(step.error)
+        panels.append(
+            "<div class='panel' data-section='error' style='margin-top:8px;'>"
+            "<div class='p-head'><span>错误</span><span class='actions'><button onclick=\"window.copyPanel && window.copyPanel(this)\">复制</button></span></div>"
+            f"<pre data-raw=\"{err_text}\"><code>{err_text}</code></pre>"
+            "</div>"
+        )
+
     if ext_json and ext_json != "{}":
         panels.append(
             "<div class='panel' data-section='extracts' style='margin-top:8px;'>"
-            "<div class='p-head'><span>提取变量</span><span class='actions'><button onclick=\"copyPanel(this)\">复制</button></span></div>"
-            f"<pre><code>{_escape_html(ext_json)}</code></pre>"
+            "<div class='p-head'><span>提取变量</span><span class='actions'><button onclick=\"window.copyPanel && window.copyPanel(this)\">复制</button></span></div>"
+            f"<pre data-raw=\"{_escape_html(ext_json)}\"><code>{_escape_html(ext_json)}</code></pre>"
             "</div>"
         )
 
@@ -99,8 +109,8 @@ def _build_step(step: StepResult) -> str:
     if curl:
         panels.append(
             "<div class='panel' data-section='curl' style='margin-top:8px;'>"
-            "<div class='p-head'><span>cURL</span><span class='actions'><button onclick=\"copyPanel(this)\">复制</button></span></div>"
-            f"<pre><code>{_escape_html(curl)}</code></pre>"
+            "<div class='p-head'><span>cURL</span><span class='actions'><button onclick=\"window.copyPanel && window.copyPanel(this)\">复制</button></span></div>"
+            f"<pre data-raw=\"{_escape_html(curl)}\"><code>{_escape_html(curl)}</code></pre>"
             "</div>"
         )
 
@@ -189,10 +199,14 @@ def write_html(report: RunReport, outfile: str | Path) -> None:
   details > summary::-webkit-details-marker { display: none; }
   .toolbar { display:grid; grid-template-columns: 1fr auto; gap:8px; align-items:center; margin-bottom: 8px; }
   .toolbar .filters { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-  .toolbar button { padding:6px 10px; border-radius:6px; border:1px solid var(--border); background:var(--btn-bg); color:var(--fg); cursor:pointer; }
+  .toolbar button { padding:6px 10px; border-radius:6px; border:1px solid var(--border); background:var(--btn-bg); color:var(--fg); cursor:pointer; transition: all 0.2s ease; }
   .toolbar button:hover { border-color:var(--accent); }
   .toolbar .chip { background:var(--chip-bg); border:1px solid var(--border); padding:4px 8px; border-radius:999px; display:inline-flex; align-items:center; gap:6px; }
   .toolbar input[type='radio']{ accent-color: var(--accent); }
+  .panel .p-head button { padding:4px 8px; font-size:11px; border-radius:4px; border:1px solid var(--border); background:var(--btn-bg); color:var(--fg); cursor:pointer; transition: all 0.2s ease; }
+  .panel .p-head button:hover { border-color:var(--accent); }
+  .panel .p-head button.copied { border-color:var(--ok); background:#dafbe1; color:var(--ok); font-weight:500; }
+  .panel .p-head button.copy-failed { border-color:var(--fail); background:#ffebe9; color:var(--fail); font-weight:500; }
   .footer { margin-top: 24px; color: var(--muted); font-size: 12px; }
   .collapsed .body { display: none; }
 </style>
@@ -204,8 +218,8 @@ def write_html(report: RunReport, outfile: str | Path) -> None:
       const ch = text[i];
       if(ch==='\"'){
         let j=i+1; let str=''; let escaped=false;
-        while(j<text.length){ const c=text[j]; str+=c; j++; if(c==='\\' && !escaped){ escaped=true; continue;} if(c==='\"' && !escaped){ break;} escaped=false; }
-        out += "<span class='tok-str'>\""+esc(str)+"</span>"; i=j; continue;
+        while(j<text.length){ const c=text[j]; str+=c; j++; if(c==='\\\\' && !escaped){ escaped=true; continue;} if(c==='\"' && !escaped){ break;} escaped=false; }
+        out += "<span class='tok-str'>&quot;"+esc(str)+"&quot;</span>"; i=j; continue;
       }
       if(/[-0-9]/.test(ch)){
         let j=i; let num=''; while(j<text.length && /[-0-9.eE]/.test(text[j])){ num+=text[j++]; }
@@ -219,19 +233,85 @@ def write_html(report: RunReport, outfile: str | Path) -> None:
     }
     return out;
   }
-  window.toggleStepBody = function(headEl){ const step=headEl.closest('.step'); if(!step) return; step.classList.toggle('collapsed'); };
-  window.copyPanel = async function(btn){ try{ const panel=btn.closest('.panel'); const code=panel?.querySelector('pre'); const text=code?(code.innerText||''):''; await navigator.clipboard.writeText(text); const old=btn.innerText; btn.innerText='已复制'; setTimeout(()=>btn.innerText=old, 1200);}catch(e){}}
-  window.applyFilters = function(){ const sel=(document.querySelector("input[name='status-filter']:checked")?.value)||'all'; try{localStorage.setItem('arun_report_status', sel);}catch(e){} document.querySelectorAll('.case').forEach(c=>{ const st=c.dataset.status||''; c.style.display=(sel==='all'||st===sel)?'':''; }); };
+  function fallbackCopy(text){
+    try{
+      var ta=document.createElement('textarea');
+      ta.value=text; ta.style.position='fixed'; ta.style.opacity='0'; ta.style.left='-9999px';
+      document.body.appendChild(ta); ta.focus(); ta.select();
+      var ok=false; try{ ok=document.execCommand('copy'); }catch(e){ ok=false; }
+      document.body.removeChild(ta); return ok;
+    }catch(e){ return false; }
+  }
+  function selectForManual(preEl, btn){
+    try{
+      var range=document.createRange();
+      range.selectNodeContents(preEl);
+      var sel=window.getSelection ? window.getSelection() : null;
+      if(sel){ sel.removeAllRanges(); sel.addRange(range); }
+      if(btn){ btn.innerText='已选中，按 Ctrl/Cmd+C'; btn.classList.add('copy-failed'); }
+    }catch(_){ /* ignore */ }
+  }
+  function showCopied(btn){
+    if(!btn) return;
+    var old=btn.innerText;
+    btn.innerText='已复制';
+    btn.classList.remove('copy-failed');
+    btn.classList.add('copied');
+    setTimeout(function(){
+      btn.innerText=old;
+      btn.classList.remove('copied');
+    }, 1500);
+  }
+  function showCopyFailed(btn){
+    if(!btn) return;
+    var old=btn.innerText;
+    btn.innerText='复制失败';
+    btn.classList.remove('copied');
+    btn.classList.add('copy-failed');
+    setTimeout(function(){
+      btn.innerText=old;
+      btn.classList.remove('copy-failed');
+    }, 1500);
+  }
+  window.toggleStepBody = function(headEl){ var step=headEl && headEl.closest ? headEl.closest('.step') : null; if(!step) return; step.classList.toggle('collapsed'); };
+  window.copyPanel = function(btn){
+    try{
+      var panel=btn && btn.closest ? btn.closest('.panel') : null;
+      if(!panel) return;
+      var pre=panel.querySelector('pre');
+      if(!pre) return;
+      var text=pre.getAttribute('data-raw') || pre.innerText || pre.textContent || '';
+      if(!text) return;
+      var did=false;
+      try{
+        if(navigator.clipboard && navigator.clipboard.writeText){
+          navigator.clipboard.writeText(text).then(function(){ showCopied(btn); }).catch(function(){
+            if(fallbackCopy(text)) { showCopied(btn); }
+            else { selectForManual(pre, btn); }
+          });
+          did=true;
+        }
+      }catch(_){ /* ignore */ }
+      if(!did){
+        if(fallbackCopy(text)) { showCopied(btn); }
+        else { selectForManual(pre, btn); }
+      }
+    }catch(e){
+      showCopyFailed(btn);
+      try{ console.warn('copy failed', e); }catch(_){}
+    }
+  };
+  window.applyFilters = function(){ var selEl=document.querySelector("input[name='status-filter']:checked"); var sel=(selEl && selEl.value) || 'all'; try{localStorage.setItem('arun_report_status', sel);}catch(e){} document.querySelectorAll('.case').forEach(function(c){ var st=(c.dataset && c.dataset.status)||''; c.style.display=(sel==='all'||st===sel)?'':''; }); };
   document.addEventListener('DOMContentLoaded', function(){
-    try{ const saved=localStorage.getItem('arun_report_status')||'all'; const el=document.querySelector("input[name='status-filter'][value='"+saved+"']"); if(el) el.checked=true; }catch(e){}
-    document.querySelectorAll("input[name='status-filter']").forEach(el=>{ el.addEventListener('change', window.applyFilters); });
+    try{ var saved=localStorage.getItem('arun_report_status')||'all'; var el=document.querySelector("input[name='status-filter'][value='"+saved+"']"); if(el) el.checked=true; }catch(e){}
+    document.querySelectorAll("input[name='status-filter']").forEach(function(el){ el.addEventListener('change', window.applyFilters); });
     // JSON highlight
-    document.querySelectorAll('.panel pre code').forEach(code=>{ const panel=code.closest('.panel'); if(panel && panel.dataset && panel.dataset.section==='curl') return; const raw=code.innerText||''; code.innerHTML=highlightJSONSimple(raw); });
+    document.querySelectorAll('.panel pre code').forEach(function(code){ var panel= code.closest ? code.closest('.panel') : null; if(panel && panel.dataset && panel.dataset.section==='curl') return; var raw=code.innerText||code.textContent||''; code.innerHTML=highlightJSONSimple(raw); });
     window.applyFilters();
   });
 })();</script>
 """)
-    head_parts.append("</style>\n")
+    # style tag already closed in the header string above
     head_parts.append("</head><body>\n<div class='wrap'>\n  <div class='header-sticky'>\n    <div class='headbar'>\n      <h1>APIRunner 测试报告</h1>\n      <div class='meta'>生成时间：" + _escape_html(gen_time) + "</div>\n    </div>\n")
     # Summary badges
     total = str(s.get('total', 0))
