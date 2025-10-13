@@ -22,7 +22,7 @@ from arun.utils.logging import setup_logging, get_logger
 import time
 
 
-app = typer.Typer(add_completion=False, help="ARun · 零代码 HTTP API 测试框架")
+app = typer.Typer(add_completion=False, help="ARun · 零代码 HTTP API 测试框架", rich_markup_mode=None)
 
 
 def parse_kv(items: List[str]) -> Dict[str, str]:
