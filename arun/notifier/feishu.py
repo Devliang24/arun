@@ -11,7 +11,7 @@ import httpx
 
 from .base import Notifier, NotifyContext
 from .format import build_summary_text, build_text_message
-from apirunner.models.report import RunReport
+from arun.models.report import RunReport
 
 
 class FeishuNotifier(Notifier):
@@ -62,7 +62,7 @@ class FeishuNotifier(Notifier):
             })
         card = {
             "config": {"wide_screen_mode": True},
-            "header": {"template": "blue", "title": {"tag": "plain_text", "content": "APIRunner 测试结果"}},
+            "header": {"template": "blue", "title": {"tag": "plain_text", "content": "ARun 测试结果"}},
             "elements": elements,
         }
         return {"msg_type": "interactive", "card": card}

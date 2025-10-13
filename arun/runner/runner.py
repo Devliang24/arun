@@ -4,17 +4,17 @@ import json
 import time
 from typing import Any, Dict, List, Optional
 
-from apirunner.engine.http import HTTPClient
-from apirunner.models.case import Case
-from apirunner.models.report import AssertionResult, CaseInstanceResult, RunReport, StepResult
-from apirunner.models.step import Step
-from apirunner.templating.context import VarContext
-from apirunner.templating.engine import TemplateEngine
-from apirunner.runner.extractors import extract_from_body
-from apirunner.runner.assertions import compare
-from apirunner.utils.curl import to_curl
-from apirunner.utils.mask import mask_body, mask_headers
-from apirunner.db.sql_validate import run_sql_validate
+from arun.engine.http import HTTPClient
+from arun.models.case import Case
+from arun.models.report import AssertionResult, CaseInstanceResult, RunReport, StepResult
+from arun.models.step import Step
+from arun.templating.context import VarContext
+from arun.templating.engine import TemplateEngine
+from arun.runner.extractors import extract_from_body
+from arun.runner.assertions import compare
+from arun.utils.curl import to_curl
+from arun.utils.mask import mask_body, mask_headers
+from arun.db.sql_validate import run_sql_validate
 
 
 class Runner:

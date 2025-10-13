@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import List, Tuple
 
-from apirunner.models.report import RunReport, CaseInstanceResult, StepResult
+from arun.models.report import RunReport, CaseInstanceResult, StepResult
 
 
 def collect_failures(report: RunReport, topn: int = 5) -> List[Tuple[str, str, str]]:
@@ -37,7 +37,7 @@ def build_summary_text(report: RunReport, *, html_path: str | None, log_path: st
     skipped = s.get("skipped", 0)
     dur_ms = s.get("duration_ms", 0.0)
     lines: List[str] = []
-    lines.append(f"APIRunner 执行完成：总 {total} | 通过 {passed} | 失败 {failed} | 跳过 {skipped} | {dur_ms/1000.0:.1f}s")
+    lines.append(f"ARun 执行完成：总 {total} | 通过 {passed} | 失败 {failed} | 跳过 {skipped} | {dur_ms/1000.0:.1f}s")
     fails = collect_failures(report, topn=topn)
     if fails:
         lines.append("失败用例：")

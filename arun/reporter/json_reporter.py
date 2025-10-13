@@ -4,11 +4,10 @@ import json
 from pathlib import Path
 from typing import Any
 
-from apirunner.models.report import RunReport
+from arun.models.report import RunReport
 
 
 def write_json(report: RunReport, outfile: str | Path) -> None:
     p = Path(outfile)
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(json.dumps(report.model_dump(), ensure_ascii=False, indent=2), encoding="utf-8")
-

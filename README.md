@@ -1,4 +1,4 @@
-# APIRunner
+# ARun
 
 <div align="center">
 
@@ -16,7 +16,7 @@
 
 ## 📖 项目简介
 
-APIRunner 是一个**极简、强大、生产就绪**的 HTTP API 测试框架。使用清晰的 YAML 语法编写测试用例，无需编写代码，5 分钟即可完成第一个测试。
+ARun 是一个**极简、强大、生产就绪**的 HTTP API 测试框架。使用清晰的 YAML 语法编写测试用例，无需编写代码，5 分钟即可完成第一个测试。
 
 ```yaml
 # 就是这么简单！
@@ -34,9 +34,9 @@ steps:
       - eq: [$.data.status, "healthy"]
 ```
 
-### 💡 为什么选择 APIRunner？
+### 💡 为什么选择 ARun？
 
-| 特性 | APIRunner | 其他工具 |
+| 特性 | ARun | 其他工具 |
 |------|-----------|----------|
 | **零代码** | ✅ 纯 YAML，无需编程 | ❌ 需要 Python/JavaScript 代码 |
 | **学习曲线** | ✅ 5 分钟上手 | ⚠️ 需要学习测试框架 |
@@ -179,7 +179,7 @@ steps:                               # 测试步骤列表
 
 ### Dollar 模板语法
 
-APIRunner 使用简洁的 **Dollar 表达式**进行变量插值：
+ARun 使用简洁的 **Dollar 表达式**进行变量插值：
 
 ```yaml
 # 1. 简单变量引用
@@ -636,7 +636,7 @@ arun run testcases --html reports/report.html
 
 ```bash
 # 生成并预览（示例使用引用型 testsuite）
-python -m apirunner.cli run testsuites/testsuite_smoke.yaml \
+python -m arun.cli run testsuites/testsuite_smoke.yaml \
   --env-file .env \
   --html reports/report.html
 
@@ -723,7 +723,7 @@ allure --version
 #### 特性说明
 
 - **附件丰富**：为每个步骤生成请求/响应/cURL/断言/提取变量等附件（遵循 `--mask-secrets` 脱敏策略）
-- **套件分组**：默认按用例来源文件名归类（若可用），否则归为 "APIRunner"
+- **套件分组**：默认按用例来源文件名归类（若可用），否则归为 "ARun"
 - **趋势分析**：多次运行后可查看历史趋势（需保留 `allure-report/history` 目录）
 - **CI/CD 集成**：可配合 Jenkins/GitLab CI 的 Allure 插件自动生成并展示报告
 
@@ -1214,7 +1214,7 @@ No YAML test files found.
 #### 2. 模块导入错误
 
 ```
-ModuleNotFoundError: No module named 'apirunner'
+ModuleNotFoundError: No module named 'arun'
 ```
 
 **解决方案**：
@@ -1421,8 +1421,8 @@ pip install -e .
 arun run testcases --env-file .env
 
 # 验证代码风格
-# black apirunner/
-# ruff check apirunner/
+# black arun/
+# ruff check arun/
 ```
 
 ### 社区资源
@@ -1441,7 +1441,7 @@ arun run testcases --env-file .env
 
 ## 🙏 致谢
 
-APIRunner 基于优秀的开源项目构建：
+ARun 基于优秀的开源项目构建：
 
 - [httpx](https://www.python-httpx.org/) - 现代 HTTP 客户端
 - [pydantic](https://docs.pydantic.dev/) - 数据验证
@@ -1455,8 +1455,8 @@ APIRunner 基于优秀的开源项目构建：
 
 <div align="center">
 
-**由 APIRunner 团队用 ❤️ 构建**
+**由 ARun 团队用 ❤️ 构建**
 
-[⬆ 回到顶部](#apirunner)
+[⬆ 回到顶部](#arun)
 
 </div>

@@ -8,21 +8,21 @@ from typing import Dict, List, Optional
 import typer
 import yaml
 
-from apirunner.loader.collector import discover, match_tags
-from apirunner.loader.yaml_loader import expand_parameters, load_yaml_file
-from apirunner.loader.hooks import get_functions_for
-from apirunner.loader.env import load_environment
-from apirunner.models.case import Case
-from apirunner.models.report import RunReport
-from apirunner.reporter.json_reporter import write_json
-from apirunner.reporter.merge import merge_reports
-from apirunner.runner.runner import Runner
-from apirunner.templating.engine import TemplateEngine
-from apirunner.utils.logging import setup_logging, get_logger
+from arun.loader.collector import discover, match_tags
+from arun.loader.yaml_loader import expand_parameters, load_yaml_file
+from arun.loader.hooks import get_functions_for
+from arun.loader.env import load_environment
+from arun.models.case import Case
+from arun.models.report import RunReport
+from arun.reporter.json_reporter import write_json
+from arun.reporter.merge import merge_reports
+from arun.runner.runner import Runner
+from arun.templating.engine import TemplateEngine
+from arun.utils.logging import setup_logging, get_logger
 import time
 
 
-app = typer.Typer(add_completion=False, help="APIRunner - Minimal HTTP API test runner (MVP)")
+app = typer.Typer(add_completion=False, help="ARun · 零代码 HTTP API 测试框架")
 
 
 def parse_kv(items: List[str]) -> Dict[str, str]:
@@ -76,7 +76,7 @@ def run(
     ts = time.strftime("%Y%m%d-%H%M%S")
     default_log = log_file or f"logs/run-{ts}.log"
     setup_logging(log_level, log_file=default_log)
-    log = get_logger("apirunner.cli")
+    log = get_logger("arun.cli")
     # unify httpx logs: default suppress, unless enabled
     import logging as _logging
     _httpx_logger = _logging.getLogger("httpx")
@@ -163,22 +163,22 @@ def run(
     if report:
         write_json(report_obj, report)
         typer.echo(f"JSON report written to {report}")
-    from apirunner.reporter.html_reporter import write_html
+    from arun.reporter.html_reporter import write_html
     write_html(report_obj, html_target)
     typer.echo(f"HTML report written to {html_target}")
 
     if allure_results:
         try:
-            from apirunner.reporter.allure_reporter import write_allure_results
+            from arun.reporter.allure_reporter import write_allure_results
             write_allure_results(report_obj, allure_results)
             typer.echo(f"Allure results written to {allure_results}")
         except Exception as e:
-            log = get_logger("apirunner.cli")
+            log = get_logger("arun.cli")
             log.error(f"Failed to write Allure results: {e}")
 
     # Notifications (best-effort)
     try:
-        from apirunner.notifier import (
+        from arun.notifier import (
             NotifyContext,
             FeishuNotifier,
             EmailNotifier,

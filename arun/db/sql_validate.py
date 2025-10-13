@@ -4,10 +4,10 @@ import logging
 from typing import Any, Callable, Dict, Iterable, List, Mapping, MutableMapping, Sequence, Tuple
 from urllib.parse import urlparse
 
-from apirunner.models.sql_validate import SQLValidateConfig
-from apirunner.models.report import AssertionResult
-from apirunner.runner.assertions import compare
-from apirunner.runner.extractors import extract_from_body
+from arun.models.sql_validate import SQLValidateConfig
+from arun.models.report import AssertionResult
+from arun.runner.assertions import compare
+from arun.runner.extractors import extract_from_body
 
 SQLValidateConfigLike = Mapping[str, Any] | SQLValidateConfig
 RenderFn = Callable[[Any], Any]

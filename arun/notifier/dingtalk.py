@@ -11,7 +11,7 @@ import httpx
 
 from .base import Notifier, NotifyContext
 from .format import build_text_message
-from apirunner.models.report import RunReport
+from arun.models.report import RunReport
 
 
 class DingTalkNotifier(Notifier):
@@ -57,11 +57,10 @@ class DingTalkNotifier(Notifier):
                 "isAtAll": self.at_all,
             }
             if self.style == "markdown":
-                title = os.environ.get("DINGTALK_TITLE", "APIRunner 测试结果")
+                title = os.environ.get("DINGTALK_TITLE", "ARun 测试结果")
                 payload = {"msgtype": "markdown", "markdown": {"title": title, "text": text}, "at": at_block}
             else:
                 payload = {"msgtype": "text", "text": {"content": text}, "at": at_block}
             self._send_json(payload)
         except Exception:
             return
-

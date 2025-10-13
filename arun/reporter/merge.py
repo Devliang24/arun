@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import List
 
-from apirunner.models.report import RunReport, CaseInstanceResult
+from arun.models.report import RunReport, CaseInstanceResult
 
 
 def merge_reports(files: List[str | Path]) -> RunReport:
@@ -20,4 +20,3 @@ def merge_reports(files: List[str | Path]) -> RunReport:
         skipped += rr.summary.get("skipped", 0)
         duration += rr.summary.get("duration_ms", 0.0)
     return RunReport(summary={"total": total, "failed": failed, "skipped": skipped, "passed": total - failed - skipped, "duration_ms": duration}, cases=cases)
-

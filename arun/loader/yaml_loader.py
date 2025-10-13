@@ -6,11 +6,11 @@ from typing import Any, Dict, List, Tuple
 
 import yaml
 
-from apirunner.models.case import Case, Suite
-from apirunner.models.config import Config
-from apirunner.models.step import Step
-from apirunner.models.validators import normalize_validators
-from apirunner.utils.errors import LoadError
+from arun.models.case import Case, Suite
+from arun.models.config import Config
+from arun.models.step import Step
+from arun.models.validators import normalize_validators
+from arun.utils.errors import LoadError
 
 
 def _is_suite(doc: Dict[str, Any]) -> bool:

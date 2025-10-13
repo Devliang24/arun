@@ -1,6 +1,6 @@
 示例（Examples）
 
-本目录包含一组最小可运行的示例，演示 APIRunner 的常见用法与新规范（Suite/Case 级 hooks 需写在 config 内）。
+本目录包含一组最小可运行的示例，演示 ARun 的常见用法与新规范（Suite/Case 级 hooks 需写在 config 内）。
 
 准备工作
 - 复制 `.env.example` 为 `.env`，设置 `BASE_URL`；如需登录示例，请设置 `USER_USERNAME/USER_PASSWORD`，或使用“注册+登录”示例。

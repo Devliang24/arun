@@ -8,7 +8,7 @@ changed=0
 
 for p in "${paths[@]}"; do
   if [ -d "$p" ]; then
-    python -m apirunner.cli fix "$p" || true
+    python -m arun.cli fix "$p" || true
     changed=1
   fi
 done
@@ -20,4 +20,3 @@ if [ "$changed" -eq 1 ]; then
 fi
 
 exit 0
-
