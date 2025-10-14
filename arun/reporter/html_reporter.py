@@ -18,6 +18,21 @@ def _json(obj: Any) -> str:
             return str(obj)
 
 
+def _align_like_console(text: str, pad_cols: int = 50) -> str:
+    """Align multiline text like console logs: pad lines after the first.
+
+    This only affects visual presentation; callers can still use the original
+    JSON as `data-raw` for copy, while the displayed code gets aligned.
+    """
+    if not text:
+        return text
+    lines = text.splitlines()
+    if len(lines) <= 1:
+        return text
+    pad = " " * max(pad_cols, 0)
+    return lines[0] + "\n" + "\n".join(pad + ln for ln in lines[1:])
+
+
 def _escape_html(text: str) -> str:
     return (
         text.replace("&", "&amp;")
@@ -67,6 +82,7 @@ def _build_step(step: StepResult) -> str:
         + (
             "<div class='panel' data-section='request'>"
             "<div class='p-head'><span>请求</span><span class='actions'><button onclick=\"window.copyPanel && window.copyPanel(this)\">复制</button></span></div>"
+            # Display aligned like console, keep raw for copy
             f"<pre data-raw=\"{_escape_html(req_json)}\"><code>{_escape_html(req_json)}</code></pre>"
             "</div>"
         )
@@ -305,8 +321,15 @@ def write_html(report: RunReport, outfile: str | Path) -> None:
   document.addEventListener('DOMContentLoaded', function(){
     try{ var saved=localStorage.getItem('arun_report_status')||'all'; var el=document.querySelector("input[name='status-filter'][value='"+saved+"']"); if(el) el.checked=true; }catch(e){}
     document.querySelectorAll("input[name='status-filter']").forEach(function(el){ el.addEventListener('change', window.applyFilters); });
-    // JSON highlight
-    document.querySelectorAll('.panel pre code').forEach(function(code){ var panel= code.closest ? code.closest('.panel') : null; if(panel && panel.dataset && panel.dataset.section==='curl') return; var raw=code.innerText||code.textContent||''; code.innerHTML=highlightJSONSimple(raw); });
+    // JSON highlight + console-style alignment for multiline blocks
+    var PAD_COLS = 50; var pad = ' '.repeat(PAD_COLS);
+    document.querySelectorAll('.panel pre code').forEach(function(code){
+      var panel= code.closest ? code.closest('.panel') : null; if(panel && panel.dataset && panel.dataset.section==='curl') return;
+      var pre = code.parentElement; var raw=(pre && pre.getAttribute('data-raw')) || code.innerText || code.textContent || '';
+      var html = highlightJSONSimple(raw);
+      if(raw.indexOf('\n') >= 0){ html = html.replace(/\n/g, '\n'+pad); }
+      code.innerHTML = html;
+    });
     window.applyFilters();
   });
 })();</script>

@@ -25,6 +25,20 @@ def _as_json(obj: Any) -> str:
         return json.dumps(str(obj), ensure_ascii=False)
 
 
+def _align_like_console(text: str, pad_cols: int = 50) -> str:
+    """Pad multiline text so subsequent lines visually align like console logs.
+
+    This keeps content valid JSON while improving readability in Allure viewer.
+    """
+    if not text:
+        return text
+    lines = text.splitlines()
+    if len(lines) <= 1:
+        return text
+    pad = " " * max(pad_cols, 0)
+    return lines[0] + "\n" + "\n".join(pad + ln for ln in lines[1:])
+
+
 def _status_details(case: CaseInstanceResult) -> Dict[str, Any] | None:
     if case.status != "failed":
         return None
@@ -71,7 +85,7 @@ def _step_to_allure(out_dir: Path, case_uuid: str, st: StepResult, start_ms: int
     # Use already-masked request/response in StepResult
     try:
         if st.request:
-            req_txt = _as_json(st.request)
+            req_txt = _align_like_console(_as_json(st.request))
             step_obj["attachments"].append(
                 _attach(out_dir, case_uuid, "Request", req_txt, "application/json", ".json")
             )
@@ -79,7 +93,7 @@ def _step_to_allure(out_dir: Path, case_uuid: str, st: StepResult, start_ms: int
         pass
     try:
         if st.response:
-            resp_txt = _as_json(st.response)
+            resp_txt = _align_like_console(_as_json(st.response))
             step_obj["attachments"].append(
                 _attach(out_dir, case_uuid, "Response", resp_txt, "application/json", ".json")
             )

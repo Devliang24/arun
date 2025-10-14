@@ -82,10 +82,11 @@ class ColumnFormatter(logging.Formatter):
 
 
 class JSONAwareFormatter(ColumnFormatter):
-    """Formatter that removes label padding from JSON blocks for file logs."""
+    """Formatter for file logs that mirrors terminal alignment for multiline messages."""
 
-    def __init__(self, fmt: str, datefmt: Optional[str] = None) -> None:
-        super().__init__(fmt, datefmt, align_continuation=False)
+    def __init__(self, fmt: str, datefmt: Optional[str] = None, *, align_continuation: bool = True) -> None:
+        # Enable continuation alignment by default so files match terminal output
+        super().__init__(fmt, datefmt, align_continuation=align_continuation)
 
     def _tweak_message(self, message: str) -> str:  # type: ignore[override]
         return message
@@ -129,7 +130,8 @@ def setup_logging(level: str = "INFO", *, log_file: Optional[str] = None) -> Non
         if isinstance(h, logging.FileHandler):
             h.setFormatter(JSONAwareFormatter(fmt_file, datefmt))
         elif h is console_handler:
-            h.setFormatter(ColumnFormatter(fmt_console, datefmt, align_continuation=False))
+            # Enable continuation alignment so multiline messages align under the prefix
+            h.setFormatter(ColumnFormatter(fmt_console, datefmt, align_continuation=True))
 
     if lvl > logging.DEBUG:
         logging.getLogger("urllib3").setLevel(logging.WARNING)

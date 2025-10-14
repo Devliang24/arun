@@ -42,13 +42,14 @@ class Runner:
             return str(obj)
 
     def _fmt_aligned(self, section: str, label: str, text: str) -> str:
-        """Return a single string where multiline content is aligned with fixed small indent.
+        """Format a label + multiline text with consistent alignment.
 
-        Example:
-        [REQUEST] body: {
-          "a": 1,
-          "b": 2
-        }
+        JSON behavior (text starting with '{' or '['):
+        - Keep the original JSON indentation from json.dumps (indent=2) so keys are
+          indented relative to the opening brace as expected.
+        - Simply pad every subsequent line with spaces equal to header length so the
+          entire JSON block is shifted as a group; the closing brace aligns under the
+          opening brace naturally.
         """
         section_label = {
             "REQ": "REQUEST",
@@ -58,21 +59,21 @@ class Runner:
         lines = (text or "").splitlines() or [""]
         if len(lines) == 1:
             return header + lines[0]
-        # Use fixed 2-space indent instead of aligning to header length
-        pad = "  "
+        first = lines[0].lstrip()
         tail_lines = lines[1:]
-        # Calculate minimum leading spaces to preserve relative indentation
-        leading_spaces = [len(ln) - len(ln.lstrip(" ")) for ln in tail_lines if ln.strip()]
-        trim = min(leading_spaces) if leading_spaces else 0
-        adjusted = []
-        for ln in tail_lines:
-            if ln.strip():
-                # Preserve relative indentation by only trimming common prefix
-                content = ln[trim:] if trim and len(ln) >= trim else ln
-                adjusted.append(pad + content)
-            else:
-                adjusted.append("")  # Empty lines don't need padding
-        return header + lines[0].lstrip() + "\n" + "\n".join(adjusted)
+
+        # Detect JSON-style block
+        is_json = first.startswith("{") or first.startswith("[")
+        # Closing brace should align exactly with opening '{' -> pad only
+        pad = " " * len(header)
+
+        if is_json:
+            # Preserve original JSON indentation; just shift as a block
+            adjusted = [pad + ln if ln else "" for ln in tail_lines]
+            return header + first + "\n" + "\n".join(adjusted)
+        else:
+            adjusted = [pad + ln if ln else "" for ln in tail_lines]
+            return header + first + "\n" + "\n".join(adjusted)
 
     def _resolve_check(self, check: str, resp: Dict[str, Any]) -> Any:
         # $-style check support
