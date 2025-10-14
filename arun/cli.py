@@ -91,6 +91,18 @@ def run(
     # Unified env loading: --env <name> YAML + --env-file (kv or yaml) + OS ENV
     env_name: Optional[str] = os.environ.get("ARUN_ENV")  # optional default via env var
     env_store = load_environment(env_name, env_file)
+    # Preflight: warn when default env file is missing and no BASE_URL provided anywhere
+    from pathlib import Path as _Path
+    _env_exists = _Path(env_file).exists() if env_file else False
+    _base_any = os.environ.get("BASE_URL") or os.environ.get("base_url") or None
+    if not _base_any:
+        _base_any = env_store.get("BASE_URL") or env_store.get("base_url")
+    if (not _env_exists) and (not env_file_explicit) and (not _base_any):
+        log.warning(
+            "[ENV] Default .env not found and BASE_URL is missing. Relative URLs may fail. "
+            "Create a .env or pass --env-file/--vars. Example .env:\n"
+            "BASE_URL=http://localhost:8000\nUSER_USERNAME=test_user\nUSER_PASSWORD=test_pass\nSHIPPING_ADDRESS=Test Address"
+        )
     cli_vars = parse_kv(vars)
     # Only CLI --vars go into templating variables directly
     global_vars: Dict[str, str] = {}
@@ -135,6 +147,18 @@ def run(
     templater = TemplateEngine()
     instance_results = []
     log.info(f"[RUN] Discovered files: {len(files)} | Matched cases: {len(items)} | Failfast={failfast}")
+    # Sanity check: ensure cases with relative step URLs have a base_url from any source
+    def _need_base_url(case: Case) -> bool:
+        try:
+            for st in case.steps:
+                u = (st.request.url or "").strip()
+                # if not absolute (no scheme), we treat it as relative and require base_url
+                if not (u.startswith("http://") or u.startswith("https://")):
+                    return True
+            return False
+        except Exception:
+            return False
+
     for c, meta in items:
         funcs = get_functions_for(Path(meta.get("file", path)).resolve())
         param_sets = expand_parameters(c.parameters)
@@ -145,6 +169,24 @@ def run(
             # Render base_url if it contains template syntax
             if c.config.base_url and ("{{" in c.config.base_url or "${" in c.config.base_url):
                 c.config.base_url = templater.render_value(c.config.base_url, global_vars, funcs, envmap=env_store)
+            # If case has relative URLs but still no base_url after all sources, print a clear guidance and exit
+            if _need_base_url(c) and not (c.config.base_url and str(c.config.base_url).strip()):
+                msg_lines = [
+                    "[ERROR] base_url is required for cases using relative URLs.",
+                    f"        Case: {c.config.name or 'Unnamed'} | Source: {meta.get('file', path)}",
+                    "        Provide base_url in one of the following ways:",
+                    f"          - Create an env file: {env_file} (recommended)",
+                    "              BASE_URL=http://localhost:8000",
+                    "              USER_USERNAME=test_user",
+                    "              USER_PASSWORD=test_pass",
+                    "              SHIPPING_ADDRESS=Test Address",
+                    "          - Or pass CLI vars: --vars base_url=http://localhost:8000",
+                    "          - Or export env:   export BASE_URL=http://localhost:8000",
+                    "        Tip: use --env-file <path> to specify a different env file.",
+                ]
+                for line in msg_lines:
+                    typer.echo(line)
+                raise typer.Exit(code=2)
             log.info(f"[CASE] Start: {c.config.name or 'Unnamed'} | params={ps}")
             res = runner.run_case(c, global_vars=global_vars, params=ps, funcs=funcs, envmap=env_store, source=meta.get("file"))
             log.info(f"[CASE] Result: {res.name} | status={res.status} | duration={res.duration_ms:.1f}ms")
