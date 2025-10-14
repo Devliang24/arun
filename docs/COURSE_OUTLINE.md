@@ -2,13 +2,13 @@
 
 ## 学习收获（可落地验收）
 1. 搭建运行与产物：独立完成安装与运行，输出 HTML 报告、JSON 报告与控制台/文件日志（`arun run testcases --html reports/report.html --report reports/report.json --env-file .env`）。
-2. 业务回归套件：基于现有 `testcases/*` 与 `testsuites/*` 交付冒烟/回归/权限三层套件，确保冒烟套件稳定全绿（如运行 `testsuites/testsuite_smoke.yaml`）。
+2. 业务回归套件：基于现有 `testcases/*` 与 `testsuites/*` 交付冒烟/回归/权限三层套件；验收标准：冒烟套件稳定全绿且用时 <5 分钟（示例：运行 `testsuites/testsuite_smoke.yaml`）。
 3. 标签治理与筛选：按 `smoke/regression/permissions` 标签组织并能用 `-k` 表达式精确筛选（如 `arun run testcases -k "smoke and not slow"`）。
 4. 鉴权与会话复用：完成登录→带 token 访问链路（`testcases/test_auth.yaml`、`examples/test_login_whoami.yaml`），并验证无需显式设置 `Authorization` 头也能通过（自动注入生效）。
 5. 参数化覆盖：使用矩阵/枚举/压缩三种参数化覆盖多环境与边界场景（`examples/test_params_*.yaml`），验证实例数与期望一致。
 6. SQL 数据一致性：配置 MySQL 连接（环境变量 `MYSQL_HOST/PORT/USER/PASSWORD/DB` 或 `MYSQL_DSN`），运行 `examples/test_sql_validate.yaml` 与 `examples/test_sql_store_reuse.yaml` 完成金额/库存校验与变量复用。
 7. 报告与最小复现：能从 HTML 报告中获取 cURL 并在终端复现实验结果；可生成 Allure 结果并本地渲染（`--allure-results allure-results`）。
-8. 通知闭环：完成至少一种渠道（飞书/钉钉/邮件）配置并在失败时自动推送摘要（如 `--notify feishu --notify-only failed`）。
+8. 通知闭环：完成至少一种渠道（飞书/钉钉/邮件）配置并在失败时自动推送摘要（命令示例：`--notify feishu --notify-only failed`；可用环境变量：`FEISHU_WEBHOOK`、`DINGTALK_WEBHOOK`、`SMTP_HOST` 等）。
 9. 安全与合规：启用 `--mask-secrets` 进行日志与报告脱敏；密钥通过 `.env` 注入；报告与日志不包含敏感明文。
 10. 规范化校验：用 `arun check` 校验用例通过、`arun fix` 一键修复常见风格问题；提交前通过本地校验脚本。
 11. 性能阈值：在关键接口为 `$elapsed_ms` 设置断言阈值（参考 `examples/test_perf_timing.yaml`），确保核心路径在目标预算内。
@@ -16,8 +16,8 @@
 13. 阅读和修改源码：完成一次小型修复或优化（<50 行），`arun check` 通过且示例回归全绿（提交修改文件与验证命令）。
 14. 添加新功能：在断言/通知/Reporter 任一处新增一个可用扩展，配套 `examples/*.yaml` 用例与报告产物（如扩展 `arun/runner/assertions.py` 或 `arun/notifier/*`）。
 15. 性能优化：针对模板/提取/报告任一热点编写基准脚本，优化后 p95 延迟下降≥20%（参考 `arun/templating/*`、`arun/runner/extractors.py`、`arun/reporter/*`）。
-16. 技术选型：完成一次鉴权/通知/报告/SQL 驱动的对比选型并落地到配置/代码（记录决策与回滚方案）。
-17. 推动企业落地：建立冒烟/回归/权限三层套件、配置通知闭环与门禁阈值，并在 CI 中生效（产出报告链接与通知截图）。
+16. 技术选型：完成一次鉴权/通知/报告/SQL 驱动的对比选型并落地到配置/代码；产出 1 页 ADR（方案/权衡/回滚）。
+17. 推动企业落地：在 CI 中运行套件并启用门禁阈值（通过率/时延），失败自动通知责任人；产出报告链接、通知截图与示例 CI 片段（如 `arun run testsuites/testsuite_regression.yaml --notify feishu --notify-only failed`）。
 
 ## 阶段 1｜前置与方法论（必修）
 1. Python 知识点：语法/数据结构/函数与装饰器/面向对象/异常/上下文管理器/类型注解/异步 async-await。
@@ -91,4 +91,3 @@
 13. 示例与用例映射：`examples/*.yaml`、`testcases/*`、`testsuites/*`。
 14. 规范与打包：`pyproject.toml`、`scripts/pre-commit-fix-hooks.sh`。
 15. 规格与资产：`spec/openapi/ecommerce_api.json`。
-
