@@ -20,13 +20,13 @@
 - 推动企业落地：建立冒烟/回归/权限三层套件、配置通知闭环与门禁阈值，并在 CI 中生效（产出报告链接与通知截图）。
 
 ## 阶段 1｜前置与方法论（必修）
-- 1 Python 3.10+ 与工程实践：typing/venv/pip，`pydantic`、`typer`、`httpx`
-- 2 接口测试与自动化测试方法论：金字塔、等价类/边界、幂等/重试、错误码与安全
-- 3 HTTP/REST 与鉴权：方法/状态码/头/缓存、HMAC/签名、cURL 调试
-- 4 YAML/JSON/JMESPath：表达式/过滤/提取的高频模式与陷阱
-- 5 SQL 与数据准备：查询/事务/隔离，断言场景与数据构造
-- 6 CLI/Git 与工具链：shell、git 分支/PR、Postman/Insomnia、日志溯源
-- 7 合规与安全基础：凭据治理、最小权限、脱敏与日志规范
+- 1 Python 知识点：语法/数据结构/函数与装饰器/面向对象/异常/上下文管理器/类型注解/异步 async-await。
+- 2 Python 工程与生态：虚拟环境/venv、包管理/pip、打包/pyproject，`pydantic`/`typer`/`httpx` 基础。
+- 3 接口测试与自动化测试方法论：金字塔、等价类/边界、幂等/重试、错误码与安全。
+- 4 HTTP/REST 与鉴权：方法/状态码/头/缓存、HMAC/签名、cURL 调试。
+- 5 YAML/JSON/JMESPath：表达式/过滤/提取的高频模式与陷阱。
+- 6 SQL 与数据准备：查询/事务/隔离，断言场景与数据构造。
+- 7 CLI/Git 与工具链：shell、git 分支/PR、Postman/Insomnia、日志溯源。
 
 ## 阶段 2｜ARun 速通与基础
 - 1 结构速览与安装运行：README、命令行入口（`arun/cli.py`）
