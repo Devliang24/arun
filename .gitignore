@@ -35,7 +35,6 @@ allure-report/
 htmlcov/
 
 # Environment files
-.env
 .env.local
 
 # IDE
