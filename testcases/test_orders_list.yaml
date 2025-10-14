@@ -39,13 +39,11 @@ steps:
       - eq: [$.data.user.username, $user_username]
 
   - name: 获取订单列表
-    variables:
-      authz: "Bearer $token"
     request:
       method: GET
       url: /api/v1/orders/
       headers:
-        Authorization: $authz
+        Authorization: Bearer $token
       params:
         skip: 0
         limit: 20

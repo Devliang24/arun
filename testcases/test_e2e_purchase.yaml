@@ -55,13 +55,11 @@ steps:
       - contains: ["$.data.items[0]", "name"]
 
   - name: 加入购物车
-    variables:
-      authz: "Bearer $token"
     request:
       method: POST
       url: /api/v1/cart/items
       headers:
-        Authorization: $authz
+        Authorization: Bearer $token
       body:
         product_id: $product_id
         quantity: $quantity
@@ -76,13 +74,11 @@ steps:
       - gt: [$.data.total_price, 0.0]
 
   - name: 下单
-    variables:
-      authz: "Bearer $token"
     request:
       method: POST
       url: /api/v1/orders/
       headers:
-        Authorization: $authz
+        Authorization: Bearer $token
       body:
         shipping_address: $shipping_address
     extract:
@@ -97,13 +93,11 @@ steps:
       - len_eq: [$.data.warnings, 0]
 
   - name: 订单详情
-    variables:
-      authz: "Bearer $token"
     request:
       method: GET
       url: /api/v1/orders/$order_id
       headers:
-        Authorization: $authz
+        Authorization: Bearer $token
     validate:
       - eq: [status_code, 200]
       - eq: [$.success, true]

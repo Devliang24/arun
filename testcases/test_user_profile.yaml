@@ -41,13 +41,11 @@ steps:
       - eq: [$.data.user.username, $user_username]
 
   - name: 更新个人信息
-    variables:
-      authz: "Bearer $token"
     request:
       method: PUT
       url: /api/v1/users/me
       headers:
-        Authorization: $authz
+        Authorization: Bearer $token
       body:
         full_name: $new_full_name
         shipping_address: $new_address
@@ -59,13 +57,11 @@ steps:
       - eq: [$.data.shipping_address, $new_address]
 
   - name: 获取我的信息
-    variables:
-      authz: "Bearer $token"
     request:
       method: GET
       url: /api/v1/users/me
       headers:
-        Authorization: $authz
+        Authorization: Bearer $token
     validate:
       - eq: [status_code, 200]
       - contains: [$.data.shipping_address, $new_address]

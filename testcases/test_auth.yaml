@@ -44,13 +44,11 @@ steps:
       - eq: [$.data.user.is_active, true]
 
   - name: 获取当前用户
-    variables:
-      authz: "Bearer $token"
     request:
       method: GET
       url: /api/v1/users/me
       headers:
-        Authorization: $authz
+        Authorization: Bearer $token
     validate:
       - eq: [status_code, 200]
       - eq: [$.success, true]
@@ -61,13 +59,11 @@ steps:
       - contains: [$.data, "role"]
 
   - name: 登出
-    variables:
-      authz: "Bearer $token"
     request:
       method: DELETE
       url: /api/v1/auth/session
       headers:
-        Authorization: $authz
+        Authorization: Bearer $token
     validate:
       - eq: [status_code, 200]
       - eq: [$.success, true]

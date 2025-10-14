@@ -39,13 +39,11 @@ steps:
       - eq: [$.data.user.username, $user_username]
 
   - name: 创建分类被拒绝
-    variables:
-      authz: Bearer $token
     request:
       method: POST
       url: /api/v1/categories/
       headers:
-        Authorization: $authz
+        Authorization: Bearer $token
       body:
         name: cat-${short_uid(8)}
         description: "tmp"
@@ -54,5 +52,3 @@ steps:
       - contains: [$.message, "Not enough permissions"]
       - eq: [$.success, false]
       - eq: [$.code, 403]
-
-

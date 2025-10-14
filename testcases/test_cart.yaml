@@ -53,13 +53,11 @@ steps:
       - contains: ["$.data.items[0]", "name"]
 
   - name: 加入购物车
-    variables:
-      authz: "Bearer $token"
     request:
       method: POST
       url: /api/v1/cart/items
       headers:
-        Authorization: $authz
+        Authorization: Bearer $token
       body:
         product_id: $product_id
         quantity: 2
@@ -74,13 +72,11 @@ steps:
       - gt: [$.data.total_price, 0.0]
 
   - name: 更新数量
-    variables:
-      authz: "Bearer $token"
     request:
       method: PUT
       url: /api/v1/cart/items/$product_id
       headers:
-        Authorization: $authz
+        Authorization: Bearer $token
       body:
         quantity: 1
     validate:
@@ -92,13 +88,11 @@ steps:
       - eq: ["$.data.items[0].quantity", 1]
 
   - name: 获取购物车
-    variables:
-      authz: "Bearer $token"
     request:
       method: GET
       url: /api/v1/cart/
       headers:
-        Authorization: $authz
+        Authorization: Bearer $token
     validate:
       - eq: [status_code, 200]
       - eq: [$.success, true]
@@ -108,13 +102,11 @@ steps:
       - eq: ["$.data.items[0].quantity", 1]
 
   - name: 从购物车移除商品
-    variables:
-      authz: "Bearer $token"
     request:
       method: DELETE
       url: /api/v1/cart/items/$product_id
       headers:
-        Authorization: $authz
+        Authorization: Bearer $token
     validate:
       - eq: [status_code, 200]
       - eq: [$.success, true]
