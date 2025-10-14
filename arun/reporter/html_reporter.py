@@ -250,12 +250,23 @@ def write_html(report: RunReport, outfile: str | Path) -> None:
     return out;
   }
   function fallbackCopy(text){
+    // Best-effort copy via hidden textarea; works in most browsers including file://
     try{
       var ta=document.createElement('textarea');
-      ta.value=text; ta.style.position='fixed'; ta.style.opacity='0'; ta.style.left='-9999px';
-      document.body.appendChild(ta); ta.focus(); ta.select();
+      ta.value=text;
+      ta.setAttribute('readonly','');
+      ta.style.position='fixed';
+      ta.style.opacity='0';
+      ta.style.left='-9999px';
+      ta.style.top='0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      // iOS Safari requires explicit range selection
+      try{ ta.setSelectionRange(0, ta.value.length); }catch(_){ /* ignore */ }
       var ok=false; try{ ok=document.execCommand('copy'); }catch(e){ ok=false; }
-      document.body.removeChild(ta); return ok;
+      document.body.removeChild(ta);
+      return ok;
     }catch(e){ return false; }
   }
   function selectForManual(preEl, btn){
@@ -290,9 +301,16 @@ def write_html(report: RunReport, outfile: str | Path) -> None:
     }, 1500);
   }
   window.toggleStepBody = function(headEl){ var step=headEl && headEl.closest ? headEl.closest('.step') : null; if(!step) return; step.classList.toggle('collapsed'); };
+  function closestPanel(el){
+    if(!el) return null;
+    if(el.closest) return el.closest('.panel');
+    // Fallback for very old browsers
+    var p=el; while(p){ if(p.classList && p.classList.contains('panel')) return p; p=p.parentElement; }
+    return null;
+  }
   window.copyPanel = function(btn){
     try{
-      var panel=btn && btn.closest ? btn.closest('.panel') : null;
+      var panel=closestPanel(btn);
       if(!panel) return;
       var pre=panel.querySelector('pre');
       if(!pre) return;
@@ -300,7 +318,8 @@ def write_html(report: RunReport, outfile: str | Path) -> None:
       if(!text) return;
       var did=false;
       try{
-        if(navigator.clipboard && navigator.clipboard.writeText){
+        var canClipboard = (typeof navigator!=='undefined' && navigator.clipboard && typeof navigator.clipboard.writeText==='function');
+        if(window.isSecureContext && canClipboard){
           navigator.clipboard.writeText(text).then(function(){ showCopied(btn); }).catch(function(){
             if(fallbackCopy(text)) { showCopied(btn); }
             else { selectForManual(pre, btn); }
