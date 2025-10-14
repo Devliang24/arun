@@ -73,7 +73,7 @@
 8. 性能计时与基线：`arun/utils/timeit.py`、`examples/test_perf_timing.yaml`。
 9. SQL 校验落地：`arun/db/sql_validate.py`、`arun/models/sql_validate.py`。
 10. 套件化运行与筛选：标签表达式与套件产物（`testsuites/*`）。
-11. 提交流程与本地校验：打包与脚本（`pyproject.toml`、`scripts/pre-commit-fix-hooks.sh`）。
+11. 提交流程与本地校验：打包与脚本（`pyproject.toml`）。
 
 ## 阶段 6｜源码拆解与扩展
 1. CLI 与命令体系：`arun/cli.py`（run/check/fix、过滤/报告/通知参数）。
@@ -89,5 +89,5 @@
 11. Hooks 扩展点：`arun_hooks.py`、`arun/loader/hooks.py`。
 12. 规范与自动修复：`arun check/fix` 实现与规则。
 13. 示例与用例映射：`examples/*.yaml`、`testcases/*`、`testsuites/*`。
-14. 规范与打包：`pyproject.toml`、`scripts/pre-commit-fix-hooks.sh`。
+14. 规范与打包：`pyproject.toml`。
 15. 规格与资产：`spec/openapi/ecommerce_api.json`。
