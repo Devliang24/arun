@@ -229,25 +229,8 @@ def write_html(report: RunReport, outfile: str | Path) -> None:
 <script>(function(){
   function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
   function highlightJSONSimple(text){
-    let out = ''; let i = 0;
-    while(i < text.length){
-      const ch = text[i];
-      if(ch==='\"'){
-        let j=i+1; let str=''; let escaped=false;
-        while(j<text.length){ const c=text[j]; str+=c; j++; if(c==='\\\\' && !escaped){ escaped=true; continue;} if(c==='\"' && !escaped){ break;} escaped=false; }
-        out += "<span class='tok-str'>&quot;"+esc(str)+"&quot;</span>"; i=j; continue;
-      }
-      if(/[-0-9]/.test(ch)){
-        let j=i; let num=''; while(j<text.length && /[-0-9.eE]/.test(text[j])){ num+=text[j++]; }
-        out += "<span class='tok-num'>"+esc(num)+"</span>"; i=j; continue;
-      }
-      if(text.startsWith('true', i) || text.startsWith('false', i)){
-        const w = text.startsWith('true', i)?'true':'false'; out += "<span class='tok-bool'>"+w+"</span>"; i+=w.length; continue;
-      }
-      if(text.startsWith('null', i)){ out += "<span class='tok-null'>null</span>"; i+=4; continue; }
-      out += esc(ch); i++;
-    }
-    return out;
+    // Keep it robust: just escape without fancy tokenization to avoid parser pitfalls.
+    return esc(text);
   }
   function fallbackCopy(text){
     // Best-effort copy via hidden textarea; works in most browsers including file://
