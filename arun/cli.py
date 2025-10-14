@@ -359,7 +359,7 @@ def check(
 
 @app.command("fix")
 def fix(
-    path: str = typer.Argument(..., help="File or directory to auto-fix YAML (move hooks to config.* / spacing)"),
+    paths: List[str] = typer.Argument(..., help="File(s) or directories to auto-fix YAML (move hooks to config.* / spacing)", metavar="PATH..."),
     only_spacing: bool = typer.Option(False, "--only-spacing", help="Only fix steps spacing (do not move hooks)"),
     only_hooks: bool = typer.Option(False, "--only-hooks", help="Only move hooks into config.* (do not change spacing)"),
 ):
@@ -368,7 +368,7 @@ def fix(
     - Move suite/case-level hooks under `config.setup_hooks/config.teardown_hooks`.
     - Ensure a single blank line between adjacent steps items under `steps:`.
     """
-    files = discover([path])
+    files = discover(paths)
     if not files:
         typer.echo("No YAML test files found.")
         raise typer.Exit(code=2)
