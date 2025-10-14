@@ -195,24 +195,27 @@ def run(
                 break
 
     report_obj: RunReport = runner.build_report(instance_results)
-    # Print summary
+    # Print summary (standardized log format)
     s = report_obj.summary
-    typer.echo(f"Total: {s['total']} Passed: {s.get('passed',0)} Failed: {s.get('failed',0)} Skipped: {s.get('skipped',0)} Duration: {s.get('duration_ms',0):.1f}ms")
+    log.info(
+        "Total: %s Passed: %s Failed: %s Skipped: %s Duration: %.1fms",
+        s["total"], s.get("passed", 0), s.get("failed", 0), s.get("skipped", 0), s.get("duration_ms", 0.0)
+    )
 
     html_target = html or f"reports/report-{ts}.html"
 
     if report:
         write_json(report_obj, report)
-        typer.echo(f"JSON report written to {report}")
+        log.info("JSON report written to %s", report)
     from arun.reporter.html_reporter import write_html
     write_html(report_obj, html_target)
-    typer.echo(f"HTML report written to {html_target}")
+    log.info("HTML report written to %s", html_target)
 
     if allure_results:
         try:
             from arun.reporter.allure_reporter import write_allure_results
             write_allure_results(report_obj, allure_results)
-            typer.echo(f"Allure results written to {allure_results}")
+            log.info("Allure results written to %s", allure_results)
         except Exception as e:
             log = get_logger("arun.cli")
             log.error(f"Failed to write Allure results: {e}")
@@ -284,7 +287,7 @@ def run(
         # never break main flow for notifications
         pass
 
-    typer.echo(f"Logs written to {default_log}")
+    log.info("Logs written to %s", default_log)
     if s.get("failed", 0) > 0:
         raise typer.Exit(code=1)
 
