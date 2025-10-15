@@ -74,7 +74,7 @@ def list_tags(
         typer.echo("No YAML test files found.")
         raise typer.Exit(code=2)
 
-    collected: set[str] = set()
+    collected: Dict[str, set[tuple[str, str]]] = {}
     case_count = 0
     diagnostics: List[str] = []
 
@@ -87,15 +87,25 @@ def list_tags(
         if not cases:
             diagnostics.append(f"[INFO] No cases found in {f}")
             continue
-        diagnostics.append(f"[OK] {f} -> {len(cases)} case(s)")
+        diagnostics.append(f"[OK] {f} -> {len(cases)} cases")
         for c in cases:
             case_count += 1
-            for tag in c.config.tags or []:
-                collected.add(tag)
+            tags = c.config.tags or []
+            case_name = c.config.name or "Unnamed"
+            entry = (case_name, str(f))
+            if not tags:
+                collected.setdefault("<no-tag>", set()).add(entry)
+            for tag in tags:
+                collected.setdefault(tag, set()).add(entry)
 
     for line in diagnostics:
         typer.echo(line)
-    _emit_tag_list(collected, case_count)
+    # Detailed tag summary
+    typer.echo("\nTag Summary:")
+    for tag, cases_for_tag in sorted(collected.items(), key=lambda item: item[0]):
+        typer.echo(f"- {tag}: {len(cases_for_tag)} cases")
+        for case_name, case_path in sorted(cases_for_tag):
+            typer.echo(f"    • {case_name} -> {case_path}")
 
 
 @app.command()
