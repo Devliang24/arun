@@ -1,7 +1,7 @@
 config:
   name: 健康检查
   base_url: ${ENV(BASE_URL)}
-  tags: [health]
+  tags: [health, smoke]
 steps:
   - name: 获取健康状态
     request:

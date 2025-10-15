@@ -692,7 +692,38 @@ class Runner:
         skipped = sum(1 for r in results if r.status == "skipped")
         passed = total - failed - skipped
         duration = sum(r.duration_ms for r in results)
+
+        step_total = 0
+        step_failed = 0
+        step_skipped = 0
+        for case in results:
+            for step in case.steps or []:
+                step_total += 1
+                if step.status == "failed":
+                    step_failed += 1
+                elif step.status == "skipped":
+                    step_skipped += 1
+
+        step_passed = step_total - step_failed - step_skipped
+
+        summary = {
+            "total": total,
+            "passed": passed,
+            "failed": failed,
+            "skipped": skipped,
+            "duration_ms": duration,
+        }
+        if step_total:
+            summary.update(
+                {
+                    "steps_total": step_total,
+                    "steps_passed": step_passed,
+                    "steps_failed": step_failed,
+                    "steps_skipped": step_skipped,
+                }
+            )
+
         return RunReport(
-            summary={"total": total, "passed": passed, "failed": failed, "skipped": skipped, "duration_ms": duration},
+            summary=summary,
             cases=results,
         )

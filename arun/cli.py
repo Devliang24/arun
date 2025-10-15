@@ -24,6 +24,17 @@ import time
 app = typer.Typer(add_completion=False, help="ARun · Zero-code HTTP API test framework", rich_markup_mode=None)
 
 
+def _emit_tag_list(tags: set[str], case_count: int) -> None:
+    """Pretty-print collected tag information."""
+    if not tags:
+        typer.echo(f"No tags defined in {case_count} cases.")
+        return
+    typer.echo(f"Cases scanned: {case_count}")
+    typer.echo("Tags:")
+    for tag in sorted(tags):
+        typer.echo(f"  - {tag}")
+
+
 def parse_kv(items: List[str]) -> Dict[str, str]:
     out: Dict[str, str] = {}
     for it in items:
@@ -51,6 +62,40 @@ def load_env_file(path: Optional[str]) -> Dict[str, str]:
             k, v = line.split("=", 1)
             data[k.strip()] = v.strip()
     return data
+
+
+@app.command("tags")
+def list_tags(
+    path: str = typer.Argument("testcases", help="File or directory to scan for YAML test cases"),
+) -> None:
+    """List all unique tags used by the discovered test cases."""
+    files = discover([path])
+    if not files:
+        typer.echo("No YAML test files found.")
+        raise typer.Exit(code=2)
+
+    collected: set[str] = set()
+    case_count = 0
+    diagnostics: List[str] = []
+
+    for f in files:
+        try:
+            cases, _meta = load_yaml_file(f)
+        except Exception as exc:  # pragma: no cover - defensive
+            diagnostics.append(f"[WARN] Failed to parse {f}: {exc}")
+            continue
+        if not cases:
+            diagnostics.append(f"[INFO] No cases found in {f}")
+            continue
+        diagnostics.append(f"[OK] {f} -> {len(cases)} case(s)")
+        for c in cases:
+            case_count += 1
+            for tag in c.config.tags or []:
+                collected.add(tag)
+
+    for line in diagnostics:
+        typer.echo(line)
+    _emit_tag_list(collected, case_count)
 
 
 @app.command()
@@ -201,6 +246,14 @@ def run(
         "[CASE] Total: %s Passed: %s Failed: %s Skipped: %s Duration: %.1fms",
         s["total"], s.get("passed", 0), s.get("failed", 0), s.get("skipped", 0), s.get("duration_ms", 0.0)
     )
+    if "steps_total" in s:
+        log.info(
+            "[STEP] Total: %s Passed: %s Failed: %s Skipped: %s",
+            s.get("steps_total", 0),
+            s.get("steps_passed", 0),
+            s.get("steps_failed", 0),
+            s.get("steps_skipped", 0),
+        )
 
     html_target = html or f"reports/report-{ts}.html"
 
