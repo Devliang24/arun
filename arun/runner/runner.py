@@ -41,6 +41,17 @@ class Runner:
         except Exception:
             return str(obj)
 
+    @staticmethod
+    def _format_log_value(value: Any, *, prefix_len: int = 0) -> str:
+        if isinstance(value, (dict, list)):
+            try:
+                text = json.dumps(value, ensure_ascii=False, indent=2)
+                pad = "\n" + " " * max(prefix_len, 0)
+                return text.replace("\n", pad)
+            except Exception:
+                pass
+        return repr(value)
+
     def _fmt_aligned(self, section: str, label: str, text: str) -> str:
         """Format a label + multiline text with consistent alignment.
 
@@ -484,10 +495,18 @@ class Runner:
                     if not passed:
                         step_failed = True
                         if self.log:
-                            self.log.error(f"[VALIDATION] {check_str} {v.comparator} {expect_rendered!r} => actual={actual!r} | FAIL | {msg}")
+                            expect_fmt = self._format_log_value(expect_rendered)
+                            prefix = f"[VALIDATION] {check_str} {v.comparator} {expect_fmt} => actual="
+                            indent_len = len(prefix.split("\n")[-1])
+                            actual_fmt = self._format_log_value(actual, prefix_len=indent_len)
+                            self.log.error(prefix + actual_fmt + f" | FAIL | {msg}")
                     else:
                         if self.log:
-                            self.log.info(f"[VALIDATION] {check_str} {v.comparator} {expect_rendered!r} => actual={actual!r} | PASS")
+                            expect_fmt = self._format_log_value(expect_rendered)
+                            prefix = f"[VALIDATION] {check_str} {v.comparator} {expect_fmt} => actual="
+                            indent_len = len(prefix.split("\n")[-1])
+                            actual_fmt = self._format_log_value(actual, prefix_len=indent_len)
+                            self.log.info(prefix + actual_fmt + " | PASS")
 
                 if step.sql_validate:
                     sql_updates_total: Dict[str, Any] = {}
