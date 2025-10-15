@@ -3,19 +3,25 @@ config:
   base_url: ${ENV(BASE_URL)}
   setup_hooks:
     - ${setup_hook_sign_request($request)}
+  variables:
+    username: u_${short_uid(12)}
+    email: u_${uid()}@example.com
+    password: Pwd_${short_uid(12)}
+    full_name: DemoUser_${short_uid(8)}
+    shipping_address: Addr_${short_uid(12)}
 steps:
   - name: 注册
     request:
       method: POST
       url: /api/v1/auth/register
       body:
-        username: u_${short_uid(12)}
-        email: u_${uid()}@example.com
-        password: "P@ssw0rd123"
-        full_name: "Demo User_${short_uid(8)}"
-        shipping_address: "No.1 Demo Road"
+        username: $username
+        email: $email
+        password: $password
+        full_name: $full_name
+        shipping_address: $shipping_address
     extract:
-      new_username: $.data.username
+      username: $.data.username
     validate:
       - in: [status_code, [200, 201]]
       - eq: [$.success, true]
@@ -25,8 +31,8 @@ steps:
       method: POST
       url: /api/v1/auth/login
       body:
-        username: $new_username
-        password: "P@ssw0rd123"
+        username: $username
+        password: $password
     extract:
       token: $.data.access_token
     validate:

@@ -2,9 +2,11 @@ config:
   name: 注册并登录
   base_url: ${ENV(BASE_URL)}
   variables:
-    new_username: u_${short_uid(12)}
-    new_email: u_${uid()}@example.com
-    new_password: "P@ssw0rd123"
+    username: u_${short_uid(12)}
+    email: u_${uid()}@example.com
+    password: Pwd_${short_uid(12)}
+    full_name: NewUser_${short_uid(10)}
+    shipping_address: Addr_${short_uid(12)}
   tags: [auth, register]
 steps:
   - name: 注册
@@ -12,17 +14,17 @@ steps:
       method: POST
       url: /api/v1/auth/register
       body:
-        username: $new_username
-        email: $new_email
-        password: $new_password
-        full_name: "New User_${short_uid(10)}"
-        shipping_address: "No.1 Test Road"
+        username: $username
+        email: $email
+        password: $password
+        full_name: $full_name
+        shipping_address: $shipping_address
     validate:
       - in: [status_code, [200, 201]]
       - eq: [$.success, true]
       - eq: [$.message, "用户注册成功"]
-      - eq: [$.data.username, $new_username]
-      - eq: [$.data.email, $new_email]
+      - eq: [$.data.username, $username]
+      - eq: [$.data.email, $email]
       - eq: [$.data.role, "user"]
 
   - name: 使用新账户登录
@@ -32,12 +34,12 @@ steps:
       method: POST
       url: /api/v1/auth/login
       body:
-        username: $new_username
-        password: $new_password
+        username: $username
+        password: $password
     extract:
       token: $.data.access_token
     validate:
       - eq: [status_code, 200]
       - eq: [$.success, true]
       - eq: [$.message, "登录成功"]
-      - eq: [$.data.user.username, $new_username]
+      - eq: [$.data.user.username, $username]

@@ -4,8 +4,10 @@ config:
   tags: [cart]
   variables:
     username: u_${short_uid(12)}
-    user_password: ${ENV(USER_PASSWORD)}
-    shipping_address: ${ENV(SHIPPING_ADDRESS)}
+    email: u_${uid()}@example.com
+    full_name: CartUser_${short_uid(10)}
+    password: Pwd_${short_uid(12)}
+    shipping_address: Addr_${short_uid(12)}
 steps:
   - name: 注册用户
     request:
@@ -13,12 +15,12 @@ steps:
       url: /api/v1/auth/register
       body:
         username: $username
-        email: u_${uid()}@example.com
-        password: "P@ssw0rd123"
-        full_name: "Cart User_${short_uid(10)}"
+        email: $email
+        password: $password
+        full_name: $full_name
         shipping_address: $shipping_address
     extract:
-      user_username: $.data.username
+      username: $.data.username
     validate:
       - in: [status_code, [200, 201]]
       - eq: [$.success, true]
@@ -29,15 +31,15 @@ steps:
       method: POST
       url: /api/v1/auth/login
       body:
-        username: $user_username
-        password: $user_password
+        username: $username
+        password: $password
     extract:
       token: $.data.access_token
     validate:
       - eq: [status_code, 200]
       - eq: [$.success, true]
       - eq: [$.message, "登录成功"]
-      - eq: [$.data.user.username, $user_username]
+      - eq: [$.data.user.username, $username]
 
   - name: 获取产品列表
     request:
