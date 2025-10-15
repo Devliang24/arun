@@ -73,10 +73,17 @@ steps:
 
 ### 📊 企业级特性
 
-- **专业报告**：交互式 HTML 报告（可复制 JSON/cURL）+ 结构化 JSON 报告 + Allure 集成
+- **专业报告**：
+  - 交互式 HTML 报告（一键复制 JSON/cURL，ES5 兼容，支持旧浏览器和 file:// 协议）
+  - 结构化 JSON 报告（CI/CD 集成）
+  - Allure 集成（趋势分析、附件丰富）
 - **通知集成**：飞书卡片/文本、钉钉文本/Markdown、邮件 HTML/附件，失败聚合通知
-- **安全保护**：敏感数据自动脱敏（headers/body/环境变量）
-- **调试友好**：Rich 彩色输出、cURL 命令生成（格式化 JSON + 自动 Content-Type）、详细日志、错误步骤详情
+- **安全保护**：敏感数据自动脱敏（headers/body/环境变量），支持 `--mask-secrets` 选项
+- **调试友好**：
+  - Rich 彩色输出
+  - cURL 命令生成（使用 `--data-raw`，JSON 自动格式化，自动 Content-Type）
+  - 详细日志（支持 `--log-level debug` 和 `--httpx-logs`）
+  - 错误步骤详情定位
 
 ---
 
@@ -104,6 +111,10 @@ arun --help
 BASE_URL=https://api.example.com
 USER_USERNAME=test_user
 USER_PASSWORD=test_pass
+# 可选：某些测试可能需要以下变量
+# SHIPPING_ADDRESS=1 Test Road, Test City
+# API_KEY=demo-api-key
+# APP_SECRET=demo-app-secret
 ```
 
 ### 3. 编写第一个测试
@@ -179,25 +190,28 @@ steps:                               # 测试步骤列表
 
 ### Dollar 模板语法
 
-ARun 使用简洁的 **Dollar 表达式**进行变量插值：
+ARun 使用简洁的 **Dollar 表达式** `${...}` 进行变量插值和函数调用：
 
 ```yaml
 # 1. 简单变量引用
 url: /users/$user_id                 # 等同于 /users/123
 
-# 2. 表达式（花括号）
+# 2. 函数调用（花括号）
 headers:
   X-Timestamp: ${ts()}               # 调用自定义函数（需在 arun_hooks.py 中定义）
-  X-Signature: ${md5($api_key)}      # 函数嵌套
+  X-Signature: ${md5($api_key)}      # 函数嵌套、参数可以是变量
 
-# 3. 环境变量
-base_url: ${ENV(BASE_URL)}           # 读取环境变量
-api_key: ${ENV(API_KEY, default)}    # 带默认值
+# 3. 环境变量读取
+base_url: ${ENV(BASE_URL)}           # 读取环境变量（必需）
+api_key: ${ENV(API_KEY, default)}    # 带默认值（可选参数）
 
 # 4. 算术运算
 body:
-  user_id: ${int($user_id) + 1}      # 支持基本运算
+  user_id: ${int($user_id) + 1}      # 支持基本运算（类型转换 + 计算）
+  total: ${float($price) * $quantity}
 ```
+
+> **提示**：`$var` 是 `${var}` 的简写形式，两者完全等价。复杂表达式必须使用 `${...}` 格式。
 
 ### 变量作用域优先级
 
@@ -651,17 +665,19 @@ python -m arun.cli run testsuites/testsuite_smoke.yaml \
 ```
 
 **特性**：
-- 📈 摘要仪表板：总数、通过、失败、跳过、耗时（随筛选动态更新）
-- 🔍 详细断言：每个断言的期望值、实际值、结果（支持"仅失败断言"）
-- 📦 请求/响应/提取变量/cURL：完整 JSON 和命令（支持一键复制，带视觉反馈）
+- 📈 **摘要仪表板**：总数、通过、失败、跳过、耗时（随筛选动态更新）
+- 🔍 **详细断言**：每个断言的期望值、实际值、结果（支持"仅失败断言"筛选）
+- 📦 **完整调试信息**：请求/响应/提取变量/cURL 命令（支持一键复制，带视觉反馈）
   - ✅ 复制成功：绿色高亮提示"已复制"
-  - ⚠️ 复制失败：橙色提示"已选中，按 Ctrl/Cmd+C"自动选中文本
+  - ⚠️ 复制失败（HTTPS 限制）：橙色提示"已选中，按 Ctrl/Cmd+C"自动选中文本
   - 🎯 精准复制：基于原始数据，确保 JSON 格式准确无误
-- 🎛️ 交互增强：
+  - 🔧 cURL 命令：使用 `--data-raw` 确保 payload 不被修改，JSON 自动格式化
+- 🎛️ **交互增强**：
   - 状态筛选：通过/失败/跳过
   - 仅失败断言、仅失败断言步骤、展开/折叠全部、仅失败用例
-- 🧩 JSON 可读性：请求/响应/提取变量采用轻量 JSON 语法高亮（零依赖）
-- 🎨 GitHub 主题：默认浅色 GitHub 风格，简洁专业
+- 🧩 **JSON 语法高亮**：请求/响应/提取变量采用轻量高亮（零依赖、ES5 兼容）
+- 🎨 **GitHub 主题**：默认浅色 GitHub 风格，简洁专业
+- 🌐 **兼容性**：ES5 兼容，支持旧浏览器和 `file://` 协议访问
 
 ### JSON 报告
 
@@ -821,8 +837,8 @@ arun run <path> [options]
 --log-level DEBUG             # 日志级别（INFO/DEBUG，默认 INFO）
 --log-file FILE               # 日志文件路径（默认 logs/run-<timestamp>.log）
 --httpx-logs                  # 显示 httpx 内部日志
---reveal-secrets              # 显示敏感数据明文（默认选项）
---mask-secrets                # 脱敏敏感数据（生产环境推荐）
+--reveal-secrets              # 显示敏感数据明文（默认）
+--mask-secrets                # 脱敏敏感数据（CI/CD 推荐）
 --notify feishu,email,dingtalk# 通知渠道
 --notify-only failed          # 通知策略（failed/always，默认 failed）
 --notify-attach-html          # 邮件附加 HTML 报告
@@ -871,8 +887,11 @@ arun check testcases/test_login.yaml
 自动修复 YAML 风格问题：
 
 ```bash
-# 修复所有问题
+# 修复单个目录
 arun fix testcases
+
+# 修复多个目录（一次性处理）
+arun fix testcases testsuites examples
 
 # 仅修复步骤间空行
 arun fix testcases --only-spacing
@@ -893,6 +912,9 @@ arun fix testcases --only-hooks
 config:
   name: 登录并访问受保护资源
   base_url: ${ENV(BASE_URL)}
+  variables:
+    username: ${ENV(USER_USERNAME)}
+    password: ${ENV(USER_PASSWORD)}
 
 steps:
   - name: 用户登录
@@ -900,8 +922,8 @@ steps:
       method: POST
       url: /api/v1/auth/login
       body:
-        username: ${ENV(USER_USERNAME)}
-        password: ${ENV(USER_PASSWORD)}
+        username: $username
+        password: $password
     extract:
       token: $.data.access_token        # 提取 token
       user_id: $.data.user.id
@@ -928,6 +950,12 @@ config:
   name: E2E 购物流程
   base_url: ${ENV(BASE_URL)}
   tags: [e2e, critical]
+  variables:
+    # 动态生成测试数据，避免冲突
+    username: user_${short_uid(8)}
+    email: ${uid()}@example.com
+    password: Test@${short_uid(6)}
+    shipping_address: ${short_uid(12)} Test Street
 
 steps:
   - name: 注册新用户
@@ -935,9 +963,11 @@ steps:
       method: POST
       url: /api/v1/auth/register
       body:
-        username: user_${short_uid(8)}
-        email: ${uid()}@example.com
-        password: "Test@123"
+        username: $username
+        email: $email
+        password: $password
+        full_name: Test User
+        shipping_address: $shipping_address
     extract:
       username: $.data.username
 
@@ -947,7 +977,7 @@ steps:
       url: /api/v1/auth/login
       body:
         username: $username
-        password: "Test@123"
+        password: $password
     extract:
       token: $.data.access_token
 
@@ -974,7 +1004,7 @@ steps:
       method: POST
       url: /api/v1/orders/
       body:
-        shipping_address: "123 Test St"
+        shipping_address: $shipping_address
     extract:
       order_id: $.data.order_id
     validate:
@@ -1100,6 +1130,8 @@ arun run testsuites -k "smoke" --env-file .env
 - 条目级 `variables` 覆盖用例 `config.variables`（优先级：Suite.config.variables < Case.config.variables < Item.variables < CLI/Step）。
 - 条目级 `parameters` 会覆盖用例自带的参数化配置。
 
+---
+
 ## 🔗 CI/CD 集成
 
 ### GitHub Actions
@@ -1131,7 +1163,9 @@ jobs:
         run: |
           arun run testcases \
             --html reports/report.html \
-            --mask-secrets
+            --report reports/run.json \
+            --mask-secrets \
+            --notify-only failed
 
       - name: Upload Report
         uses: actions/upload-artifact@v3
@@ -1156,7 +1190,9 @@ api-tests:
     - |
       arun run testcases \
         --html reports/report.html \
-        --mask-secrets
+        --report reports/run.json \
+        --mask-secrets \
+        --notify-only failed
   artifacts:
     when: always
     paths:
@@ -1181,7 +1217,31 @@ api-tests:
 
 ### 常见问题
 
-#### 1. 找不到测试文件
+#### 1. BASE_URL 缺失警告
+
+```
+[ENV] Default .env not found and BASE_URL is missing. Relative URLs may fail.
+```
+
+**原因**：未提供 `.env` 文件且环境中没有 `BASE_URL` 变量。
+
+**解决方案**：
+```bash
+# 方式 1：创建 .env 文件（推荐）
+cat > .env <<EOF
+BASE_URL=http://localhost:8000
+USER_USERNAME=test_user
+USER_PASSWORD=test_pass
+EOF
+
+# 方式 2：通过 CLI 传递
+arun run testcases --vars base_url=http://localhost:8000
+
+# 方式 3：导出环境变量
+export BASE_URL=http://localhost:8000
+```
+
+#### 2. 找不到测试文件
 
 ```
 No YAML test files found.
@@ -1193,7 +1253,7 @@ No YAML test files found.
 - 文件放在 `testcases/` 或 `testsuites/` 目录，或
 - 文件命名为 `test_*.yaml` 或 `suite_*.yaml`
 
-#### 2. 模块导入错误
+#### 3. 模块导入错误
 
 ```
 ModuleNotFoundError: No module named 'arun'
@@ -1205,7 +1265,7 @@ ModuleNotFoundError: No module named 'arun'
 pip install -e .
 ```
 
-#### 3. 变量未定义
+#### 4. 变量未定义
 
 ```
 KeyError: 'user_id'
@@ -1218,7 +1278,7 @@ KeyError: 'user_id'
 - 确认变量在 `config.variables`、`steps[].variables` 或 `extract` 中定义
 - 检查提取路径是否正确
 
-#### 4. SQL 验证失败
+#### 5. SQL 验证失败
 
 ```
 MySQL assertion requires MYSQL_USER or dsn.user.
@@ -1240,7 +1300,7 @@ MYSQL_DB=test_db
 pip install pymysql
 ```
 
-#### 5. Hooks 未加载
+#### 6. Hooks 未加载
 
 **原因**：`arun_hooks.py` 文件位置不正确，或文件名拼写错误。
 
@@ -1304,14 +1364,14 @@ arun check testcases
 
 | 函数 | 说明 | 示例 |
 |------|------|------|
-| `ENV(key, default)` | 读取环境变量<br>支持可选默认值参数 | `${ENV(BASE_URL)}`<br>`${ENV(TIMEOUT, 30)}` |
+| `ENV(key, default?)` | 读取环境变量<br>可选默认值参数 | `${ENV(BASE_URL)}`<br>`${ENV(TIMEOUT, 30)}` |
 | `now()` | 当前 UTC 时间（ISO 8601 格式） | `${now()}` → `2025-01-15T08:30:00` |
 | `uuid()` | 生成标准 UUID v4 | `${uuid()}` → `550e8400-e29b-...` |
 | `random_int(min, max)` | 生成范围内随机整数（含边界） | `${random_int(1, 100)}` → `42` |
 | `base64_encode(s)` | Base64 编码字符串或字节 | `${base64_encode('hello')}` → `aGVsbG8=` |
 | `hmac_sha256(key, msg)` | HMAC-SHA256 哈希（返回十六进制） | `${hmac_sha256($secret, $data)}` |
 
-> **注意**：以上函数由框架内置提供（`arun/templating/builtins.py`），无需额外配置或导入。
+> **注意**：以上函数由框架内置提供（`arun/templating/builtins.py`），无需额外配置或导入。`ENV()` 是模板引擎内置的特殊函数，用于读取操作系统环境变量。
 
 ### 项目自带辅助函数
 
@@ -1322,21 +1382,23 @@ arun check testcases
 | 函数 | 说明 | 示例 |
 |------|------|------|
 | `ts()` | Unix 时间戳（秒） | `${ts()}` → `1678901234` |
-| `md5(s)` | MD5 哈希 | `${md5('hello')}` → `5d41402a...` |
-| `uid()` | 32 字符十六进制 UUID | `${uid()}` → `a1b2c3d4...` |
-| `short_uid(n)` | 短 UUID（默认 8 字符） | `${short_uid(8)}` → `a1b2c3d4` |
-| `sign(key, ts)` | 签名示例（md5） | `${sign($api_key, $ts)}` |
-| `uuid4()` | 标准 UUID | `${uuid4()}` → `550e8400-e29b-...` |
+| `md5(s)` | MD5 哈希（十六进制） | `${md5('hello')}` → `5d41402a...` |
+| `uid()` | 32 字符十六进制 UUID | `${uid()}` → `a1b2c3d4e5f6...` |
+| `short_uid(n=8)` | 短 UUID（默认 8 字符） | `${short_uid(12)}` → `a1b2c3d4e5f6` |
+| `sign(key, ts)` | 签名示例（MD5 组合） | `${sign($api_key, $ts)}` |
+| `uuid4()` | 标准 UUID v4 | `${uuid4()}` → `550e8400-e29b-...` |
+| `echo(x)` | 回显输入值（调试用） | `${echo('test')}` → `test` |
+| `sum_two_int(a, b)` | 两数相加 | `${sum_two_int(1, 2)}` → `3` |
 
 **生命周期 Hooks**（在 `setup_hooks/teardown_hooks` 中使用）：
 
-| Hook 函数 | 用途 | 示例 |
-|-----------|------|------|
-| `setup_hook_sign_request` | 添加简单 MD5 签名头 | `${setup_hook_sign_request($request)}` |
-| `setup_hook_hmac_sign` | 添加 HMAC-SHA256 签名头 | `${setup_hook_hmac_sign($request)}` |
-| `setup_hook_api_key` | 注入 API Key 头 | `${setup_hook_api_key($request)}` |
-| `teardown_hook_assert_status_ok` | 断言状态码为 200 | `${teardown_hook_assert_status_ok($response)}` |
-| `teardown_hook_capture_request_id` | 提取 request_id 到变量 | `${teardown_hook_capture_request_id($response)}` |
+| Hook 函数 | 用途 | 参数 | 示例 |
+|-----------|------|------|------|
+| `setup_hook_sign_request` | 添加简单 MD5 签名头<br>（X-Timestamp + X-Signature） | `$request` | `${setup_hook_sign_request($request)}` |
+| `setup_hook_hmac_sign` | 添加 HMAC-SHA256 签名头<br>（X-Timestamp + X-HMAC，需 APP_SECRET） | `$request` | `${setup_hook_hmac_sign($request)}` |
+| `setup_hook_api_key` | 注入 API Key 头<br>（X-API-Key，从环境变量读取） | `$request` | `${setup_hook_api_key($request)}` |
+| `teardown_hook_assert_status_ok` | 断言响应状态码为 200 | `$response` | `${teardown_hook_assert_status_ok($response)}` |
+| `teardown_hook_capture_request_id` | 提取响应中的 request_id 到变量 | `$response` | `${teardown_hook_capture_request_id($response)}` |
 
 **自定义函数**：编辑 `arun_hooks.py` 文件即可添加或修改函数，所有非下划线开头的函数自动加载到模板引擎中。
 
