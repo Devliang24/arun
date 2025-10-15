@@ -1,14 +1,16 @@
 config:
   name: "静态 Bearer 鉴权"
   base_url: ${ENV(BASE_URL)}
+  variables:
+    static_bearer: ${ENV(STATIC_BEARER)}
 steps:
   - name: 使用静态 Token 查询用户
-    skip: ${not ENV(STATIC_BEARER)}
+    skip: ${not $static_bearer}
     request:
       method: GET
       url: /api/v1/users/me
       auth:
         type: bearer
-        token: ${ENV(STATIC_BEARER)}
+        token: $static_bearer
     validate:
       - eq: [status_code, 200]

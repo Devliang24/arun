@@ -302,8 +302,10 @@ def write_html(report: RunReport, outfile: str | Path) -> None:
       var did=false;
       try{
         var canClipboard = (typeof navigator!=='undefined' && navigator.clipboard && typeof navigator.clipboard.writeText==='function');
-        if(window.isSecureContext && canClipboard){
-          navigator.clipboard.writeText(text).then(function(){ showCopied(btn); }).catch(function(){
+        if(canClipboard){
+          navigator.clipboard.writeText(text).then(function(){
+            showCopied(btn);
+          }).catch(function(){
             if(fallbackCopy(text)) { showCopied(btn); }
             else { selectForManual(pre, btn); }
           });
@@ -319,17 +321,38 @@ def write_html(report: RunReport, outfile: str | Path) -> None:
       try{ console.warn('copy failed', e); }catch(_){}
     }
   };
+  // Toggle all steps (ES5-friendly; avoids const/arrow/Array.from)
+  window.toggleAllSteps = function(btn){
+    try{
+      var list = document.querySelectorAll ? document.querySelectorAll('.step') : [];
+      var steps;
+      try{ steps = Array.prototype.slice.call(list); }catch(_){
+        steps = [];
+        for(var i=0;i<list.length;i++){ steps.push(list[i]); }
+      }
+      var anyExpanded = false;
+      for(var j=0;j<steps.length;j++){
+        var st = steps[j];
+        if(!st.classList || !st.classList.contains('collapsed')){ anyExpanded = true; break; }
+      }
+      if(anyExpanded){
+        for(var k=0;k<steps.length;k++){ if(steps[k].classList){ steps[k].classList.add('collapsed'); } }
+        if(btn){ btn.textContent = '展开全部'; }
+      }else{
+        for(var m=0;m<steps.length;m++){ if(steps[m].classList){ steps[m].classList.remove('collapsed'); } }
+        if(btn){ btn.textContent = '收起全部'; }
+      }
+    }catch(e){ /* ignore */ }
+  };
   window.applyFilters = function(){ var selEl=document.querySelector("input[name='status-filter']:checked"); var sel=(selEl && selEl.value) || 'all'; try{localStorage.setItem('arun_report_status', sel);}catch(e){} document.querySelectorAll('.case').forEach(function(c){ var st=(c.dataset && c.dataset.status)||''; c.style.display=(sel==='all'||st===sel)?'':''; }); };
   document.addEventListener('DOMContentLoaded', function(){
     try{ var saved=localStorage.getItem('arun_report_status')||'all'; var el=document.querySelector("input[name='status-filter'][value='"+saved+"']"); if(el) el.checked=true; }catch(e){}
     document.querySelectorAll("input[name='status-filter']").forEach(function(el){ el.addEventListener('change', window.applyFilters); });
-    // JSON highlight + console-style alignment for multiline blocks
-    var PAD_COLS = 50; var pad = ' '.repeat(PAD_COLS);
+    // JSON highlight (preserve original indentation)
     document.querySelectorAll('.panel pre code').forEach(function(code){
       var panel= code.closest ? code.closest('.panel') : null; if(panel && panel.dataset && panel.dataset.section==='curl') return;
       var pre = code.parentElement; var raw=(pre && pre.getAttribute('data-raw')) || code.innerText || code.textContent || '';
       var html = highlightJSONSimple(raw);
-      if(raw.indexOf('\n') >= 0){ html = html.replace(/\n/g, '\n'+pad); }
       code.innerHTML = html;
     });
     window.applyFilters();
@@ -351,7 +374,7 @@ def write_html(report: RunReport, outfile: str | Path) -> None:
     head_parts.append("      <div class='badge skipped'><span class='badge-label'>跳过</span><span class='badge-value'>" + skipped + "</span></div>\n")
     head_parts.append("      <div class='badge duration'><span class='badge-label'>耗时</span><span class='badge-value'>" + duration + "<span style='font-size:14px;font-weight:400;margin-left:4px;'>ms</span></span></div>\n")
     head_parts.append("    </div>\n")
-    head_parts.append("    <div class='toolbar'>\n      <div class='filters'>\n        <label class='chip'><input type='radio' name='status-filter' id='f-all' value='all' checked /> 全部</label>\n        <label class='chip'><input type='radio' name='status-filter' id='f-passed' value='passed' /> 通过</label>\n        <label class='chip'><input type='radio' name='status-filter' id='f-failed' value='failed' /> 失败</label>\n        <label class='chip'><input type='radio' name='status-filter' id='f-skipped' value='skipped' /> 跳过</label>\n      </div>\n      <button id='btn-toggle-expand' title='展开/收起全部' onclick=\"(function(){const steps=Array.from(document.querySelectorAll('.step')); const anyExpanded=steps.some(s=>!s.classList.contains('collapsed')); if(anyExpanded){steps.forEach(s=>s.classList.add('collapsed')); this.textContent='展开全部';} else {steps.forEach(s=>s.classList.remove('collapsed')); this.textContent='收起全部';}}).call(this)\">展开全部</button>\n    </div>\n  </div>\n")
+    head_parts.append("    <div class='toolbar'>\n      <div class='filters'>\n        <label class='chip'><input type='radio' name='status-filter' id='f-all' value='all' checked /> 全部</label>\n        <label class='chip'><input type='radio' name='status-filter' id='f-passed' value='passed' /> 通过</label>\n        <label class='chip'><input type='radio' name='status-filter' id='f-failed' value='failed' /> 失败</label>\n        <label class='chip'><input type='radio' name='status-filter' id='f-skipped' value='skipped' /> 跳过</label>\n      </div>\n      <button id='btn-toggle-expand' title='展开/收起全部' onclick=\"window.toggleAllSteps && window.toggleAllSteps(this)\">展开全部</button>\n    </div>\n  </div>\n")
 
     # Cases
     body_cases = []

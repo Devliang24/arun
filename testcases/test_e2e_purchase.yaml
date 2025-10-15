@@ -3,7 +3,7 @@ config:
   base_url: ${ENV(BASE_URL)}
   tags: [e2e]
   variables:
-    user_username: ${ENV(USER_USERNAME)}
+    username: u_${short_uid(12)}
     user_password: ${ENV(USER_PASSWORD)}
     shipping_address: ${ENV(SHIPPING_ADDRESS)}
 parameters:
@@ -14,11 +14,11 @@ steps:
       method: POST
       url: /api/v1/auth/register
       body:
-        username: u_${short_uid(12)}
+        username: $username
         email: u_${uid()}@example.com
         password: "P@ssw0rd123"
         full_name: "E2E User_${short_uid(10)}"
-        shipping_address: ${ENV(SHIPPING_ADDRESS)}
+        shipping_address: $shipping_address
     extract:
       user_username: $.data.username
     validate:
