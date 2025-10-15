@@ -22,6 +22,12 @@ import time
 
 
 app = typer.Typer(add_completion=False, help="ARun · Zero-code HTTP API test framework", rich_markup_mode=None)
+import_app = typer.Typer()
+export_app = typer.Typer()
+app.add_typer(import_app, name="import")
+app.add_typer(export_app, name="export")
+
+# Importers / exporters (lazy optional imports inside functions where needed)
 
 
 def _emit_tag_list(tags: set[str], case_count: int) -> None:
@@ -64,6 +70,275 @@ def load_env_file(path: Optional[str]) -> Dict[str, str]:
     return data
 
 
+def _to_yaml_case_dict(case: Case) -> Dict[str, object]:
+    # Dump with aliases and prune fields loader forbids at top-level.
+    d = case.model_dump(by_alias=True, exclude_none=True)
+    for k in ("setup_hooks", "teardown_hooks", "suite_setup_hooks", "suite_teardown_hooks"):
+        if k in d and not d.get(k):
+            d.pop(k, None)
+    return d
+
+
+@import_app.command("curl")
+def import_curl(
+    infile: str = typer.Argument(..., help="Path to file with curl commands or '-' for stdin"),
+    outfile: Optional[str] = typer.Option(None, "--outfile", help="Write to new YAML file (default stdout)"),
+    into: Optional[str] = typer.Option(None, "--into", help="Append into existing YAML (case or suite)"),
+    case_name: Optional[str] = typer.Option(None, "--case-name", help="Case name; default 'Imported Case'"),
+    base_url: Optional[str] = typer.Option(None, "--base-url", help="Override base_url in generated case"),
+) -> None:
+    from arun.importers.curl import parse_curl_text
+    from arun.models.case import Case
+    from arun.models.config import Config
+    from arun.models.step import Step
+    from arun.models.request import StepRequest
+
+    # Read input
+    if infile == "-":
+        text = typer.get_text_stream("stdin").read()
+    else:
+        # Enforce .curl suffix for curl files
+        pth = Path(infile)
+        if pth.suffix.lower() != ".curl":
+            typer.echo(f"[IMPORT] Refusing to read '{infile}': curl file must have '.curl' suffix.")
+            raise typer.Exit(code=2)
+        text = pth.read_text(encoding="utf-8")
+
+    icase = parse_curl_text(text, case_name=case_name, base_url=base_url)
+
+    steps: List[Step] = []
+    for s in icase.steps:
+        req = StepRequest(
+            method=s.method,
+            url=s.url,
+            params=s.params,
+            headers=s.headers,
+            body=s.body,
+            data=s.data,
+            files=s.files,
+            auth=s.auth,
+        )
+        step = Step(name=s.name, request=req, validate=[{"eq": ["status_code", 200]}])
+        steps.append(step)
+
+    case = Case(config=Config(name=icase.name, base_url=icase.base_url), steps=steps)
+    out_dict = _to_yaml_case_dict(case)
+
+    import yaml as _yaml
+
+    def _dump(obj: Dict[str, object]) -> str:
+        return _yaml.safe_dump(obj, allow_unicode=True, sort_keys=False)
+
+    if into:
+        # Append into existing YAML
+        p = Path(into)
+        if not p.exists():
+            p.write_text(_dump(out_dict), encoding="utf-8")
+            typer.echo(f"[IMPORT] Created new case file: {into}")
+            return
+        data = _yaml.safe_load(p.read_text(encoding="utf-8")) or {}
+        if "config" in data and "steps" in data:
+            # case file
+            steps_existing = data.get("steps") or []
+            steps_existing.extend(out_dict.get("steps") or [])
+            data["steps"] = steps_existing
+            p.write_text(_dump(data), encoding="utf-8")
+            typer.echo(f"[IMPORT] Appended {len(out_dict.get('steps', []))} steps into case: {into}")
+            return
+        elif "cases" in data:
+            cases = data.get("cases") or []
+            cases.append(out_dict)
+            data["cases"] = cases
+            p.write_text(_dump(data), encoding="utf-8")
+            typer.echo(f"[IMPORT] Added case into suite: {into}")
+            return
+        else:
+            # Unknown structure -> overwrite or error. Choose overwrite for simplicity.
+            p.write_text(_dump(out_dict), encoding="utf-8")
+            typer.echo(f"[IMPORT] Replaced file with generated case: {into}")
+            return
+
+    # Write to outfile or stdout
+    s = _dump(out_dict)
+    if outfile:
+        Path(outfile).write_text(s, encoding="utf-8")
+        typer.echo(f"[IMPORT] Wrote YAML to {outfile}")
+    else:
+        typer.echo(s)
+
+
+@import_app.command("postman")
+def import_postman(
+    collection: str = typer.Argument(..., help="Postman collection v2 JSON file"),
+    outfile: Optional[str] = typer.Option(None, "--outfile"),
+    into: Optional[str] = typer.Option(None, "--into"),
+    case_name: Optional[str] = typer.Option(None, "--case-name"),
+    base_url: Optional[str] = typer.Option(None, "--base-url"),
+) -> None:
+    from arun.importers.postman import parse_postman
+    from arun.models.case import Case
+    from arun.models.config import Config
+    from arun.models.step import Step
+    from arun.models.request import StepRequest
+    import yaml as _yaml
+
+    text = Path(collection).read_text(encoding="utf-8")
+    icase = parse_postman(text, case_name=case_name, base_url=base_url)
+
+    steps: List[Step] = []
+    for s in icase.steps:
+        req = StepRequest(method=s.method, url=s.url, params=s.params, headers=s.headers, body=s.body, data=s.data)
+        steps.append(Step(name=s.name, request=req, validate=[{"eq": ["status_code", 200]}]))
+
+    case = Case(config=Config(name=icase.name, base_url=icase.base_url), steps=steps)
+    out_dict = _to_yaml_case_dict(case)
+    out_text = _yaml.safe_dump(out_dict, allow_unicode=True, sort_keys=False)
+    if into:
+        p = Path(into)
+        if p.exists():
+            data = _yaml.safe_load(p.read_text(encoding="utf-8")) or {}
+            if "config" in data and "steps" in data:
+                data["steps"] = (data.get("steps") or []) + (out_dict.get("steps") or [])
+            elif "cases" in data:
+                data["cases"] = (data.get("cases") or []) + [out_dict]
+            else:
+                data = out_dict
+            p.write_text(_yaml.safe_dump(data, allow_unicode=True, sort_keys=False), encoding="utf-8")
+            typer.echo(f"[IMPORT] Appended into {into}")
+            return
+    if outfile:
+        Path(outfile).write_text(out_text, encoding="utf-8")
+        typer.echo(f"[IMPORT] Wrote YAML to {outfile}")
+    else:
+        typer.echo(out_text)
+
+
+@import_app.command("har")
+def import_har(
+    harfile: str = typer.Argument(..., help="HAR file to import"),
+    outfile: Optional[str] = typer.Option(None, "--outfile"),
+    into: Optional[str] = typer.Option(None, "--into"),
+    case_name: Optional[str] = typer.Option(None, "--case-name"),
+    base_url: Optional[str] = typer.Option(None, "--base-url"),
+) -> None:
+    from arun.importers.har import parse_har
+    from arun.models.case import Case
+    from arun.models.config import Config
+    from arun.models.step import Step
+    from arun.models.request import StepRequest
+    import yaml as _yaml
+
+    text = Path(harfile).read_text(encoding="utf-8")
+    icase = parse_har(text, case_name=case_name, base_url=base_url)
+    steps: List[Step] = []
+    for s in icase.steps:
+        req = StepRequest(method=s.method, url=s.url, params=s.params, headers=s.headers, body=s.body, data=s.data)
+        steps.append(Step(name=s.name, request=req, validate=[{"eq": ["status_code", 200]}]))
+    case = Case(config=Config(name=icase.name, base_url=icase.base_url), steps=steps)
+    out_dict = _to_yaml_case_dict(case)
+    out_text = _yaml.safe_dump(out_dict, allow_unicode=True, sort_keys=False)
+    if into:
+        p = Path(into)
+        if p.exists():
+            data = _yaml.safe_load(p.read_text(encoding="utf-8")) or {}
+            if "config" in data and "steps" in data:
+                data["steps"] = (data.get("steps") or []) + (out_dict.get("steps") or [])
+            elif "cases" in data:
+                data["cases"] = (data.get("cases") or []) + [out_dict]
+            else:
+                data = out_dict
+            p.write_text(_yaml.safe_dump(data, allow_unicode=True, sort_keys=False), encoding="utf-8")
+            typer.echo(f"[IMPORT] Appended into {into}")
+            return
+    if outfile:
+        Path(outfile).write_text(out_text, encoding="utf-8")
+        typer.echo(f"[IMPORT] Wrote YAML to {outfile}")
+    else:
+        typer.echo(out_text)
+@export_app.command("curl")
+def export_curl(
+    path: str = typer.Argument(..., help="Case/Suite YAML file or directory to export"),
+    case_name: Optional[str] = typer.Option(None, "--case-name", help="Only export a specific case name"),
+    steps: Optional[str] = typer.Option(None, "--steps", help="Step indexes, e.g., '1,3-5' (1-based)"),
+    multiline: bool = typer.Option(False, "--multiline/--one-line", help="Format curl on multiple lines with continuations"),
+    shell: str = typer.Option("sh", "--shell", help="Line continuation style: sh|ps"),
+    redact: Optional[str] = typer.Option(None, "--redact", help="Comma-separated header names to mask, e.g., Authorization,Cookie"),
+    with_comments: bool = typer.Option(True, "--with-comments/--no-comments", help="Prepend '# Case/Step' comments to each curl"),
+    outfile: Optional[str] = typer.Option(None, "--outfile", help="Write output to file (must end with .curl when provided)"),
+) -> None:
+    from arun.exporters.curl import case_to_curls, step_to_curl, step_placeholders
+    out_lines: List[str] = []
+
+    files: List[str] = []
+    p = Path(path)
+    if p.is_dir():
+        from arun.loader.collector import discover
+        files = discover([path])
+    else:
+        files = [path]
+
+    def parse_steps_spec(spec: Optional[str], maxn: int) -> List[int]:
+        if not spec:
+            return list(range(maxn))
+        out: List[int] = []
+        for part in spec.split(','):
+            part = part.strip()
+            if not part:
+                continue
+            if '-' in part:
+                a, b = part.split('-', 1)
+                try:
+                    ia = max(1, int(a))
+                    ib = min(maxn, int(b))
+                except Exception:
+                    continue
+                out.extend(list(range(ia-1, ib)))
+            else:
+                try:
+                    i = int(part)
+                    if 1 <= i <= maxn:
+                        out.append(i-1)
+                except Exception:
+                    pass
+        # dedupe preserve order
+        seen=set(); res=[]
+        for i in out:
+            if i not in seen:
+                res.append(i); seen.add(i)
+        return res
+
+    redact_list = [x.strip() for x in (redact or '').split(',') if x.strip()]
+
+    if outfile and not outfile.lower().endswith('.curl'):
+        typer.echo(f"[EXPORT] Outfile must end with '.curl': {outfile}")
+        raise typer.Exit(code=2)
+
+    from pathlib import Path as _Path
+    for f in files:
+        cases, _meta = load_yaml_file(_Path(f))
+        if case_name:
+            cases = [c for c in cases if (c.config.name or "") == case_name]
+        for c in cases:
+            idxs = parse_steps_spec(steps, len(c.steps))
+            for j, idx in enumerate(idxs, start=1):
+                if with_comments:
+                    cname = c.config.name or 'Unnamed'
+                    sname = c.steps[idx].name or f"Step {idx+1}"
+                    out_lines.append(f"# Case: {cname} | Step {idx+1}: {sname}")
+                    # Add placeholder annotations such as $token or ${...}
+                    vars_set, exprs_set = step_placeholders(c, idx)
+                    if vars_set:
+                        out_lines.append("# Vars: " + " ".join(sorted(vars_set)))
+                    if exprs_set:
+                        out_lines.append("# Exprs: " + " ".join(sorted(exprs_set)))
+                out_lines.append(step_to_curl(c, idx, multiline=multiline, shell=shell, redact=redact_list))
+
+    output = "\n\n".join(out_lines)
+    if outfile:
+        Path(outfile).write_text(output, encoding="utf-8")
+        typer.echo(f"[EXPORT] Wrote {len(out_lines)} curl commands to {outfile}")
+    else:
+        typer.echo(output)
 @app.command("tags")
 def list_tags(
     path: str = typer.Argument("testcases", help="File or directory to scan for YAML test cases"),
