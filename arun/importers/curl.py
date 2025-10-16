@@ -8,6 +8,32 @@ from urllib.parse import urlparse, parse_qsl
 
 from .base import ImportedCase, ImportedStep
 
+_HTTP_METHODS = {"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"}
+
+
+def _strip_leading_quotes(text: str) -> str:
+    while text and text[0] in ("'", '"'):
+        text = text[1:]
+    return text
+
+
+def _is_command_start(line: str) -> bool:
+    if not line:
+        return False
+    lower = line.lower()
+    if lower.startswith("curl "):
+        return True
+    stripped = _strip_leading_quotes(line).lstrip()
+    if not stripped:
+        return False
+    upper = stripped.upper()
+    if upper.startswith("HTTP://") or upper.startswith("HTTPS://"):
+        return True
+    first_token = stripped.split(None, 1)[0].upper()
+    if first_token in _HTTP_METHODS:
+        return True
+    return False
+
 
 def _read_file_payload(spec: str) -> Optional[str]:
     # spec like @file.json or just file path
@@ -136,12 +162,13 @@ def parse_curl_text(text: str, *, case_name: Optional[str] = None, base_url: Opt
     buf: List[str] = []
     for line in text.splitlines():
         ls = line.strip()
-        if ls.startswith("curl ") and buf:
+        if not ls:
+            continue
+        if buf and _is_command_start(ls):
             pieces.append(" ".join(buf))
             buf = [ls]
         else:
-            if ls:
-                buf.append(ls)
+            buf.append(ls)
     if buf:
         pieces.append(" ".join(buf))
     if not pieces and text.strip():
@@ -153,10 +180,19 @@ def parse_curl_text(text: str, *, case_name: Optional[str] = None, base_url: Opt
         s = cmd.strip()
         if s.startswith("curl"):
             s = s[len("curl"):].strip()
+        else:
+            # Allow commands without explicit 'curl' prefix (auto-added)
+            if not s.lower().startswith("curl "):
+                s = s.strip()
+
         try:
             tokens = shlex.split(s, posix=True)
         except Exception:
             tokens = s.split()
+        if tokens and tokens[0].upper() in _HTTP_METHODS and not tokens[0].startswith("-"):
+            # Normalize leading HTTP method to '-X METHOD'
+            method_token = tokens.pop(0).upper()
+            tokens = ["-X", method_token] + tokens
         step, bg = _parse_one(tokens)
         steps.append(step)
         if not base_guess and bg:
