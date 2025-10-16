@@ -911,6 +911,22 @@ arun fix testcases --only-hooks
 - 将 suite/case 级 hooks 移到 `config.setup_hooks/teardown_hooks`
 - 确保 `steps` 中相邻步骤之间有一个空行
 
+### arun import curl
+
+将 cURL 命令转换为 YAML 用例：
+
+```bash
+# 基本用法：多个 curl 合并成一个用例（默认行为）
+arun import curl tmp3.curl --outfile testcases/imported.yaml
+
+# 可选：为文件中的每条 curl 各生成一个 YAML 文件
+arun import curl tmp3.curl --split-output
+# 指定命名基准（将生成 foo_1.yaml、foo_2.yaml ...）
+arun import curl tmp3.curl --outfile foo.yaml --split-output
+```
+
+> **提示**：`--split-output` 不支持与 `--into` 同时使用；若输入来自标准输入，会默认生成 `imported_step_<n>.yaml`。
+
 ## 💻 实战示例
 
 ### 示例 1：登录流程 + Token 自动注入

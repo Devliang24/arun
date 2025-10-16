@@ -1,0 +1,34 @@
+config:
+  name: Imported Case
+  base_url: https://dgi-dev.deepexi.com
+steps:
+  - name: POST /api_v2/token
+    request:
+      method: POST
+      url: /api_v2/token
+      headers:
+        Accept: application/json, text/plain, */*
+        Accept-Language: zh-CN
+        Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySW5mbyI6eyJhY2NvdW50SWQiOiIxNDQwODA0OTc4MDc2NDE2IiwiZW50ZXJwcmlzZUNvZGUiOiJkZ2kiLCJ0ZW5hbnRJZCI6ImRnaSIsInVzZXJJZCI6IjE0NDA4MDQ5NzgxNTgzMzYiLCJ1c2VybmFtZSI6Imd1b2ppYSJ9LCJpYW1UeXBlIjoiY2xpZW50IiwiaXNTYW5ZdWFuIjp0cnVlLCJ1c2VyX25hbWUiOiJndW9qaWEiLCJzY29wZSI6WyJhbGwiXSwiaWFtX2NsaWVudF9pZGVudGlmaWVyIjoiMTgzYWQ2NWQ3NjgxOWQwMzZmY2VlOGExYTZlM2RhIiwiZXhwIjoxNzY1NzI5MTk1LCJuZWVkUmVzZXRQYXNzd29yZCI6dHJ1ZSwianRpIjoiMzg3YjlkYzItOGIyNy00YTlmLWE1OTUtYmQ4Y2JmZjM5YWI2IiwiY2xpZW50X2lkIjoiZGdpIn0.33jY7VAWARIw5m1R-pfvynjRXeTU_loqRssz5LRoOE0
+        Connection: keep-alive
+        Content-Type: application/json
+        Origin: https://dgi-dev.deepexi.com
+        Referer: https://dgi-dev.deepexi.com/access-key
+        Sec-Fetch-Dest: empty
+        Sec-Fetch-Mode: cors
+        Sec-Fetch-Site: same-origin
+        User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
+          like Gecko) Chrome/141.0.0.0 Safari/537.36
+        sec-ch-ua: '"Google Chrome";v="141", "Not?A_Brand";v="8", "Chromium";v="141"'
+        sec-ch-ua-mobile: ?0
+        sec-ch-ua-platform: '"Windows"'
+      body:
+        name: ddd
+        data_level: 受控
+        models: deepexi2-reasoner-ds-7b22
+        expired_time: 4070880000
+        unlimited_quota: true
+    validate:
+      - eq: [status_code, 200]
+      - contains: [headers.Content-Type, application/json]
+      - ne: [$, null]

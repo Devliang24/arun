@@ -13,6 +13,9 @@ steps:
     request:
       method: POST
       url: /api/v1/auth/register
+      headers:
+        Accept: application/json
+        Content-Type: application/json
       body:
         username: $username
         email: $email
@@ -22,10 +25,10 @@ steps:
     validate:
       - in: [status_code, [200, 201]]
       - eq: [$.success, true]
-      - eq: [$.message, "用户注册成功"]
+      - eq: [$.message, 用户注册成功]
       - eq: [$.data.username, $username]
       - eq: [$.data.email, $email]
-      - eq: [$.data.role, "user"]
+      - eq: [$.data.role, user]
 
   - name: 使用新账户登录
     retry: 3
@@ -33,6 +36,9 @@ steps:
     request:
       method: POST
       url: /api/v1/auth/login
+      headers:
+        Accept: application/json
+        Content-Type: application/json
       body:
         username: $username
         password: $password
@@ -41,5 +47,5 @@ steps:
     validate:
       - eq: [status_code, 200]
       - eq: [$.success, true]
-      - eq: [$.message, "登录成功"]
+      - eq: [$.message, 登录成功]
       - eq: [$.data.user.username, $username]

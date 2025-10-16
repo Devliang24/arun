@@ -13,6 +13,9 @@ steps:
     request:
       method: POST
       url: /api/v1/auth/register
+      headers:
+        Accept: application/json
+        Content-Type: application/json
       body:
         username: $username
         email: $email
@@ -24,12 +27,15 @@ steps:
     validate:
       - in: [status_code, [200, 201]]
       - eq: [$.success, true]
-      - eq: [$.message, "用户注册成功"]
+      - eq: [$.message, 用户注册成功]
 
   - name: 登录
     request:
       method: POST
       url: /api/v1/auth/login
+      headers:
+        Accept: application/json
+        Content-Type: application/json
       body:
         username: $username
         password: $password
@@ -38,13 +44,15 @@ steps:
     validate:
       - eq: [status_code, 200]
       - eq: [$.success, true]
-      - eq: [$.message, "登录成功"]
+      - eq: [$.message, 登录成功]
       - eq: [$.data.user.username, $username]
 
   - name: 获取产品列表
     request:
       method: GET
       url: /api/v1/products/
+      headers:
+        Accept: application/json
     extract:
       product_id: $.data.items[0].id
     validate:
@@ -52,14 +60,16 @@ steps:
       - eq: [$.success, true]
       - eq: [$.code, 200]
       - gt: [$.data.total, 0]
-      - gt: ["$.data.items[0].price", 0.0]
-      - contains: ["$.data.items[0]", "name"]
+      - gt: ['$.data.items[0].price', 0.0]
+      - contains: ['$.data.items[0]', name]
 
   - name: 加入购物车
     request:
       method: POST
       url: /api/v1/cart/items
       headers:
+        Accept: application/json
+        Content-Type: application/json
         Authorization: Bearer $token
       body:
         product_id: $product_id
@@ -68,10 +78,10 @@ steps:
       - eq: [status_code, 201]
       - eq: [$.success, true]
       - eq: [$.code, 201]
-      - eq: [$.message, "添加商品到购物车成功"]
+      - eq: [$.message, 添加商品到购物车成功]
       - len_eq: [$.data.items, 1]
-      - eq: ["$.data.items[0].product_id", $product_id]
-      - eq: ["$.data.items[0].quantity", 2]
+      - eq: ['$.data.items[0].product_id', $product_id]
+      - eq: ['$.data.items[0].quantity', 2]
       - gt: [$.data.total_price, 0.0]
 
   - name: 更新数量
@@ -79,40 +89,44 @@ steps:
       method: PUT
       url: /api/v1/cart/items/$product_id
       headers:
+        Accept: application/json
+        Content-Type: application/json
         Authorization: Bearer $token
       body:
         quantity: 1
     validate:
       - eq: [status_code, 200]
       - eq: [$.success, true]
-      - eq: [$.message, "更新购物车成功"]
+      - eq: [$.message, 更新购物车成功]
       - len_eq: [$.data.items, 1]
-      - eq: ["$.data.items[0].product_id", $product_id]
-      - eq: ["$.data.items[0].quantity", 1]
+      - eq: ['$.data.items[0].product_id', $product_id]
+      - eq: ['$.data.items[0].quantity', 1]
 
   - name: 获取购物车
     request:
       method: GET
       url: /api/v1/cart/
       headers:
+        Accept: application/json
         Authorization: Bearer $token
     validate:
       - eq: [status_code, 200]
       - eq: [$.success, true]
       - eq: [$.code, 200]
-      - eq: [$.message, "获取购物车成功"]
+      - eq: [$.message, 获取购物车成功]
       - len_eq: [$.data.items, 1]
-      - eq: ["$.data.items[0].quantity", 1]
+      - eq: ['$.data.items[0].quantity', 1]
 
   - name: 从购物车移除商品
     request:
       method: DELETE
       url: /api/v1/cart/items/$product_id
       headers:
+        Accept: application/json
         Authorization: Bearer $token
     validate:
       - eq: [status_code, 200]
       - eq: [$.success, true]
-      - eq: [$.message, "从购物车移除商品成功"]
+      - eq: [$.message, 从购物车移除商品成功]
       - len_eq: [$.data.items, 0]
       - eq: [$.data.total_items, 0]

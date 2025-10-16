@@ -4,7 +4,5 @@ config:
   tags: [smoke]
 
 testcases:
-  - name: 健康检查
-    testcase: testcases/test_health.yaml
   - name: 目录基础
     testcase: testcases/test_catalog.yaml

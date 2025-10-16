@@ -1,20 +1,47 @@
 from __future__ import annotations
 
 import json
-from typing import List, Dict, Optional, Iterable, Tuple, Set, Any
+from typing import List, Dict, Optional, Iterable, Tuple, Set, Any, Mapping
 import re
 from urllib.parse import urljoin, urlencode
 
 from arun.models.case import Case
+from arun.templating.engine import TemplateEngine
 
 
-def _full_url(case: Case, url: str) -> str:
+_TEMPLATER = TemplateEngine()
+
+
+def _render_with_env(text: str, case: Case, envmap: Optional[Mapping[str, Any]]) -> str:
+    if not isinstance(text, str):
+        return text
+    if "${" not in text and "{{" not in text:
+        return text
+    try:
+        rendered = _TEMPLATER.render_value(text, case.config.variables or {}, envmap=envmap)
+    except Exception:
+        return text
+    if rendered is None:
+        return ""
+    return str(rendered)
+
+
+def _full_url(case: Case, url: str, envmap: Optional[Mapping[str, Any]] = None) -> str:
     u = (url or "").strip()
+    if "${" in u or "{{" in u:
+        resolved = _render_with_env(u, case, envmap)
+        if resolved:
+            u = resolved.strip()
     if u.startswith("http://") or u.startswith("https://"):
         return u
     base = (case.config.base_url or "").strip()
     if base:
-        return urljoin(base if base.endswith('/') else base + '/', u.lstrip('/'))
+        if "${" in base or "{{" in base:
+            resolved_base = _render_with_env(base, case, envmap)
+            if resolved_base:
+                base = resolved_base.strip()
+        if base:
+            return urljoin(base if base.endswith('/') else base + '/', u.lstrip('/'))
     return u
 
 
@@ -27,12 +54,25 @@ def _quote(token: str) -> str:
     return token
 
 
-def _build_parts(case: Case, idx: int, redact: Optional[Iterable[str]] = None) -> List[str]:
+def _build_parts(
+    case: Case,
+    idx: int,
+    *,
+    redact: Optional[Iterable[str]] = None,
+    envmap: Optional[Mapping[str, Any]] = None,
+) -> List[str]:
     step = case.steps[idx]
     req = step.request
     parts: List[str] = ["curl"]
     method = (req.method or "GET").upper()
-    parts += ["-X", method]
+    body_present = req.body is not None or req.data is not None or req.files is not None
+    add_method_flag = True
+    if method == "GET":
+        add_method_flag = False
+    elif method == "POST" and body_present:
+        add_method_flag = False
+    if add_method_flag:
+        parts += ["-X", method]
     # headers
     redact_set = set(h.lower() for h in (redact or []))
     for k, v in (req.headers or {}).items():
@@ -41,7 +81,7 @@ def _build_parts(case: Case, idx: int, redact: Optional[Iterable[str]] = None) -
             vv = "***"
         parts += ["-H", f"{k}: {vv}"]
     # params -> query
-    url = _full_url(case, req.url or "/")
+    url = _full_url(case, req.url or "/", envmap=envmap)
     if req.params:
         qs = urlencode(req.params, doseq=True)
         sep = '&' if ('?' in url) else '?'
@@ -50,35 +90,77 @@ def _build_parts(case: Case, idx: int, redact: Optional[Iterable[str]] = None) -
     # body / data
     if req.body is not None:
         try:
-            s = json.dumps(req.body, ensure_ascii=False)
+            s = json.dumps(req.body, ensure_ascii=False, separators=(",", ":"))
         except Exception:
             s = str(req.body)
-        parts += ["--data", s]
+        parts += ["--data-raw", s]
     elif req.data is not None:
-        parts += ["--data", str(req.data)]
+        parts += ["--data-raw", str(req.data)]
 
     parts.append(url)
     return parts
 
 
-def step_to_curl(case: Case, idx: int, *, multiline: bool = False, shell: str = "sh", redact: Optional[Iterable[str]] = None) -> str:
-    parts = _build_parts(case, idx, redact=redact)
+def step_to_curl(
+    case: Case,
+    idx: int,
+    *,
+    multiline: bool = False,
+    shell: str = "sh",
+    redact: Optional[Iterable[str]] = None,
+    envmap: Optional[Mapping[str, Any]] = None,
+) -> str:
+    parts = _build_parts(case, idx, redact=redact, envmap=envmap)
     if not multiline:
         return " ".join(_quote(p) for p in parts)
-    # multiline formatting
+    # multiline formatting (curl '<url>' \n  -H '...' \)
     cont = "\\" if shell in ("sh", "bash", "zsh") else ("`" if shell in ("ps", "powershell") else "\\")
+    tokens = parts[:]
+    url = tokens.pop() if tokens else ""
+    if tokens and tokens[0] == "curl":
+        tokens.pop(0)
+
+    def _quote_force(token: str) -> str:
+        if token == "":
+            return "''"
+        q = token.replace("'", "'\\''")
+        return f"'{q}'"
+
+    def _group_tokens(seq: List[str]) -> List[str]:
+        grouped: List[str] = []
+        i = 0
+        while i < len(seq):
+            tok = seq[i]
+            if tok.startswith("-") and (i + 1) < len(seq) and not seq[i + 1].startswith("-"):
+                grouped.append(f"{tok} {_quote(seq[i + 1])}")
+                i += 2
+            else:
+                grouped.append(_quote(tok))
+                i += 1
+        return grouped
+
     lines: List[str] = []
-    it = iter(parts)
-    first = next(it)
-    lines.append(first)
-    for p in it:
-        lines.append(f"  {cont} {_quote(p)}")
+    first_line = f"curl {_quote_force(url)}" if url else "curl"
+    lines.append(first_line)
+    for segment in _group_tokens(tokens):
+        lines.append(f"  {segment}")
+
+    for i in range(len(lines) - 1):
+        lines[i] = f"{lines[i]} {cont}"
     return "\n".join(lines)
 
 
-def case_to_curls(case: Case, *, steps: Optional[Iterable[int]] = None, multiline: bool = False, shell: str = "sh", redact: Optional[Iterable[str]] = None) -> List[str]:
+def case_to_curls(
+    case: Case,
+    *,
+    steps: Optional[Iterable[int]] = None,
+    multiline: bool = False,
+    shell: str = "sh",
+    redact: Optional[Iterable[str]] = None,
+    envmap: Optional[Mapping[str, Any]] = None,
+) -> List[str]:
     idxs = list(steps) if steps is not None else range(len(case.steps))
-    return [step_to_curl(case, i, multiline=multiline, shell=shell, redact=redact) for i in idxs]
+    return [step_to_curl(case, i, multiline=multiline, shell=shell, redact=redact, envmap=envmap) for i in idxs]
 
 
 _VAR_RE = re.compile(r"\$[A-Za-z_][A-Za-z0-9_]*")

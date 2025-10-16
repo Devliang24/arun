@@ -13,6 +13,9 @@ steps:
     request:
       method: POST
       url: /api/v1/auth/register
+      headers:
+        Accept: application/json
+        Content-Type: application/json
       body:
         username: $username
         email: $email
@@ -24,12 +27,15 @@ steps:
     validate:
       - in: [status_code, [200, 201]]
       - eq: [$.success, true]
-      - eq: [$.message, "用户注册成功"]
+      - eq: [$.message, 用户注册成功]
 
   - name: 登录
     request:
       method: POST
       url: /api/v1/auth/login
+      headers:
+        Accept: application/json
+        Content-Type: application/json
       body:
         username: $username
         password: $password
@@ -38,7 +44,7 @@ steps:
     validate:
       - eq: [status_code, 200]
       - eq: [$.success, true]
-      - eq: [$.message, "登录成功"]
+      - eq: [$.message, 登录成功]
       - eq: [$.data.user.username, $username]
 
   - name: 获取订单列表
@@ -46,6 +52,7 @@ steps:
       method: GET
       url: /api/v1/orders/
       headers:
+        Accept: application/json
         Authorization: Bearer $token
       params:
         skip: 0
@@ -54,8 +61,8 @@ steps:
       - eq: [status_code, 200]
       - eq: [$.success, true]
       - eq: [$.code, 200]
-      - contains: [$.message, "订单列表"]
+      - contains: [$.message, 订单列表]
       - eq: [$.data.page, 1]
       - eq: [$.data.page_size, 20]
-      - contains: [$.data, "items"]
+      - contains: [$.data, items]
       - ge: [$.data.total, 0]

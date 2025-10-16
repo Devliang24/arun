@@ -8,13 +8,16 @@ config:
     password: Pwd_${short_uid(12)}
     shipping_address: Addr_${short_uid(12)}
     new_full_name: User_${short_uid(12)}
-    new_address: "No.9 Automation Rd"
+    new_address: No.9 Automation Rd
   tags: [users]
 steps:
   - name: 注册用户
     request:
       method: POST
       url: /api/v1/auth/register
+      headers:
+        Accept: application/json
+        Content-Type: application/json
       body:
         username: $username
         email: $email
@@ -26,12 +29,15 @@ steps:
     validate:
       - in: [status_code, [200, 201]]
       - eq: [$.success, true]
-      - eq: [$.message, "用户注册成功"]
+      - eq: [$.message, 用户注册成功]
 
   - name: 登录
     request:
       method: POST
       url: /api/v1/auth/login
+      headers:
+        Accept: application/json
+        Content-Type: application/json
       body:
         username: $username
         password: $password
@@ -40,7 +46,7 @@ steps:
     validate:
       - eq: [status_code, 200]
       - eq: [$.success, true]
-      - eq: [$.message, "登录成功"]
+      - eq: [$.message, 登录成功]
       - eq: [$.data.user.username, $username]
 
   - name: 更新个人信息
@@ -48,6 +54,8 @@ steps:
       method: PUT
       url: /api/v1/users/me
       headers:
+        Accept: application/json
+        Content-Type: application/json
         Authorization: Bearer $token
       body:
         full_name: $new_full_name
@@ -55,7 +63,7 @@ steps:
     validate:
       - eq: [status_code, 200]
       - eq: [$.success, true]
-      - eq: [$.message, "用户信息更新成功"]
+      - eq: [$.message, 用户信息更新成功]
       - eq: [$.data.full_name, $new_full_name]
       - eq: [$.data.shipping_address, $new_address]
 
@@ -64,11 +72,12 @@ steps:
       method: GET
       url: /api/v1/users/me
       headers:
+        Accept: application/json
         Authorization: Bearer $token
     validate:
       - eq: [status_code, 200]
       - contains: [$.data.shipping_address, $new_address]
       - eq: [$.success, true]
-      - eq: [$.message, "获取用户信息成功"]
+      - eq: [$.message, 获取用户信息成功]
       - eq: [$.data.username, $username]
       - eq: [$.data.full_name, $new_full_name]

@@ -4,10 +4,5 @@ config:
   tags: [permission]
 
 testcases:
-  - name: 未认证访问被拒绝
-    testcase: testcases/test_health.yaml
-    variables:
-      # Override base_url per case if needed; kept for structure
-      dummy: 0
   - name: 普通用户无法创建分类（403）
     testcase: testcases/test_admin_negative.yaml

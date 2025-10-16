@@ -36,6 +36,11 @@ def _parse_one(tokens: List[str]) -> Tuple[Optional[ImportedStep], Optional[str]
     verify: Optional[bool] = None
     allow_redirects: Optional[bool] = None
 
+    # Normalize tokens to handle curl commands split across multiple lines with trailing '\'.
+    # These produce entries like " -H" after shlex.split; trim leading/trailing whitespace
+    # so option matching works as expected. Keep original order and drop empty fragments.
+    tokens = [tok for tok in (t.strip() for t in tokens) if tok]
+
     it = iter(range(len(tokens)))
     i = 0
     while i < len(tokens):
@@ -159,4 +164,3 @@ def parse_curl_text(text: str, *, case_name: Optional[str] = None, base_url: Opt
 
     case = ImportedCase(name=case_name or "Imported Case", base_url=base_url or base_guess, steps=steps)
     return case
-

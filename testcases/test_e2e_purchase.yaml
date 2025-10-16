@@ -9,12 +9,17 @@ config:
     password: Pwd_${short_uid(12)}
     shipping_address: Addr_${short_uid(12)}
 parameters:
-  quantity: [1, 2]
+  quantity:
+    - 1
+    - 2
 steps:
   - name: 注册用户
     request:
       method: POST
       url: /api/v1/auth/register
+      headers:
+        Accept: application/json
+        Content-Type: application/json
       body:
         username: $username
         email: $email
@@ -26,12 +31,15 @@ steps:
     validate:
       - in: [status_code, [200, 201]]
       - eq: [$.success, true]
-      - eq: [$.message, "用户注册成功"]
+      - eq: [$.message, 用户注册成功]
 
   - name: 登录
     request:
       method: POST
       url: /api/v1/auth/login
+      headers:
+        Accept: application/json
+        Content-Type: application/json
       body:
         username: $username
         password: $password
@@ -40,27 +48,31 @@ steps:
     validate:
       - eq: [status_code, 200]
       - eq: [$.success, true]
-      - eq: [$.message, "登录成功"]
+      - eq: [$.message, 登录成功]
       - eq: [$.data.user.username, $username]
 
   - name: 浏览商品
     request:
       method: GET
       url: /api/v1/products/
+      headers:
+        Accept: application/json
     extract:
       product_id: $.data.items[0].id
     validate:
       - eq: [status_code, 200]
       - eq: [$.success, true]
       - eq: [$.code, 200]
-      - gt: ["$.data.items[0].stock", 0]
-      - contains: ["$.data.items[0]", "name"]
+      - gt: ['$.data.items[0].stock', 0]
+      - contains: ['$.data.items[0]', name]
 
   - name: 加入购物车
     request:
       method: POST
       url: /api/v1/cart/items
       headers:
+        Accept: application/json
+        Content-Type: application/json
         Authorization: Bearer $token
       body:
         product_id: $product_id
@@ -69,10 +81,10 @@ steps:
       - eq: [status_code, 201]
       - eq: [$.success, true]
       - eq: [$.code, 201]
-      - eq: [$.message, "添加商品到购物车成功"]
+      - eq: [$.message, 添加商品到购物车成功]
       - len_eq: [$.data.items, 1]
-      - eq: ["$.data.items[0].product_id", $product_id]
-      - eq: ["$.data.items[0].quantity", $quantity]
+      - eq: ['$.data.items[0].product_id', $product_id]
+      - eq: ['$.data.items[0].quantity', $quantity]
       - gt: [$.data.total_price, 0.0]
 
   - name: 下单
@@ -80,6 +92,8 @@ steps:
       method: POST
       url: /api/v1/orders/
       headers:
+        Accept: application/json
+        Content-Type: application/json
         Authorization: Bearer $token
       body:
         shipping_address: $shipping_address
@@ -89,7 +103,7 @@ steps:
       - eq: [status_code, 201]
       - eq: [$.success, true]
       - eq: [$.code, 201]
-      - eq: [$.message, "订单创建成功"]
+      - eq: [$.message, 订单创建成功]
       - gt: [$.data.order_id, 0]
       - gt: [$.data.total_price, 0.0]
       - len_eq: [$.data.warnings, 0]
@@ -99,14 +113,15 @@ steps:
       method: GET
       url: /api/v1/orders/$order_id
       headers:
+        Accept: application/json
         Authorization: Bearer $token
     validate:
       - eq: [status_code, 200]
       - eq: [$.success, true]
       - eq: [$.code, 200]
-      - eq: [$.message, "获取订单详情成功"]
+      - eq: [$.message, 获取订单详情成功]
       - eq: [$.data.id, $order_id]
       - gt: [$.data.total_price, 0.0]
-      - eq: [$.data.status, "pending"]
+      - eq: [$.data.status, pending]
       - len_eq: [$.data.items, 1]
-      - eq: ["$.data.items[0].product_id", $product_id]
+      - eq: ['$.data.items[0].product_id', $product_id]
