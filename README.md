@@ -926,6 +926,7 @@ arun import curl tmp3.curl --outfile foo.yaml --split-output
 ```
 
 > **提示**：`--split-output` 不支持与 `--into` 同时使用；若输入来自标准输入，会默认生成 `imported_step_<n>.yaml`。
+> 相同选项适用于 `arun import har`（如 `arun import har DGI.har --split-output`）以及 `arun import postman`（如 `arun import postman dev.postman_collection.json --split-output`）。
 
 ## 💻 实战示例
 
