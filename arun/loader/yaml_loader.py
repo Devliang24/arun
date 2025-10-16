@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import re
 from typing import Any, Dict, List, Tuple
 
 import yaml
+from pydantic import ValidationError
 
 from arun.models.case import Case, Suite
 from arun.models.config import Config
@@ -207,11 +209,107 @@ def load_yaml_file(path: Path) -> Tuple[List[Case], Dict[str, Any]]:
     else:
         # single case file: normalize validators
         obj = _normalize_case_dict(obj)
-        case = Case.model_validate(obj)
+        try:
+            case = Case.model_validate(obj)
+        except ValidationError as exc:
+            raise LoadError(_format_case_validation_error(exc, obj, path, raw)) from exc
         cases.append(case)
 
     meta = {"file": str(path)}
     return cases, meta
+
+
+def _format_case_validation_error(exc: ValidationError, obj: Dict[str, Any], path: Path, raw_text: str) -> str:
+    """Provide user-friendly messages for common authoring mistakes."""
+
+    def _step_name(idx: int) -> str:
+        steps = obj.get("steps") if isinstance(obj.get("steps"), list) else []
+        if isinstance(steps, list) and 0 <= idx < len(steps):
+            step = steps[idx] or {}
+            name = step.get("name") if isinstance(step, dict) else None
+            if name:
+                return str(name)
+        return f"steps[{idx + 1}]"
+
+    for err in exc.errors():
+        loc = err.get("loc") or ()
+        err_type = err.get("type")
+
+        # Friendly message when fields (extract/validate/...) are indented under request
+        if (
+            err_type == "extra_forbidden"
+            and len(loc) >= 4
+            and loc[0] == "steps"
+            and isinstance(loc[1], int)
+            and loc[2] == "request"
+        ):
+            field = loc[3]
+            if field in {"extract", "validate", "setup_hooks", "teardown_hooks", "sql_validate"}:
+                step_label = _step_name(loc[1])
+                line_info = _find_step_field_location(raw_text, loc[1], field)
+                if line_info:
+                    line_no, actual_indent, expected_indent, line_text = line_info
+                    indent_hint = (
+                        f"line {line_no}: '{line_text.strip()}' uses {actual_indent} leading spaces; "
+                        f"expected {expected_indent}."
+                    )
+                    return (
+                        f"Invalid YAML indentation in {path}: step '{step_label}' has '{field}' nested under 'request'. "
+                        f"Move '{field}' out to align with 'request' (indent {expected_indent} spaces).\n"
+                        f"Hint → {indent_hint}\n"
+                        "Example:\n"
+                        "  - name: Example\n"
+                        "    request:\n"
+                        "      ...\n"
+                        "    extract: { token: $.data.token }\n"
+                        "    validate: [ { eq: [status_code, 200] } ]"
+                    )
+                return (
+                    f"Invalid YAML indentation in {path}: step '{step_label}' has '{field}' nested under 'request'. "
+                    "Check indentation — 'extract'/'validate' blocks belong alongside 'request', not inside it."
+                )
+
+    # Fallback to default detail when we cannot produce a custom hint
+    return f"Failed to load {path}: {exc}"
+
+
+def _find_step_field_location(raw_text: str, step_index: int, field: str) -> tuple[int, int, int, str] | None:
+    """Locate the line/indentation for a field inside a step for better diagnostics."""
+
+    lines = raw_text.splitlines()
+    step_pattern = re.compile(r"^\s*-\s+name\s*:")
+    current_step = -1
+    step_indent = None
+    step_start = None
+
+    for idx, line in enumerate(lines):
+        if step_pattern.match(line):
+            current_step += 1
+            if current_step == step_index:
+                step_indent = len(line) - len(line.lstrip(" "))
+                step_start = idx
+                break
+
+    if step_start is None or step_indent is None:
+        return None
+
+    expected_indent = step_indent + 2
+    field_prefix = f"{field}:"
+
+    for idx in range(step_start + 1, len(lines)):
+        line = lines[idx]
+        stripped = line.lstrip()
+        indent = len(line) - len(stripped)
+        if step_pattern.match(line) and indent <= step_indent:
+            break
+        if not stripped:
+            continue
+        if stripped.startswith(field_prefix):
+            if indent > expected_indent:
+                return idx + 1, indent, expected_indent, line.rstrip()
+            return None
+
+    return None
 
 
 def expand_parameters(parameters: Any) -> List[Dict[str, Any]]:

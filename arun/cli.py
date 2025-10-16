@@ -25,6 +25,7 @@ from arun.utils.logging import setup_logging, get_logger
 import time
 
 
+from arun.utils.errors import LoadError
 class _FlowSeq(list):
     """Sequence rendered in flow-style YAML (e.g., [a, b])."""
 
@@ -700,7 +701,11 @@ def run(
     items: List[tuple[Case, Dict[str, str]]] = []
     debug_info: List[str] = []
     for f in files:
-        loaded, meta = load_yaml_file(f)
+        try:
+            loaded, meta = load_yaml_file(f)
+        except LoadError as exc:
+            log.error(str(exc))
+            raise typer.Exit(code=2)
         debug_info.append(f"file={f} cases={len(loaded)}")
         # tag filter on case level
         for c in loaded:
