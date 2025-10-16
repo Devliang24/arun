@@ -44,10 +44,9 @@ _YamlDumper.add_representer(_FlowSeq, _flow_seq_representer)
 
 
 app = typer.Typer(add_completion=False, help="ARun · Zero-code HTTP API test framework", rich_markup_mode=None)
-import_app = typer.Typer()
+convert_app = typer.Typer(invoke_without_command=True)
 export_app = typer.Typer()
-app.add_typer(import_app, name="import")
-app.add_typer(export_app, name="export")
+app.add_typer(convert_app, name="convert")
 
 # Importers / exporters (lazy optional imports inside functions where needed)
 
@@ -291,7 +290,7 @@ def _write_imported_cases(
         if not p.exists():
             p.parent.mkdir(parents=True, exist_ok=True)
             p.write_text(text, encoding="utf-8")
-            typer.echo(f"[IMPORT] Created new case file: {into}")
+            typer.echo(f"[CONVERT] Created new case file: {into}")
             return
         data = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
         message: str
@@ -299,15 +298,15 @@ def _write_imported_cases(
             steps_existing = data.get("steps") or []
             steps_existing.extend(out_dict.get("steps") or [])
             data["steps"] = steps_existing
-            message = f"[IMPORT] Appended {len(out_dict.get('steps', []))} steps into case: {into}"
+            message = f"[CONVERT] Appended {len(out_dict.get('steps', []))} steps into case: {into}"
         elif "cases" in data:
             cases_list = data.get("cases") or []
             cases_list.append(out_dict)
             data["cases"] = cases_list
-            message = f"[IMPORT] Added case into suite: {into}"
+            message = f"[CONVERT] Added case into suite: {into}"
         else:
             data = out_dict
-            message = f"[IMPORT] Replaced file with generated case: {into}"
+            message = f"[CONVERT] Replaced file with generated case: {into}"
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(_dump_case_dict(data), encoding="utf-8")
         typer.echo(message)
@@ -319,7 +318,7 @@ def _write_imported_cases(
             text = _dump_case_dict(out_dict)
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(text, encoding="utf-8")
-            typer.echo(f"[IMPORT] Wrote YAML for '{case_obj.config.name}' to {path}")
+            typer.echo(f"[CONVERT] Wrote YAML for '{case_obj.config.name}' to {path}")
         return
 
     out_dict, _, _case_obj = rendered[0]
@@ -328,13 +327,60 @@ def _write_imported_cases(
         path = Path(outfile)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text, encoding="utf-8")
-        typer.echo(f"[IMPORT] Wrote YAML to {outfile}")
+        typer.echo(f"[CONVERT] Wrote YAML to {outfile}")
     else:
         typer.echo(text)
 
 
-@import_app.command("curl")
-def import_curl(
+# Unified convert entrypoint (auto-detect by suffix)
+@convert_app.callback()
+def convert_auto(
+    infile: str = typer.Argument(..., help="Source file (.curl/.har/.json) to convert"),
+    outfile: Optional[str] = typer.Option(None, "--outfile", help="Write output to file"),
+    into: Optional[str] = typer.Option(None, "--into", help="Append into existing YAML"),
+    case_name: Optional[str] = typer.Option(None, "--case-name", help="Override generated case name"),
+    base_url: Optional[str] = typer.Option(None, "--base-url", help="Override base_url in generated case"),
+    split_output: bool = typer.Option(
+        False,
+        "--split-output/--single-output",
+        help="Generate one YAML file per request when supported",
+    ),
+) -> None:
+    suffix = Path(infile).suffix.lower()
+    if suffix == ".curl":
+        convert_curl(
+            infile=infile,
+            outfile=outfile,
+            into=into,
+            case_name=case_name,
+            base_url=base_url,
+            split_output=split_output,
+        )
+    elif suffix == ".har":
+        convert_har(
+            infile=infile,
+            outfile=outfile,
+            into=into,
+            case_name=case_name,
+            base_url=base_url,
+            split_output=split_output,
+        )
+    elif suffix == ".json":
+        convert_postman(
+            collection=infile,
+            outfile=outfile,
+            into=into,
+            case_name=case_name,
+            base_url=base_url,
+            split_output=split_output,
+        )
+    else:
+        typer.echo("[CONVERT] Unrecognized file format. Supported suffixes: .curl, .har, .json")
+        raise typer.Exit(code=2)
+
+
+# Helper for curl conversion
+def convert_curl(
     infile: str = typer.Argument(..., help="Path to file with curl commands or '-' for stdin"),
     outfile: Optional[str] = typer.Option(None, "--outfile", help="Write to new YAML file (default stdout)"),
     into: Optional[str] = typer.Option(None, "--into", help="Append into existing YAML (case or suite)"),
@@ -355,18 +401,18 @@ def import_curl(
         # Enforce .curl suffix for curl files
         pth = Path(infile)
         if pth.suffix.lower() != ".curl":
-            typer.echo(f"[IMPORT] Refusing to read '{infile}': curl file must have '.curl' suffix.")
+            typer.echo(f"[CONVERT] Refusing to read '{infile}': curl file must have '.curl' suffix.")
             raise typer.Exit(code=2)
         text = pth.read_text(encoding="utf-8")
 
     icase = parse_curl_text(text, case_name=case_name, base_url=base_url)
 
     if not icase.steps:
-        typer.echo("[IMPORT] No curl commands detected in input.")
+        typer.echo("[CONVERT] No curl commands detected in input.")
         return
 
     if split_output and into:
-        typer.echo("[IMPORT] --split-output cannot be combined with --into; provide --outfile or rely on inferred names.")
+        typer.echo("[CONVERT] --split-output cannot be combined with --into; provide --outfile or rely on inferred names.")
         raise typer.Exit(code=2)
 
     cases = _build_cases_from_import(icase, split_output=split_output)
@@ -380,8 +426,7 @@ def import_curl(
     )
 
 
-@import_app.command("postman")
-def import_postman(
+def convert_postman(
     collection: str = typer.Argument(..., help="Postman collection v2 JSON file"),
     outfile: Optional[str] = typer.Option(None, "--outfile"),
     into: Optional[str] = typer.Option(None, "--into"),
@@ -399,10 +444,10 @@ def import_postman(
     icase = parse_postman(text, case_name=case_name, base_url=base_url)
 
     if not icase.steps:
-        typer.echo("[IMPORT] No requests detected in Postman collection.")
+        typer.echo("[CONVERT] No requests detected in Postman collection.")
         return
     if split_output and into:
-        typer.echo("[IMPORT] --split-output cannot be combined with --into; provide --outfile or rely on inferred names.")
+        typer.echo("[CONVERT] --split-output cannot be combined with --into; provide --outfile or rely on inferred names.")
         raise typer.Exit(code=2)
 
     cases = _build_cases_from_import(icase, split_output=split_output)
@@ -415,9 +460,8 @@ def import_postman(
     )
 
 
-@import_app.command("har")
-def import_har(
-    harfile: str = typer.Argument(..., help="HAR file to import"),
+def convert_har(
+    infile: str = typer.Argument(..., help="HAR file to convert"),
     outfile: Optional[str] = typer.Option(None, "--outfile"),
     into: Optional[str] = typer.Option(None, "--into"),
     case_name: Optional[str] = typer.Option(None, "--case-name"),
@@ -430,13 +474,13 @@ def import_har(
 ) -> None:
     from arun.importers.har import parse_har
 
-    text = Path(harfile).read_text(encoding="utf-8")
+    text = Path(infile).read_text(encoding="utf-8")
     icase = parse_har(text, case_name=case_name, base_url=base_url)
     if not icase.steps:
-        typer.echo("[IMPORT] No HTTP entries detected in HAR file.")
+        typer.echo("[CONVERT] No HTTP entries detected in HAR file.")
         return
     if split_output and into:
-        typer.echo("[IMPORT] --split-output cannot be combined with --into; provide --outfile or rely on inferred names.")
+        typer.echo("[CONVERT] --split-output cannot be combined with --into; provide --outfile or rely on inferred names.")
         raise typer.Exit(code=2)
 
     cases = _build_cases_from_import(icase, split_output=split_output)
@@ -445,7 +489,7 @@ def import_har(
         outfile=outfile,
         into=into,
         split_output=split_output,
-        source_path=harfile,
+        source_path=infile,
     )
 @export_app.command("curl")
 def export_curl(

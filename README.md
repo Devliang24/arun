@@ -913,103 +913,47 @@ arun fix testcases --only-hooks
 - 将 suite/case 级 hooks 移到 `config.setup_hooks/teardown_hooks`
 - 确保 `steps` 中相邻步骤之间有一个空行
 
-### arun import - 格式转换
+### arun convert - 格式转换
 
-将 curl/Postman/HAR 转换为 ARun YAML 用例，支持多种导出模式。
-
-#### import curl
-
-将 cURL 命令转换为 YAML 用例：
+将 curl/Postman/HAR 转成 ARun YAML，用法统一为 `arun convert <文件>`，根据后缀自动识别格式。
 
 ```bash
-# 基本用法：多个 curl 合并成一个用例（默认行为）
-arun import curl requests.curl --outfile testcases/imported.yaml
+# 合并多个 curl 为单个用例
+arun convert requests.curl --outfile testcases/imported.yaml
 
-# 从标准输入导入
-curl https://api.example.com/users | arun import curl -
+# 拆分每条 curl
+arun convert requests.curl --split-output
 
-# 单步导出：为每条 curl 生成独立 YAML 文件
-arun import curl requests.curl --split-output
-# 指定命名基准（将生成 foo_1.yaml、foo_2.yaml ...）
-arun import curl requests.curl --outfile foo.yaml --split-output
+# 直接从标准输入读取
+curl https://api.example.com/users | arun convert -
 
-# 追加到现有用例
-arun import curl new_request.curl --into testcases/test_api.yaml
+# 导入 Postman Collection
+arun convert collection.json --outfile testcases/postman_suite.yaml
+
+# 导入 HAR（可拆分）
+arun convert recording.har --split-output
+
+# 追加到现有 YAML
+arun convert new_requests.curl --into testcases/test_api.yaml
 
 # 自定义用例信息
-arun import curl requests.curl \
+arun convert requests.curl \
   --case-name "API 测试套件" \
   --base-url https://api.example.com \
   --outfile testcases/test_suite.yaml
 ```
 
 **选项说明**：
-- `--outfile` - 输出文件路径（默认输出到标准输出）
-- `--split-output` - 为每条 curl 生成独立的 YAML 文件
-- `--into` - 追加到现有 YAML 文件（与 `--split-output` 互斥）
-- `--case-name` - 指定用例名称（默认 "Imported Case"）
-- `--base-url` - 设置 base_url（会自动提取公共前缀）
+- `--outfile`：写入指定文件（默认输出到 stdout）
+- `--split-output`：为每个请求生成独立 YAML（与 `--into` 互斥）
+- `--into`：追加到已有 YAML 文件
+- `--case-name`：指定用例名称（默认 "Imported Case"）
+- `--base-url`：覆盖/设定 base_url
 
-#### import postman
-
-从 Postman Collection JSON 导入：
-
-```bash
-# 基本导入：将所有请求合并为一个用例
-arun import postman collection.json --outfile testcases/api_tests.yaml
-
-# 单步导出：为每个请求生成独立文件
-arun import postman collection.json --split-output
-
-# 追加到现有用例
-arun import postman new_collection.json --into testcases/test_api.yaml
-
-# 自定义选项
-arun import postman collection.json \
-  --case-name "Postman 导入测试" \
-  --base-url https://api.example.com \
-  --split-output
-```
-
-**支持特性**：
-- ✅ 请求方法、URL、headers、body
-- ✅ 查询参数（params）
-- ✅ 自动提取 base_url
-- ✅ 默认添加状态码断言
-
-#### import har
-
-从浏览器 HAR 文件导入：
-
-```bash
-# 基本导入：合并所有请求
-arun import har recording.har --outfile testcases/browser_tests.yaml
-
-# 单步导出：为每个请求生成独立文件
-arun import har recording.har --split-output
-
-# 过滤并导入（结合其他工具）
-# 例如：只导入特定域名的请求
-cat recording.har | jq '.log.entries[] | select(.request.url | contains("api.example.com"))' | \
-  arun import har - --outfile testcases/filtered.yaml
-
-# 自定义选项
-arun import har recording.har \
-  --case-name "浏览器录制测试" \
-  --base-url https://api.example.com \
-  --split-output
-```
-
-**适用场景**：
-- 🌐 浏览器开发者工具导出的 HAR 文件
-- 🔍 抓包工具（Charles、Fiddler）导出的流量
-- 🧪 将手工测试转换为自动化用例
-
-**通用提示**：
-- `--split-output` 不能与 `--into` 同时使用
-- 从标准输入导入时（`-`），默认生成 `imported_step_<n>.yaml`
-- 所有导入的用例自动添加 `eq: [status_code, 200]` 断言
-- 支持自动提取和规范化 headers、params、body
+**特性与提示**：
+- 自动解析方法、URL、headers、query、body，并添加基础断言
+- 支持从 stdin 读取（使用 `-`）；拆分模式下默认生成 `imported_step_<n>.yaml`
+- 适用于 curl 片段、Postman Collection、浏览器/抓包 HAR 记录
 
 ### arun export - 导出为 cURL
 
@@ -1281,13 +1225,13 @@ steps:
 #    - 右键 → Save all as HAR with content
 
 # 2. 导入为测试用例（每个请求一个文件）
-arun import har recording.har --split-output \
+arun convert har recording.har --split-output \
   --case-name "浏览器录制" \
   --base-url https://api.example.com
 
 # 输出：
-# [IMPORT] Wrote YAML for '浏览器录制 - Step 1' to recording_step1.yaml
-# [IMPORT] Wrote YAML for '浏览器录制 - Step 2' to recording_step2.yaml
+# [CONVERT] Wrote YAML for '浏览器录制 - Step 1' to recording_step1.yaml
+# [CONVERT] Wrote YAML for '浏览器录制 - Step 2' to recording_step2.yaml
 # ...
 
 # 3. 运行测试验证
@@ -1303,7 +1247,7 @@ arun export curl recording_step1.yaml --with-comments
 # 1. 从 Postman 导出 Collection（JSON 格式）
 
 # 2. 转换为 YAML（合并为一个测试套件）
-arun import postman api_collection.json \
+arun convert api_collection.json \
   --outfile testcases/test_api_suite.yaml \
   --case-name "API 完整测试"
 
@@ -1332,7 +1276,7 @@ curl 'https://api.example.com/users/me' \
 EOF
 
 # 3. 转换为 YAML
-arun import curl api_requests.curl \
+arun convert api_requests.curl \
   --outfile testcases/test_auth_flow.yaml \
   --case-name "认证流程测试"
 
@@ -1374,7 +1318,7 @@ arun export curl testcases/test_new_feature.yaml \
 bash share.curl
 
 # 方式 2：导入为自己的测试用例
-arun import curl share.curl --outfile my_tests/imported.yaml
+arun convert share.curl --outfile my_tests/imported.yaml
 ```
 
 **工作流优势**：
