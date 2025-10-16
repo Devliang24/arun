@@ -1242,7 +1242,7 @@ steps:
 #    - 右键 → Save all as HAR with content
 
 # 2. 导入为测试用例（每个请求一个文件）
-arun convert har recording.har --split-output \
+arun convert recording.har --split-output \
   --case-name "浏览器录制" \
   --base-url https://api.example.com
 
