@@ -41,7 +41,7 @@ steps:
 | **零代码** | ✅ 纯 YAML，无需编程 | ❌ 需要 Python/JavaScript 代码 |
 | **学习曲线** | ✅ 5 分钟上手 | ⚠️ 需要学习测试框架 |
 | **模板系统** | ✅ 简洁的 `${expr}` 语法 | ⚠️ 复杂的模板引擎 |
-| **格式转换** | ✅ curl/Postman/HAR 互转 | ❌ 需要手动编写或第三方工具 |
+| **格式转换** | ✅ 统一 `convert` 命令智能识别格式 | ❌ 需要手动编写或第三方工具 |
 | **数据库验证** | ✅ 内置 SQL 断言 | ❌ 需要额外开发 |
 | **CI/CD 就绪** | ✅ 开箱即用 | ⚠️ 需要配置 |
 | **报告系统** | ✅ HTML + JSON + 通知 | ⚠️ 需要集成第三方 |
@@ -64,7 +64,7 @@ steps:
 - **YAML DSL**：声明式测试用例，人类可读
 - **智能变量管理**：6 层作用域，自动 token 注入
 - **JMESPath 提取**：强大的 JSON 数据提取能力
-- **格式转换**：curl/Postman/HAR ↔ YAML 互转，支持 `--split-output` 单步导出
+- **智能格式转换**：统一的 `arun convert` 命令,根据文件后缀自动识别 curl/Postman/HAR 格式,支持双向转换与 `--split-output` 单步导出
 
 ### 🚀 高级功能
 
@@ -164,6 +164,23 @@ HTML report written to reports/report.html
 ```
 
 🎉 **恭喜！**你已经完成了第一个 API 测试。打开 `reports/report.html` 查看详细报告。
+
+### 6. 快速转换现有请求（可选）
+
+如果你已有 curl 命令、Postman Collection 或浏览器 HAR 记录，可以快速转换为 YAML：
+
+```bash
+# 从 curl 命令转换（支持从浏览器 "Copy as cURL" 或 API 文档复制）
+arun convert requests.curl --outfile testcases/test_imported.yaml
+
+# 从 Postman Collection 转换
+arun convert api_collection.json --outfile testcases/test_postman.yaml
+
+# 从浏览器 HAR 记录转换（F12 → Network → "Save all as HAR"）
+arun convert recording.har --split-output  # 每个请求生成独立文件
+```
+
+**提示**：转换后的 YAML 文件可直接运行，也可进一步编辑添加断言、提取变量、参数化等高级功能。
 
 ---
 
@@ -913,9 +930,9 @@ arun fix testcases --only-hooks
 - 将 suite/case 级 hooks 移到 `config.setup_hooks/teardown_hooks`
 - 确保 `steps` 中相邻步骤之间有一个空行
 
-### arun convert - 格式转换
+### arun convert - 智能格式转换
 
-将 curl/Postman/HAR 转成 ARun YAML，用法统一为 `arun convert <文件>`，根据后缀自动识别格式。
+将 curl/Postman/HAR 转为 ARun YAML 的统一入口。**核心优势**：无需记忆多个子命令，`arun convert` 自动识别文件格式（`.curl` / `.har` / `.json`），一条命令搞定所有转换。
 
 ```bash
 # 合并多个 curl 为单个用例
@@ -1212,7 +1229,7 @@ steps:
       - eq: [status_code, 200]
 ```
 
-### 示例 5：Import/Export 工作流
+### 示例 5：格式转换与导出工作流
 
 演示从浏览器/Postman 到 ARun YAML 的完整转换流程。
 
