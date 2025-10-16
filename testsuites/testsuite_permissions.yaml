@@ -6,3 +6,5 @@ config:
 testcases:
   - name: 普通用户无法创建分类（403）
     testcase: testcases/test_admin_negative.yaml
+  - name: 管理员可以创建商品
+    testcase: testcases/test_admin_products.yaml
