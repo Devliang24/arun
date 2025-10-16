@@ -85,7 +85,7 @@ steps:
   - Rich 彩色输出
   - cURL 命令生成（使用 `--data-raw`，JSON 自动格式化，自动 Content-Type）
   - 详细日志（支持 `--log-level debug` 和 `--httpx-logs`）
-  - 错误步骤详情定位
+  - 智能错误诊断（YAML 缩进错误提示、精准行号定位）
 
 ---
 
