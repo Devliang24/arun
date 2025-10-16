@@ -41,6 +41,7 @@ steps:
 | **零代码** | ✅ 纯 YAML，无需编程 | ❌ 需要 Python/JavaScript 代码 |
 | **学习曲线** | ✅ 5 分钟上手 | ⚠️ 需要学习测试框架 |
 | **模板系统** | ✅ 简洁的 `${expr}` 语法 | ⚠️ 复杂的模板引擎 |
+| **格式转换** | ✅ curl/Postman/HAR 互转 | ❌ 需要手动编写或第三方工具 |
 | **数据库验证** | ✅ 内置 SQL 断言 | ❌ 需要额外开发 |
 | **CI/CD 就绪** | ✅ 开箱即用 | ⚠️ 需要配置 |
 | **报告系统** | ✅ HTML + JSON + 通知 | ⚠️ 需要集成第三方 |
@@ -63,6 +64,7 @@ steps:
 - **YAML DSL**：声明式测试用例，人类可读
 - **智能变量管理**：6 层作用域，自动 token 注入
 - **JMESPath 提取**：强大的 JSON 数据提取能力
+- **格式转换**：curl/Postman/HAR ↔ YAML 互转，支持 `--split-output` 单步导出
 
 ### 🚀 高级功能
 
@@ -911,22 +913,182 @@ arun fix testcases --only-hooks
 - 将 suite/case 级 hooks 移到 `config.setup_hooks/teardown_hooks`
 - 确保 `steps` 中相邻步骤之间有一个空行
 
-### arun import curl
+### arun import - 格式转换
+
+将 curl/Postman/HAR 转换为 ARun YAML 用例，支持多种导出模式。
+
+#### import curl
 
 将 cURL 命令转换为 YAML 用例：
 
 ```bash
 # 基本用法：多个 curl 合并成一个用例（默认行为）
-arun import curl tmp3.curl --outfile testcases/imported.yaml
+arun import curl requests.curl --outfile testcases/imported.yaml
 
-# 可选：为文件中的每条 curl 各生成一个 YAML 文件
-arun import curl tmp3.curl --split-output
+# 从标准输入导入
+curl https://api.example.com/users | arun import curl -
+
+# 单步导出：为每条 curl 生成独立 YAML 文件
+arun import curl requests.curl --split-output
 # 指定命名基准（将生成 foo_1.yaml、foo_2.yaml ...）
-arun import curl tmp3.curl --outfile foo.yaml --split-output
+arun import curl requests.curl --outfile foo.yaml --split-output
+
+# 追加到现有用例
+arun import curl new_request.curl --into testcases/test_api.yaml
+
+# 自定义用例信息
+arun import curl requests.curl \
+  --case-name "API 测试套件" \
+  --base-url https://api.example.com \
+  --outfile testcases/test_suite.yaml
 ```
 
-> **提示**：`--split-output` 不支持与 `--into` 同时使用；若输入来自标准输入，会默认生成 `imported_step_<n>.yaml`。
-> 相同选项适用于 `arun import har`（如 `arun import har DGI.har --split-output`）以及 `arun import postman`（如 `arun import postman dev.postman_collection.json --split-output`）。
+**选项说明**：
+- `--outfile` - 输出文件路径（默认输出到标准输出）
+- `--split-output` - 为每条 curl 生成独立的 YAML 文件
+- `--into` - 追加到现有 YAML 文件（与 `--split-output` 互斥）
+- `--case-name` - 指定用例名称（默认 "Imported Case"）
+- `--base-url` - 设置 base_url（会自动提取公共前缀）
+
+#### import postman
+
+从 Postman Collection JSON 导入：
+
+```bash
+# 基本导入：将所有请求合并为一个用例
+arun import postman collection.json --outfile testcases/api_tests.yaml
+
+# 单步导出：为每个请求生成独立文件
+arun import postman collection.json --split-output
+
+# 追加到现有用例
+arun import postman new_collection.json --into testcases/test_api.yaml
+
+# 自定义选项
+arun import postman collection.json \
+  --case-name "Postman 导入测试" \
+  --base-url https://api.example.com \
+  --split-output
+```
+
+**支持特性**：
+- ✅ 请求方法、URL、headers、body
+- ✅ 查询参数（params）
+- ✅ 自动提取 base_url
+- ✅ 默认添加状态码断言
+
+#### import har
+
+从浏览器 HAR 文件导入：
+
+```bash
+# 基本导入：合并所有请求
+arun import har recording.har --outfile testcases/browser_tests.yaml
+
+# 单步导出：为每个请求生成独立文件
+arun import har recording.har --split-output
+
+# 过滤并导入（结合其他工具）
+# 例如：只导入特定域名的请求
+cat recording.har | jq '.log.entries[] | select(.request.url | contains("api.example.com"))' | \
+  arun import har - --outfile testcases/filtered.yaml
+
+# 自定义选项
+arun import har recording.har \
+  --case-name "浏览器录制测试" \
+  --base-url https://api.example.com \
+  --split-output
+```
+
+**适用场景**：
+- 🌐 浏览器开发者工具导出的 HAR 文件
+- 🔍 抓包工具（Charles、Fiddler）导出的流量
+- 🧪 将手工测试转换为自动化用例
+
+**通用提示**：
+- `--split-output` 不能与 `--into` 同时使用
+- 从标准输入导入时（`-`），默认生成 `imported_step_<n>.yaml`
+- 所有导入的用例自动添加 `eq: [status_code, 200]` 断言
+- 支持自动提取和规范化 headers、params、body
+
+### arun export - 导出为 cURL
+
+将 YAML 用例导出为可执行的 cURL 命令，便于调试和分享。
+
+#### export curl
+
+```bash
+# 基本导出：将用例转换为 curl 命令
+arun export curl testcases/test_api.yaml
+
+# 导出到文件（多行格式，便于阅读）
+arun export curl testcases/test_api.yaml --outfile requests.curl
+
+# 单行紧凑格式
+arun export curl testcases/test_api.yaml --one-line
+
+# 导出特定步骤（1-based 索引）
+arun export curl testcases/test_api.yaml --steps "1,3-5"
+
+# 添加步骤注释（说明用例名、步骤名、变量、表达式）
+arun export curl testcases/test_api.yaml --with-comments
+
+# 脱敏敏感头部
+arun export curl testcases/test_api.yaml --redact Authorization,Cookie
+
+# 导出整个目录
+arun export curl testcases --outfile all_requests.curl
+
+# 仅导出特定用例
+arun export curl testsuites/testsuite_smoke.yaml --case-name "健康检查"
+```
+
+**选项说明**：
+- `--outfile FILE` - 输出到文件（默认标准输出）
+- `--multiline` / `--one-line` - 多行格式（默认）或单行紧凑格式
+- `--steps "1,3-5"` - 导出指定步骤（支持范围语法）
+- `--with-comments` - 添加 `# Case/Step` 注释
+- `--redact HEADERS` - 脱敏指定头部（逗号分隔），如 `Authorization,Cookie`
+- `--case-name NAME` - 仅导出匹配的用例
+- `--shell sh|ps` - 行延续符风格（sh: `\`，ps: `` ` ``）
+
+**导出特性**：
+- ✅ 自动渲染变量和环境变量（从 `.env` 读取）
+- ✅ 使用 `--data-raw` 确保 JSON payload 不被修改
+- ✅ JSON 自动格式化（indent=2，便于阅读）
+- ✅ 自动添加 `Content-Type: application/json`（当 body 为 JSON 时）
+- ✅ 智能 HTTP 方法处理（POST 有 body 时省略 `-X POST`）
+- ✅ 支持复杂请求（params、files、auth、redirects）
+
+**导出示例**：
+
+```bash
+# 多行格式（默认）
+curl 'https://api.example.com/users' \
+  -H 'Authorization: Bearer ***' \
+  -H 'Content-Type: application/json' \
+  --data-raw '{
+  "username": "test_user",
+  "email": "test@example.com"
+}'
+
+# 单行格式（--one-line）
+curl -X POST 'https://api.example.com/users' -H 'Authorization: Bearer ***' --data-raw '{"username":"test_user"}'
+
+# 带注释格式（--with-comments）
+# Case: 用户注册测试
+# Step: 注册新用户
+# Vars: username password
+# Exprs: short_uid
+curl 'https://api.example.com/register' \
+  --data-raw '{"username":"user_abc123"}'
+```
+
+**适用场景**：
+- 🐛 **调试**：快速在终端验证请求
+- 📤 **分享**：与团队成员共享请求示例
+- 📝 **文档**：生成 API 文档中的示例代码
+- 🔄 **迁移**：将 YAML 用例转换为其他工具格式
 
 ## 💻 实战示例
 
@@ -1105,6 +1267,121 @@ steps:
     validate:
       - eq: [status_code, 200]
 ```
+
+### 示例 5：Import/Export 工作流
+
+演示从浏览器/Postman 到 ARun YAML 的完整转换流程。
+
+#### 场景 1：从浏览器 HAR 快速生成测试
+
+```bash
+# 1. 在浏览器中操作（F12 开发者工具）
+#    - 打开 Network 面板
+#    - 执行业务操作（登录、下单等）
+#    - 右键 → Save all as HAR with content
+
+# 2. 导入为测试用例（每个请求一个文件）
+arun import har recording.har --split-output \
+  --case-name "浏览器录制" \
+  --base-url https://api.example.com
+
+# 输出：
+# [IMPORT] Wrote YAML for '浏览器录制 - Step 1' to recording_step1.yaml
+# [IMPORT] Wrote YAML for '浏览器录制 - Step 2' to recording_step2.yaml
+# ...
+
+# 3. 运行测试验证
+arun run recording_step1.yaml --env-file .env
+
+# 4. 导出为 curl 命令调试
+arun export curl recording_step1.yaml --with-comments
+```
+
+#### 场景 2：Postman Collection 迁移
+
+```bash
+# 1. 从 Postman 导出 Collection（JSON 格式）
+
+# 2. 转换为 YAML（合并为一个测试套件）
+arun import postman api_collection.json \
+  --outfile testcases/test_api_suite.yaml \
+  --case-name "API 完整测试"
+
+# 3. 编辑 YAML 添加断言和提取逻辑
+# （此时可以利用 ARun 的变量提取、参数化等高级特性）
+
+# 4. 运行测试
+arun run testcases/test_api_suite.yaml --env-file .env --html reports/report.html
+```
+
+#### 场景 3：curl 命令转测试用例
+
+```bash
+# 1. 复制浏览器 Network 面板中的 "Copy as cURL"
+# 或从 API 文档复制 curl 示例
+
+# 2. 保存到文件
+cat > api_requests.curl <<'EOF'
+curl 'https://api.example.com/auth/login' \
+  -H 'Content-Type: application/json' \
+  --data-raw '{"username":"admin","password":"secret"}'
+
+curl 'https://api.example.com/users/me' \
+  -H 'Authorization: Bearer TOKEN_HERE' \
+  -H 'Accept: application/json'
+EOF
+
+# 3. 转换为 YAML
+arun import curl api_requests.curl \
+  --outfile testcases/test_auth_flow.yaml \
+  --case-name "认证流程测试"
+
+# 4. 编辑 YAML 添加 token 提取
+# steps[0].extract: { token: $.data.access_token }
+# steps[1].request.headers: { Authorization: "Bearer $token" }
+
+# 5. 运行测试
+arun run testcases/test_auth_flow.yaml --env-file .env
+```
+
+#### 场景 4：测试用例分享与调试
+
+```bash
+# 团队成员 A：创建测试用例
+cat > testcases/test_new_feature.yaml <<'EOF'
+config:
+  name: 新功能测试
+  base_url: ${ENV(BASE_URL)}
+steps:
+  - name: 创建资源
+    request:
+      method: POST
+      url: /api/resources
+      body: {name: "test", type: "demo"}
+    extract:
+      resource_id: $.data.id
+    validate:
+      - eq: [status_code, 201]
+EOF
+
+# 导出为 curl 命令分享给团队成员 B
+arun export curl testcases/test_new_feature.yaml \
+  --outfile share.curl \
+  --with-comments
+
+# 团队成员 B：收到 curl 命令后
+# 方式 1：直接在终端执行验证
+bash share.curl
+
+# 方式 2：导入为自己的测试用例
+arun import curl share.curl --outfile my_tests/imported.yaml
+```
+
+**工作流优势**：
+- 🚀 **快速上手**：从现有工具（浏览器、Postman）无缝迁移
+- 🔄 **双向转换**：YAML ↔ curl 灵活互转
+- 🧪 **渐进增强**：先导入基础用例，再添加断言、提取、参数化
+- 👥 **团队协作**：通过 curl 命令快速分享请求示例
 
 ---
 
