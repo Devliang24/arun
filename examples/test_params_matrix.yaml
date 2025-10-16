@@ -5,6 +5,7 @@ parameters:
   # 2 x 2 组合，共 4 组
   a: [1, 2]
   b: ["x", "y"]
+
 steps:
   - name: 回显参数
     request:

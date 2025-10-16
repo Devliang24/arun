@@ -3,6 +3,7 @@ config:
   base_url: ${ENV(BASE_URL)}
   headers:
     Accept-Language: "zh-CN"
+
 steps:
   - name: 步骤级覆盖请求头
     request:

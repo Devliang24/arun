@@ -192,6 +192,8 @@ def _add_step_spacers(text: str) -> str:
     out: List[str] = []
     prev_step = False
     for line in lines:
+        if line.startswith("steps:") and out and out[-1] != "":
+            out.append("")
         if line.startswith("  - name:"):
             if prev_step and out and out[-1] != "":
                 out.append("")

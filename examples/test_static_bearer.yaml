@@ -3,6 +3,7 @@ config:
   base_url: ${ENV(BASE_URL)}
   variables:
     static_bearer: ${ENV(STATIC_BEARER)}
+
 steps:
   - name: 使用静态 Token 查询用户
     skip: ${not $static_bearer}

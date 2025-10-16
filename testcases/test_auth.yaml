@@ -8,6 +8,7 @@ config:
     full_name: User_${short_uid(10)}
     password: Pwd_${short_uid(12)}
     shipping_address: Addr_${short_uid(12)}
+
 steps:
   - name: 注册用户
     request:

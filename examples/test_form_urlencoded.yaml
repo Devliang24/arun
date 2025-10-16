@@ -1,6 +1,7 @@
 config:
   name: "表单 URL 编码（模板）"
   base_url: ${ENV(BASE_URL)}
+
 steps:
   - name: 表单演示（跳过）
     skip: "template"

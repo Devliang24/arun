@@ -12,6 +12,7 @@ config:
     - ${setup_hook_sign_request($request)}
   teardown_hooks:
     - ${teardown_hook_assert_status_ok($response)}
+
 steps:
   - name: 注册用户（下单流程）
     request:

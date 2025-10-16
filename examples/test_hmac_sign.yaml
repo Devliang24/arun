@@ -5,6 +5,7 @@ config:
     - ${setup_hook_hmac_sign($request)}
   variables:
     APP_SECRET: ${ENV(APP_SECRET)}
+
 steps:
   - name: 签名请求
     request:

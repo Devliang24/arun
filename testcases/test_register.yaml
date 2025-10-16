@@ -8,6 +8,7 @@ config:
     full_name: NewUser_${short_uid(10)}
     shipping_address: Addr_${short_uid(12)}
   tags: [auth, register]
+
 steps:
   - name: 注册
     request:

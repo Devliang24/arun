@@ -10,6 +10,7 @@ config:
     new_full_name: User_${short_uid(12)}
     new_address: No.9 Automation Rd
   tags: [users]
+
 steps:
   - name: 注册用户
     request:

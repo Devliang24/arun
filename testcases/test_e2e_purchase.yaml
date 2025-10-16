@@ -12,6 +12,7 @@ parameters:
   quantity:
     - 1
     - 2
+
 steps:
   - name: 注册用户
     request:

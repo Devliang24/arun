@@ -1,6 +1,7 @@
 config:
   name: "跳过与重试"
   base_url: ${ENV(BASE_URL)}
+
 steps:
   - name: 跳过该步骤
     skip: "maintenance"

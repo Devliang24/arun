@@ -2,6 +2,7 @@ config:
   name: 分类详情
   base_url: ${ENV(BASE_URL)}
   tags: [catalog]
+
 steps:
   - name: 获取分类列表
     request:

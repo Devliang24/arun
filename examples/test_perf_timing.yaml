@@ -1,6 +1,7 @@
 config:
   name: "性能计时"
   base_url: ${ENV(BASE_URL)}
+
 steps:
   - name: 获取根路径耗时小于 2 秒
     request:

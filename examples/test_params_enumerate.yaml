@@ -4,6 +4,7 @@ config:
 parameters:
   - { a: 1, b: "x" }
   - { a: 2, b: "y" }
+
 steps:
   - name: 枚举参数
     request:

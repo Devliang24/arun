@@ -4,6 +4,7 @@ config:
   variables:
     username: ${ENV(USER_USERNAME)}
     password: ${ENV(USER_PASSWORD)}
+
 steps:
   - name: 登录
     request:

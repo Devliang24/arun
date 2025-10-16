@@ -2,6 +2,7 @@ config:
   name: "示例：SQL 校验"
   base_url: ${ENV(BASE_URL)}
   # 可在环境中通过 MYSQL_* 或 MYSQL_DSN 提供数据库连接
+
 steps:
   - name: 创建订单（演示）
     request:

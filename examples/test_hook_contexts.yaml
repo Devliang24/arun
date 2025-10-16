@@ -5,6 +5,7 @@ config:
     - ${setup_hook_sign_request($request)}
   teardown_hooks:
     - ${teardown_hook_capture_request_id($response)}
+
 steps:
   - name: 携带 Hooks 的根请求
     request:

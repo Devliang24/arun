@@ -1,6 +1,7 @@
 config:
   name: Imported Case
   base_url: https://dgi-dev.deepexi.com
+
 steps:
   - name: POST /api_v2/token
     request:
