@@ -448,13 +448,9 @@ Tag Summary:
 
 ---
 
-<a id="format-conversion"></a>
-
 ## 🔄 格式转换
 
-- **统一入口**：使用 `arun convert` 将 cURL / Postman / HAR / OpenAPI 快速转换为 YAML 测试；可搭配 `--split-output`、`--into`、`--suite-out` 等选项生成单用例或整套测试。
-- **导入期脱敏**：支持 `--redact`、`--placeholders` 把敏感字段脱敏或替换为变量，直接落地到 `config.variables`。
-- **实战参考**：更多命令示例与场景指南请查阅 [docs/CLI.md#arun-convert---智能格式转换](docs/CLI.md#arun-convert---智能格式转换) 与 [docs/EXAMPLES.md](docs/EXAMPLES.md)，涵盖 cURL、Postman、HAR、OpenAPI 的组合玩法。
+详尽的转换/导出攻略请查看 [docs/FORMAT_CONVERSION.md](docs/FORMAT_CONVERSION.md)。该文档按资产类型整理了高频命令、脱敏策略、导出组合以及常见问题排查，风格与 CI/CD 文档保持一致。命令的完整参数说明仍可在 [docs/CLI.md](docs/CLI.md) 中查阅。
 
 ---
 
