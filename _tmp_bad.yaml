@@ -1,9 +1,0 @@
-config:
-  name: tmp
-steps:
-  - name: bad json field
-    request:
-      method: POST
-      url: /x
-      json:
-        a: 1
