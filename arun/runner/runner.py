@@ -620,10 +620,8 @@ class Runner:
                         self.log.error(f"[HOOK] teardown error: {e}")
 
                 # build result
-                masked_headers = resp_obj.get("headers") or {}
                 body_masked = resp_obj.get("body")
                 if not self.reveal:
-                    masked_headers = mask_headers(masked_headers)
                     body_masked = mask_body(body_masked)
                 # Build curl command for the step (always available in report)
                 url_rendered = resp_obj.get("url") or req_rendered.get("url")
@@ -650,7 +648,6 @@ class Runner:
                     },
                     response={
                         "status_code": resp_obj.get("status_code"),
-                        "headers": masked_headers,
                         "body": body_masked if isinstance(body_masked, (dict, list)) else (str(body_masked)[:2048] if body_masked else None),
                     },
                     curl=curl,
