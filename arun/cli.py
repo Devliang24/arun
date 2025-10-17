@@ -473,6 +473,9 @@ def convert_har(
     into: Optional[str] = typer.Option(None, "--into"),
     case_name: Optional[str] = typer.Option(None, "--case-name"),
     base_url: Optional[str] = typer.Option(None, "--base-url"),
+    exclude_static: bool = typer.Option(True, "--exclude-static/--keep-static", help="Filter out images/css/js/font entries"),
+    only_2xx: bool = typer.Option(False, "--only-2xx/--all-status", help="Keep only responses with 2xx status code"),
+    exclude_pattern: Optional[str] = typer.Option(None, "--exclude-pattern", help="Regex to exclude entries by URL or mimeType"),
     split_output: bool = typer.Option(
         False,
         "--split-output/--single-output",
@@ -482,7 +485,14 @@ def convert_har(
     from arun.importers.har import parse_har
 
     text = Path(infile).read_text(encoding="utf-8")
-    icase = parse_har(text, case_name=case_name, base_url=base_url)
+    icase = parse_har(
+        text,
+        case_name=case_name,
+        base_url=base_url,
+        exclude_static=exclude_static,
+        only_2xx=only_2xx,
+        exclude_pattern=exclude_pattern,
+    )
     if not icase.steps:
         typer.echo("[CONVERT] No HTTP entries detected in HAR file.")
         return
