@@ -33,7 +33,10 @@ class Runner:
         return HTTPClient(base_url=cfg.base_url, timeout=cfg.timeout, verify=cfg.verify, headers=cfg.headers)
 
     def _request_dict(self, step: Step) -> Dict[str, Any]:
-        return step.request.model_dump(exclude_none=True, by_alias=True)
+        # Use field names (not aliases) so "body" stays as expected downstream.
+        # Otherwise the StepRequest alias "json" would leak into runtime and
+        # we would miss sending the actual payload (see bug #??? case 422).
+        return step.request.model_dump(exclude_none=True)
 
     def _fmt_json(self, obj: Any) -> str:
         try:
