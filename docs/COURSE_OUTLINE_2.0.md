@@ -6,7 +6,7 @@
 1. **端到端起盘**：安装依赖后执行 `arun run testcases --env-file .env --html reports/report.html --report reports/run.json --allure-results allure-results --log-file logs/run.log --mask-secrets`，生成完整产物并说明脱敏效果。
 2. **格式转换迁移**：使用 `arun convert` 将 cURL/HAR/Postman 资产导入，熟练掌握 `--split-output`、`--into`、`--case-name`、`--base-url` 的组合策略；为导入到同一 case/suite 的场景产出可复用脚本。
 3. **导出与复现**：运用 `arun export curl` 生成脱敏、多行/单行可选的 cURL；通过 `--with-comments`、`--redact`、`--steps`、`--shell ps` 提供占位符与跨 Shell 复现；输出复现手册。
-4. **标签治理**：使用 `-k` 与 `arun tags` 管理套件层级，实现冒烟/回归/权限的稳定筛选，并提交治理报告。
+4. **标签治理**：使用 `-k` 与 `arun tags` 管理测试套件层级，实现冒烟/回归/权限的稳定筛选，并提交治理报告。
 5. **参数化/复用**：基于矩阵、枚举、压缩三类参数化覆盖多环境与边界场景，验证实例数并记录执行结果。
 6. **环境管理**：通过 `ARUN_ENV` + `env/<name>.yaml` + `.env` + `--vars` 构建多层环境合并，梳理优先级与冲突解决策略。
 7. **模板与内置函数**：熟练 `$var`/`${expr}`、`ENV()` 与 `now`/`uuid`/`random_int`/`hmac_sha256`；解析常见渲染陷阱，并能调试模板异常。
@@ -50,8 +50,8 @@
 ## 模块 D｜变量、模板与参数化
 - `VarContext` 层级：环境 < config < parameters < step < CLI；变量注入策略。
 - TemplateEngine 解析流程：`$var`/`${expr}`、`ENV()`、内置函数；防御性渲染。
-- 参数化实践：矩阵/枚举/压缩；组合策略与套件治理。
-- 内置函数库：`now`、`uuid`、`random_int`、`base64_encode`、`hmac_sha256`；自定义函数在 hooks 中扩展。
+- 参数化实践：矩阵/枚举/压缩；组合策略与测试套件治理。
+- 内置函数库：`now`、`uuid`、`random_int`、`base64_encode`、`hmac_sha256`；自定义函数在 Hooks 中扩展。
 
 ## 模块 E｜运行器核心能力
 - HTTP 引擎：`arun/engine/http.py`，超时、重试、重定向、证书校验、`auth` 字段。
@@ -69,7 +69,7 @@
 - 重试/跳过：`examples/test_skip_and_retry.yaml`。
 - 参数化扩展：`examples/test_params_{matrix,enumerate,zipped}.yaml`。
 - SQL 场景：`examples/test_sql_{validate,store_reuse,dsn_override}.yaml`。
-- 套件治理：`testsuites/testsuite_{smoke,regression,permissions}.yaml`。
+- 测试套件治理：`testsuites/testsuite_{smoke,regression,permissions}.yaml`。
 
 ## 模块 G｜工程落地
 - 报告体系：`arun/reporter/{html_reporter,json_reporter,allure_reporter}.py`，产物结构与附件策略。
@@ -94,7 +94,7 @@
       --redact Authorization \
       --placeholders
 
-    # 2) 运行回归套件并产出报告
+    # 2) 运行回归测试套件并产出报告
     arun run testsuites/testsuite_regression.yaml \
       --html reports/report.html \
       --report reports/run.json \

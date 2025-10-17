@@ -1,6 +1,6 @@
 # 💻 实战示例
 
-以下示例演示从登录流程、E2E 购物流程、参数化、请求签名 Hooks 到格式转换/导出等常见用法，以及 Testsuite（引用型）的组织方式。
+以下示例演示从登录流程、E2E 购物流程、参数化、请求签名 Hooks 到格式转换/导出等常见用法，以及测试套件（Testsuite，引用型）的组织方式。
 
 ### 示例 1：登录流程 + Token 自动注入
 
@@ -190,7 +190,7 @@ steps:
 #    - 执行业务操作（登录、下单等）
 #    - 右键 → Save all as HAR with content
 
-# 2. 导入为测试用例（每个请求一个文件）
+# 2. 导入为测试用例（Case，每个请求一个文件）
 arun convert recording.har --split-output \
   --case-name "浏览器录制" \
   --base-url https://api.example.com
@@ -224,7 +224,7 @@ arun convert api_collection.json \
 arun run testcases/test_api_suite.yaml --env-file .env --html reports/report.html
 ```
 
-#### 场景 3：cURL 命令转测试用例
+#### 场景 3：cURL 命令转测试用例（Case）
 
 ```bash
 # 1. 复制浏览器 Network 面板中的 "Copy as cURL"
@@ -257,7 +257,7 @@ arun run testcases/test_auth_flow.yaml --env-file .env
 #### 场景 4：测试用例分享与调试
 
 ```bash
-# 团队成员 A：创建测试用例
+# 团队成员 A：创建测试用例（Case）
 cat > testcases/test_new_feature.yaml <<'EOF'
 config:
   name: 新功能测试
@@ -283,7 +283,7 @@ arun export curl testcases/test_new_feature.yaml \
 # 方式 1：直接在终端执行验证
 bash share.curl
 
-# 方式 2：导入为自己的测试用例
+# 方式 2：导入为自己的测试用例（Case）
 arun convert share.curl --outfile my_tests/imported.yaml
 ```
 
@@ -295,15 +295,15 @@ arun convert share.curl --outfile my_tests/imported.yaml
 
 ---
 
-## 🧩 Testsuite（引用用例）
+## 🧩 测试套件（Testsuite，引用用例）
 
-除内联的 Suite（在一个文件的 `cases:` 中直接编写多个用例）外，还支持“引用型 Testsuite”：在 `testsuites/` 目录下的 testsuite 文件通过 `testcases:` 引用 `testcases/` 下的单用例文件，并可在条目级覆盖名称、注入变量或提供参数化。
+除内联的 Suite（在一个文件的 `cases:` 中直接编写多个用例）外，还支持“引用型 Testsuite”：在 `testsuites/` 目录下的 Testsuite 文件通过 `testcases:` 引用 `testcases/` 下的单用例文件，并可在条目级覆盖名称、注入变量或提供参数化。
 
 示例（`testsuites/testsuite_smoke.yaml`）：
 
 ```yaml
 config:
-  name: 冒烟套件
+  name: 冒烟测试套件
   base_url: ${ENV(BASE_URL)}
   tags: [smoke]
 
@@ -318,7 +318,7 @@ testcases:
 
 ```yaml
 config:
-  name: 回归套件
+  name: 回归测试套件
   base_url: ${ENV(BASE_URL)}
   tags: [regression]
 
@@ -337,6 +337,6 @@ arun run testsuites -k "smoke" --env-file .env
 ```
 
 说明：
-- `testsuite` 文件与内联 `suite` 文件可共存。推荐优先使用 `testsuite`（引用型），`suite`（内联型）作为兼容形式继续支持。
+- Testsuite 文件与内联 Suite 文件可共存。推荐优先使用 Testsuite（引用型），Suite（内联型）作为兼容形式继续支持。
 - 条目级 `variables` 覆盖用例 `config.variables`（优先级：Suite.config.variables < Case.config.variables < Item.variables < CLI/Step）。
 - 条目级 `parameters` 会覆盖用例自带的参数化配置。

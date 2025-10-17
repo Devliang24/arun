@@ -65,14 +65,14 @@ steps:
 ### 🔥 开箱即用
 
 - **零配置启动**：`pip install -e . && arun run testcases`
-- **YAML DSL**：声明式测试用例，人类可读
+- **YAML DSL**：声明式测试用例（Case），人类可读
 - **智能变量管理**：6 层作用域，自动 token 注入
 - **JMESPath 提取**：强大的 JSON 数据提取能力
 - **智能格式转换**：统一的 `arun convert` 命令，根据文件后缀自动识别 cURL/Postman/HAR 格式，支持双向转换与 `--split-output` 单步导出
 
 ### 🚀 高级功能
 
-- **Hooks 系统**：Suite/Case/Step 三级生命周期钩子，支持请求签名、数据准备
+- **Hooks 系统**：测试套件（Suite）/用例（Case）/步骤（Step）三级生命周期钩子，支持请求签名、数据准备
 - **SQL 验证**：内置 MySQL 支持，查询结果断言和变量存储
 - **参数化测试**：矩阵、枚举、压缩三种模式，轻松生成测试组合
 - **重试机制**：指数退避，容错不稳定接口
@@ -197,9 +197,9 @@ arun convert openapi spec/openapi/ecommerce_api.json --tags users,orders --split
 
 ## 📚 核心概念
 
-### 测试用例结构
+### 测试用例（Case）结构
 
-一个测试用例 (Case) 包含配置和步骤：
+一个测试用例（Case）包含配置和测试步骤（Step）：
 
 ```yaml
 config:                              # 配置块
@@ -209,7 +209,7 @@ config:                              # 配置块
     api_key: my-key
   tags: [smoke, p0]                  # 标签（用于过滤）
 
-steps:                               # 测试步骤列表
+steps:                               # 测试步骤（Step）列表
   - name: 步骤 1                      # 步骤名称
     request:                         # HTTP 请求定义
       method: GET                    # HTTP 方法
@@ -463,21 +463,21 @@ Hooks 允许在测试生命周期的不同阶段执行自定义 Python 函数。
 #### Hook 类型
 
 ```yaml
-# Suite 级别（在 suite 配置中）
+# Suite 级别（在 Suite 配置中）
 config:
   setup_hooks:              # Suite 开始前执行
     - ${suite_setup()}
   teardown_hooks:           # Suite 结束后执行
     - ${suite_teardown()}
 
-# Case 级别（在 case 配置中）
+# Case 级别（在 Case 配置中）
 config:
   setup_hooks:              # Case 开始前执行
     - ${case_setup()}
   teardown_hooks:           # Case 结束后执行
     - ${case_cleanup()}
 
-# Step 级别（在步骤中）
+# Step 级别（在测试步骤（Step）中）
 steps:
   - name: 发送请求
     setup_hooks:            # 步骤开始前执行
@@ -713,7 +713,7 @@ arun run testcases --html reports/report.html
 截图预览（统一浅色风格）
 
 ```bash
-# 生成并预览（示例使用引用型 testsuite）
+# 生成并预览（示例使用引用型测试套件（Testsuite））
 python -m arun.cli run testsuites/testsuite_smoke.yaml \
   --env-file .env \
   --html reports/report.html
@@ -728,7 +728,7 @@ python -m arun.cli run testsuites/testsuite_smoke.yaml \
   - ✅ 复制成功：绿色高亮提示"已复制"
   - ⚠️ 复制失败（HTTPS 限制）：橙色提示"已选中，按 Ctrl/Cmd+C"自动选中文本
   - 🎯 精准复制：基于原始数据，确保 JSON 格式准确无误
-  - 🔧 cURL 命令：使用 `--data-raw` 确保 payload 不被修改，JSON 自动格式化
+  - 🔧 cURL 命令：使用 `--data-raw` 确保载荷不被修改，JSON 自动格式化
 - 🎛️ **交互增强**：
   - 状态筛选：通过/失败/跳过
   - 仅失败断言、仅失败断言步骤、展开/折叠全部、仅失败用例
@@ -803,7 +803,7 @@ allure --version
 #### 特性说明
 
 - **附件丰富**：为每个步骤生成请求/响应/cURL/断言/提取变量等附件（遵循 `--mask-secrets` 脱敏策略）
-- **套件分组**：默认按用例来源文件名归类（若可用），否则归为 "ARun"
+- **测试套件分组**：默认按用例来源文件名归类（若可用），否则归为 "ARun"
 - **趋势分析**：多次运行后可查看历史趋势（需保留 `allure-report/history` 目录）
 - **CI/CD 集成**：可配合 Jenkins/GitLab CI 的 Allure 插件自动生成并展示报告
 
@@ -1011,7 +1011,7 @@ arun run testcases --httpx-logs
 
 #### 3. 查看 cURL 命令
 
-调试日志和 HTML 报告都包含每个请求的 cURL 等效命令（使用 `--data-raw` 确保 payload 不被修改，JSON 自动格式化提升可读性）：
+调试日志和 HTML 报告都包含每个请求的 cURL 等效命令（使用 `--data-raw` 确保载荷不被修改，JSON 自动格式化提升可读性）：
 
 ```bash
 # 调试日志示例

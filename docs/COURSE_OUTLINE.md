@@ -2,7 +2,7 @@
 
 ## 学习收获（可落地验收）
 1. 搭建运行与产物：独立完成安装与运行，输出 HTML 报告、JSON 报告与控制台/文件日志（`arun run testcases --html reports/report.html --report reports/report.json --env-file .env`）。
-2. 业务回归套件：基于现有 `testcases/*` 与 `testsuites/*` 交付冒烟/回归/权限三层套件；验收标准：冒烟套件稳定全绿且用时 <5 分钟（示例：运行 `testsuites/testsuite_smoke.yaml`）。
+2. 业务回归测试套件：基于现有 `testcases/*` 与 `testsuites/*` 交付冒烟/回归/权限三层测试套件；验收标准：冒烟测试套件稳定全绿且用时 <5 分钟（示例：运行 `testsuites/testsuite_smoke.yaml`）。
 3. 标签治理与筛选：按 `smoke/regression/permissions` 标签组织并能用 `-k` 表达式精确筛选（如 `arun run testcases -k "smoke and not slow"`）。
 4. 参数化覆盖：使用矩阵/枚举/压缩三种参数化覆盖多环境与边界场景（`examples/test_params_*.yaml`），验证实例数与期望一致。
 5. 鉴权与会话复用：完成登录→带 token 访问链路（`testcases/test_auth.yaml`、`examples/test_login_whoami.yaml`），并验证无需显式设置 `Authorization` 头也能通过（自动注入生效）。
@@ -17,7 +17,7 @@
 14. 添加新功能：在断言/通知/Reporter 任一处新增一个可用扩展，配套 `examples/*.yaml` 用例与报告产物（如扩展 `arun/runner/assertions.py` 或 `arun/notifier/*`）。
 15. 性能优化：针对模板/提取/报告任一热点编写基准脚本，优化后 p95 延迟下降≥20%（参考 `arun/templating/*`、`arun/runner/extractors.py`、`arun/reporter/*`）。
 16. 技术选型：完成一次鉴权/通知/报告/SQL 驱动的对比选型并落地到配置/代码；产出 1 页 ADR（方案/权衡/回滚）。
-17. 推动企业落地：在 CI 中运行套件并启用门禁阈值（通过率/时延），失败自动通知责任人；产出报告链接、通知截图与示例 CI 片段（如 `arun run testsuites/testsuite_regression.yaml --notify feishu --notify-only failed`）。
+17. 推动企业落地：在 CI 中运行测试套件并启用门禁阈值（通过率/时延），失败自动通知责任人；产出报告链接、通知截图与示例 CI 片段（如 `arun run testsuites/testsuite_regression.yaml --notify feishu --notify-only failed`）。
 
 ## 阶段 1｜前置与方法论（必修）
 1. Python 知识点：语法/数据结构/函数与装饰器/面向对象/异常/上下文管理器/类型注解/异步 async-await。
@@ -43,7 +43,7 @@
 
 ## 阶段 4｜业务实战
 1. 契约驱动用例：`spec/openapi/ecommerce_api.json` 到 YAML。
-   - 更多格式转换与导入实战详见：`docs/CLI.md#format-conversion`（cURL/Postman/HAR/OpenAPI，导入期脱敏与 testsuite 生成）。
+   - 更多格式转换与导入实战详见：`docs/CLI.md#format-conversion`（cURL/Postman/HAR/OpenAPI，导入期脱敏与测试套件（Testsuite）生成）。
 2. 健康检查与可用性：`testcases/test_health.yaml`。
 3. 注册与登录会话：`testcases/test_register.yaml`、`testcases/test_auth.yaml`、`examples/test_register_and_login.yaml`。
 4. 身份校验与自检：`examples/test_login_whoami.yaml`。
@@ -61,7 +61,7 @@
 16. 重试与跳过策略：`examples/test_skip_and_retry.yaml`。
 17. 参数化覆盖策略：`examples/test_params_matrix.yaml`、`examples/test_params_enumerate.yaml`、`examples/test_params_zipped.yaml`。
 18. SQL 连接与覆盖：`examples/test_sql_validate.yaml`、`examples/test_sql_dsn_override.yaml`。
-19. 套件与标签治理：`testsuites/testsuite_smoke.yaml`、`testsuites/testsuite_regression.yaml`、`testsuites/testsuite_permissions.yaml`。
+19. 测试套件与标签治理：`testsuites/testsuite_smoke.yaml`、`testsuites/testsuite_regression.yaml`、`testsuites/testsuite_permissions.yaml`。
 
 ## 阶段 5｜工程落地
 1. 报告产物与定位：HTML 报告（`arun/reporter/html_reporter.py`）、JSON 结果（`arun/reporter/json_reporter.py`）。
@@ -73,7 +73,7 @@
 7. CLI 规范化工具：`arun check`/`arun fix` 规则与一键修复（`arun/cli.py`）。
 8. 性能计时与基线：`arun/utils/timeit.py`、`examples/test_perf_timing.yaml`。
 9. SQL 校验落地：`arun/db/sql_validate.py`、`arun/models/sql_validate.py`。
-10. 套件化运行与筛选：标签表达式与套件产物（`testsuites/*`）。
+10. 测试套件化运行与筛选：标签表达式与测试套件产物（`testsuites/*`）。
 11. 提交流程与本地校验：打包与脚本（`pyproject.toml`）。
  
 ### CI 中的批量转换示例
@@ -92,7 +92,7 @@ arun convert assets/postman.json \
   --redact Authorization \
   --placeholders
 
-# 运行回归套件
+# 运行回归测试套件
 arun run testsuites/testsuite_regression.yaml \
   --report reports/run.json \
   --html reports/report.html \

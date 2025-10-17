@@ -4,7 +4,7 @@
 
 ## arun run
 
-运行测试用例：
+运行测试用例（Case）：
 
 ```bash
 # 基本用法
@@ -84,7 +84,7 @@ arun fix testcases --only-hooks
 将 cURL、Postman、HAR、OpenAPI 转为 ARun YAML 的统一入口。无需记忆多个子命令，`arun convert` 自动识别文件格式（`.curl`/`.har`/`.json`）；对 `.json` 自动区分 OpenAPI（检测 `openapi` 字段）与 Postman。
 
 ```bash
-# 合并多个 curl 为单个用例
+# 合并多个 cURL 为单个测试用例（Case）
 arun convert requests.curl --outfile testcases/imported.yaml
 
 # 拆分每条 curl
@@ -99,7 +99,7 @@ arun convert collection.json --outfile testcases/postman_suite.yaml
 # 导入 HAR（可拆分）
 arun convert recording.har --split-output
 
-# OpenAPI 3.x → 用例（按 tag 过滤，拆分输出）
+# OpenAPI 3.x → 测试用例（Case）（按 tag 过滤，拆分输出）
 arun convert openapi spec/openapi/api.json --tags users,orders --split-output
 
 # 追加到现有 YAML
@@ -143,17 +143,16 @@ arun export curl testsuites/testsuite_smoke.yaml --case-name "健康检查"
 选项说明：
 - `--outfile FILE`：输出到文件（默认 stdout）
 - `--multiline` / `--one-line`：多行或单行格式
-- `--steps "1,3-5"`：导出指定步骤（支持范围）
+- `--steps "1,3-5"`：导出指定测试步骤（Step）（支持范围）
 - `--with-comments`：添加 `# Case/Step` 注释
 - `--redact HEADERS`：脱敏指定头部，如 `Authorization,Cookie`
-- `--case-name NAME`：仅导出匹配的用例
+- `--case-name NAME`：仅导出匹配的测试用例（Case）
 - `--shell sh|ps`：行延续符风格（sh: `\`，ps: `` ` ``）
 
 导出特性：
 - 自动渲染变量与环境变量（读取 `.env`）
-- 使用 `--data-raw` 确保 JSON payload 不被修改
+- 使用 `--data-raw` 确保 JSON 载荷不被修改
 - JSON 自动格式化（indent=2）
 - 自动添加 `Content-Type: application/json`（当 body 为 JSON 时）
 - 智能 HTTP 方法处理（POST 有 body 时省略 `-X POST`）
 - 支持复杂请求（params、files、auth、redirects）
-
