@@ -48,6 +48,17 @@ def _read_file_payload(spec: str) -> Optional[str]:
     return None
 
 
+def _parse_qs_pairs(s: str) -> Optional[Dict[str, Any]]:
+    try:
+        from urllib.parse import parse_qsl
+        pairs = parse_qsl(s, keep_blank_values=True)
+        if pairs:
+            return {k: v for k, v in pairs}
+    except Exception:
+        return None
+    return None
+
+
 def _parse_one(tokens: List[str]) -> Tuple[Optional[ImportedStep], Optional[str]]:
     """Parse a single curl command tokens (without the leading 'curl').
     Returns (ImportedStep, base_url_guess)
@@ -57,7 +68,7 @@ def _parse_one(tokens: List[str]) -> Tuple[Optional[ImportedStep], Optional[str]
     headers: Dict[str, str] = {}
     body_text: Optional[str] = None
     data_obj: Any = None
-    files: Any = None
+    files: Dict[str, Any] | None = None
     auth: Dict[str, str] | None = None
     verify: Optional[bool] = None
     allow_redirects: Optional[bool] = None
@@ -69,6 +80,7 @@ def _parse_one(tokens: List[str]) -> Tuple[Optional[ImportedStep], Optional[str]
 
     it = iter(range(len(tokens)))
     i = 0
+    force_get_params: Dict[str, Any] | None = None
     while i < len(tokens):
         t = tokens[i]
         if t == "-X" or t == "--request":
@@ -80,6 +92,18 @@ def _parse_one(tokens: List[str]) -> Tuple[Optional[ImportedStep], Optional[str]
             if ":" in hv:
                 k, v = hv.split(":", 1)
                 headers[k.strip()] = v.strip()
+        elif t in ("-b", "--cookie"):
+            i += 1
+            cv = tokens[i]
+            # simplistic: if looks like key=val; append to Cookie header; else set raw
+            cookie_val = cv
+            if os.path.exists(cv):
+                try:
+                    cookie_val = open(cv, "r", encoding="utf-8").read().strip()
+                except Exception:
+                    cookie_val = cv
+            prev = headers.get("Cookie")
+            headers["Cookie"] = (prev + "; " if prev else "") + cookie_val
         elif t in ("-d", "--data", "--data-raw", "--data-urlencode", "--data-binary"):
             i += 1
             dv = tokens[i]
@@ -91,14 +115,24 @@ def _parse_one(tokens: List[str]) -> Tuple[Optional[ImportedStep], Optional[str]
                     body_text = dv
             else:
                 body_text = dv
+            # data-urlencode with -G should go to query params
+            if t in ("--data-urlencode",) and force_get_params is not None:
+                qs = _parse_qs_pairs(body_text)
+                if qs:
+                    force_get_params.update(qs)
         elif t in ("-F", "--form"):
             i += 1
             # Keep form data as-is; rough mapping
             fv = tokens[i]
-            data_obj = data_obj or {}
+            # multipart: key=value or key=@file
             if "=" in fv:
                 k, v = fv.split("=", 1)
-                data_obj[k] = v
+                if v.startswith("@"):
+                    files = files or {}
+                    files[k] = v[1:]
+                else:
+                    data_obj = data_obj or {}
+                    data_obj[k] = v
         elif t in ("-u", "--user"):
             i += 1
             uv = tokens[i]
@@ -109,6 +143,10 @@ def _parse_one(tokens: List[str]) -> Tuple[Optional[ImportedStep], Optional[str]
             verify = False
         elif t in ("-L", "--location"):
             allow_redirects = True
+        elif t in ("-G", "--get"):
+            method = "GET"
+            if force_get_params is None:
+                force_get_params = {}
         elif t.startswith("http://") or t.startswith("https://"):
             url = t
         elif t and not t.startswith("-") and url is None:
@@ -139,6 +177,23 @@ def _parse_one(tokens: List[str]) -> Tuple[Optional[ImportedStep], Optional[str]
             body = json.loads(body_text)
         except Exception:
             data = body_text
+    # If -G used, move data/body into query params when they look like key=val
+    if force_get_params is not None:
+        query_from_body = None
+        if isinstance(data, str):
+            query_from_body = _parse_qs_pairs(data)
+        elif isinstance(data_obj, dict):
+            query_from_body = data_obj
+        # merge force_get_params (from --data-urlencode)
+        merged: Dict[str, Any] = {**(params or {})}
+        if force_get_params:
+            merged.update(force_get_params)
+        if query_from_body:
+            merged.update(query_from_body)
+        if merged:
+            params = merged
+            body = None
+            data = None
 
     name = f"{method} {path_or_full or '/'}"
     step = ImportedStep(
