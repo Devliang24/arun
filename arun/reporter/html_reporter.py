@@ -62,8 +62,51 @@ def _build_step(step: StepResult) -> str:
     pass_cnt = sum(1 for a in (step.asserts or []) if a.passed)
     fail_cnt = sum(1 for a in (step.asserts or []) if not a.passed)
 
-    req_json = _json(step.request)
-    resp_json = _json(step.response)
+    request_map = step.request if isinstance(step.request, dict) else {}
+    response_map = step.response if isinstance(step.response, dict) else {}
+
+    headers_payload = {}
+    if isinstance(request_map, dict) and isinstance(request_map.get("headers"), dict):
+        headers_payload = dict(request_map.get("headers") or {})
+
+    body_payload: Any
+    if isinstance(request_map, dict):
+        if request_map.get("body") is not None:
+            body_payload = request_map.get("body")
+        elif request_map.get("data") is not None:
+            body_payload = request_map.get("data")
+        else:
+            fallback = {k: v for k, v in request_map.items() if k != "headers"}
+            body_payload = fallback or None
+    else:
+        body_payload = None
+
+    resp_body_payload = response_map.get("body") if isinstance(response_map, dict) else None
+    resp_status = response_map.get("status_code") if isinstance(response_map, dict) else None
+
+    req_headers_json = _json(headers_payload)
+    req_headers_display = _align_like_console(req_headers_json)
+    req_body_json = _json(body_payload)
+    req_body_display = _align_like_console(req_body_json)
+    resp_body_json = _json(resp_body_payload)
+    resp_body_display = _align_like_console(resp_body_json)
+
+    method_text = request_map.get("method") if isinstance(request_map, dict) else None
+    url_text = request_map.get("url") if isinstance(request_map, dict) else None
+    meta_parts = []
+    if method_text:
+        meta_parts.append(_escape_html(str(method_text)))
+    if url_text:
+        meta_parts.append(_escape_html(str(url_text)))
+    meta_html = " ".join(meta_parts)
+    req_title = "请求体"
+    if meta_html:
+        req_title += f"<span class='muted' style='margin-left:8px;'>{meta_html}</span>"
+
+    resp_title = "响应体"
+    if resp_status is not None:
+        resp_title += f"<span class='muted' style='margin-left:8px;'>status={resp_status}</span>"
+
     ext_json = _json(step.extracts) if (step.extracts or {}) else None
     curl = step.curl or ""
 
@@ -77,21 +120,32 @@ def _build_step(step: StepResult) -> str:
     )
 
     panels = []
+    headers_panel = (
+        "<div class='panel' data-section='request-headers'>"
+        "<div class='p-head'><span>请求头</span><span class='actions'><button onclick=\"window.copyPanel && window.copyPanel(this)\">复制</button></span></div>"
+        f"<pre data-raw=\"{_escape_html(req_headers_json)}\"><code>{_escape_html(req_headers_display)}</code></pre>"
+        "</div>"
+    )
+
+    request_panel = (
+        "<div class='panel' data-section='request-body'>"
+        f"<div class='p-head'><span>{req_title}</span><span class='actions'><button onclick=\"window.copyPanel && window.copyPanel(this)\">复制</button></span></div>"
+        f"<pre data-raw=\"{_escape_html(req_body_json)}\"><code>{_escape_html(req_body_display)}</code></pre>"
+        "</div>"
+    )
+
+    response_panel = (
+        "<div class='panel' data-section='response-body'>"
+        f"<div class='p-head'><span>{resp_title}</span><span class='actions'><button onclick=\"window.copyPanel && window.copyPanel(this)\">复制</button></span></div>"
+        f"<pre data-raw=\"{_escape_html(resp_body_json)}\"><code>{_escape_html(resp_body_display)}</code></pre>"
+        "</div>"
+    )
+
     panels.append(
         "<div class='grid' style='margin-top:8px;'>"
-        + (
-            "<div class='panel' data-section='request'>"
-            "<div class='p-head'><span>请求</span><span class='actions'><button onclick=\"window.copyPanel && window.copyPanel(this)\">复制</button></span></div>"
-            # Display aligned like console, keep raw for copy
-            f"<pre data-raw=\"{_escape_html(req_json)}\"><code>{_escape_html(req_json)}</code></pre>"
-            "</div>"
-        )
-        + (
-            "<div class='panel' data-section='response'>"
-            "<div class='p-head'><span>响应</span><span class='actions'><button onclick=\"window.copyPanel && window.copyPanel(this)\">复制</button></span></div>"
-            f"<pre data-raw=\"{_escape_html(resp_json)}\"><code>{_escape_html(resp_json)}</code></pre>"
-            "</div>"
-        )
+        + headers_panel
+        + request_panel
+        + response_panel
         + "</div>"
     )
 
@@ -192,7 +246,7 @@ def write_html(report: RunReport, outfile: str | Path) -> None:
   .body { padding: 10px 12px; }
   .step { border: 1px solid var(--border); border-radius: 8px; margin: 10px 0; overflow:hidden; }
   .step .st-head { padding: 8px 10px; display:flex; justify-content: space-between; align-items:center; background: var(--step-head-bg); cursor: pointer; }
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px; }
   .panel { border:1px solid var(--border); border-radius:8px; overflow:hidden; }
   .panel .p-head { padding:6px 8px; background:var(--panel-head-bg); color:var(--muted); font-size:12px; display:flex; justify-content:space-between; align-items:center; }
   .panel .p-head .actions { display:flex; gap:6px; }
