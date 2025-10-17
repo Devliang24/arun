@@ -94,19 +94,17 @@ def _build_step(step: StepResult) -> str:
 
     method_text = request_map.get("method") if isinstance(request_map, dict) else None
     url_text = request_map.get("url") if isinstance(request_map, dict) else None
+    request_meta_text = None
+    if method_text and url_text:
+        request_meta_text = f"{method_text} {url_text}"
+    elif method_text:
+        request_meta_text = str(method_text)
+    elif url_text:
+        request_meta_text = str(url_text)
 
-    request_meta_html_parts: List[str] = []
-    if method_text:
-        request_meta_html_parts.append(f"<code class='st-meta'>{_escape_html(str(method_text))}</code>")
-    if url_text:
-        request_meta_html_parts.append(f"<code class='st-meta'>{_escape_html(str(url_text))}</code>")
-    request_meta_html = " ".join(request_meta_html_parts)
-
-    status_meta_html = (
-        f"<code class='st-meta'>status={_escape_html(str(resp_status))}</code>"
-        if resp_status is not None
-        else ""
-    )
+    status_meta_text = None
+    if resp_status is not None:
+        status_meta_text = f"status={resp_status}"
 
     req_title = "请求体"
     resp_title = "响应体"
@@ -115,10 +113,10 @@ def _build_step(step: StepResult) -> str:
     curl = step.curl or ""
 
     meta_snippets: List[str] = []
-    if request_meta_html:
-        meta_snippets.append(request_meta_html)
-    if status_meta_html:
-        meta_snippets.append(status_meta_html)
+    if request_meta_text:
+        meta_snippets.append(f"<span class='st-meta'>{_escape_html(request_meta_text)}</span>")
+    if status_meta_text:
+        meta_snippets.append(f"<span class='st-meta'>{_escape_html(status_meta_text)}</span>")
     left_meta_html = " ".join(meta_snippets)
 
     head_left = f"<div><b>步骤：</b>{_escape_html(step.name)}"
@@ -229,7 +227,7 @@ def _build_case(case: CaseInstanceResult) -> str:
         except Exception:
             case_meta = str(src)
 
-    meta_html = f" <code class='case-meta'>{_escape_html(case_meta)}</code>" if case_meta else ""
+    meta_html = f" <span class='case-meta st-meta'>{_escape_html(case_meta)}</span>" if case_meta else ""
 
     head = (
         "<div class='head'>"
@@ -278,7 +276,7 @@ def write_html(report: RunReport, outfile: str | Path) -> None:
   .skipped { color: var(--skip); }
   .case { border: 1px solid var(--border); background: var(--card); border-radius: 10px; margin: 14px 0; overflow: hidden; }
   .case > .head { padding: 12px 12px; display:flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); }
-  code.case-meta { margin-left: 10px; font-size: 12px; font-weight: 500; color: var(--muted); }
+  .case .case-meta { margin-left: 10px; font-size: 12px; font-weight: 500; color: var(--muted); }
   .pill { font-size: 12px; padding: 2px 8px; border-radius: 999px; border:1px solid var(--border); }
   .pill.passed { border-color: var(--ok); }
   .pill.failed { border-color: var(--fail); }
