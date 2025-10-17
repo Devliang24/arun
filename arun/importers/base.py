@@ -22,4 +22,4 @@ class ImportedCase:
     name: str
     base_url: Optional[str] = None
     steps: List[ImportedStep] = field(default_factory=list)
-
+    variables: Optional[Dict[str, Any]] = None
