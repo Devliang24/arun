@@ -43,7 +43,7 @@
 
 ## 阶段 4｜业务实战
 1. 契约驱动用例：`spec/openapi/ecommerce_api.json` 到 YAML。
-   - 更多格式转换与导入实战详见：`docs/FORMAT_CONVERSION.md`（cURL/HAR/Postman/OpenAPI，导入期脱敏与 testsuite 生成）。
+   - 更多格式转换与导入实战详见：`docs/CLI.md#format-conversion`（cURL/Postman/HAR/OpenAPI，导入期脱敏与 testsuite 生成）。
 2. 健康检查与可用性：`testcases/test_health.yaml`。
 3. 注册与登录会话：`testcases/test_register.yaml`、`testcases/test_auth.yaml`、`examples/test_register_and_login.yaml`。
 4. 身份校验与自检：`examples/test_login_whoami.yaml`。
@@ -79,7 +79,7 @@
 ### CI 中的批量转换示例
 
 ```bash
-# 将存量资产（curl/Postman）转换为用例，启用导入期脱敏与变量占位
+# 将存量资产（cURL/Postman）转换为用例，启用导入期脱敏与变量占位
 arun convert assets/requests.curl \
   --into testcases/imported.yaml \
   --redact Authorization,Cookie \
@@ -101,7 +101,7 @@ arun run testsuites/testsuite_regression.yaml \
 
 ## 阶段 6｜源码拆解与扩展
 1. CLI 与命令体系：`arun/cli.py`（run/check/fix、过滤/报告/通知参数）。
-2. 加载器 Loader：`arun/loader/{yaml_loader,collector,env,hooks}.py`（发现/解析/ENV 注入/Hook 发现）。
+2. 加载器 Loader：`arun/loader/{yaml_loader,collector,env,hooks}.py`（发现/解析/ENV 注入/Hooks 发现）。
 3. 数据模型 Models：`arun/models/{config,case,step,request,validators,sql_validate,report}.py`（Pydantic 建模与校验）。
 4. 模板引擎：`arun/templating/{engine,builtins,context}.py`（Dollar 表达式、安全求值、内置函数）。
 5. 运行器 Runner：`arun/runner/{runner,assertions,extractors}.py`（变量作用域、执行与重试、断言与提取）。

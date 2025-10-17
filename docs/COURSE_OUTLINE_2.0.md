@@ -45,7 +45,7 @@
 - 导入调试：识别自动推断 base_url、缺失 header/body 场景。
 - 导出工作流：`arun export curl testcases --steps 1,3 --redact Authorization --with-comments --multiline`，跨 Shell (`--shell ps`) 与占位符注释 (`# Vars/Exprs`)，结合导出资产编写复现指南。
 - 格式转换治理：模板/环境变量保留策略、转换产物归档与版本化建议。
-- 实战指南：见 `docs/FORMAT_CONVERSION.md`（覆盖导入期脱敏 `--redact/--placeholders`、Postman `--postman-env/--suite-out`、HAR 去噪筛选、OpenAPI 转换与示例命令）。
+- 实战指南：见 `docs/CLI.md#format-conversion`（覆盖导入期脱敏 `--redact/--placeholders`、Postman `--postman-env/--suite-out`、HAR 去噪筛选、OpenAPI 转换与示例命令）。
 
 ## 模块 D｜变量、模板与参数化
 - `VarContext` 层级：环境 < config < parameters < step < CLI；变量注入策略。
