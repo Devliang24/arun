@@ -243,11 +243,11 @@ def _build_cases_from_import(icase: Any, *, split_output: bool) -> List[Tuple[Ca
         for idx, imported_step in enumerate(icase.steps, start=1):
             step_obj = _make_step_from_imported(imported_step)
             case_title = _derive_case_name(icase.name, imported_step.name, idx)
-            case = Case(config=Config(name=case_title, base_url=icase.base_url), steps=[step_obj])
+            case = Case(config=Config(name=case_title, base_url=icase.base_url, variables=getattr(icase, 'variables', None) or None), steps=[step_obj])
             cases.append((case, idx))
     else:
         steps = [_make_step_from_imported(s) for s in icase.steps]
-        case = Case(config=Config(name=icase.name, base_url=icase.base_url), steps=steps)
+        case = Case(config=Config(name=icase.name, base_url=icase.base_url, variables=getattr(icase, 'variables', None) or None), steps=steps)
         cases.append((case, 1))
     return cases
 
@@ -435,6 +435,7 @@ def convert_postman(
     into: Optional[str] = typer.Option(None, "--into"),
     case_name: Optional[str] = typer.Option(None, "--case-name"),
     base_url: Optional[str] = typer.Option(None, "--base-url"),
+    postman_env: Optional[str] = typer.Option(None, "--postman-env", help="Postman environment JSON to import variables"),
     split_output: bool = typer.Option(
         False,
         "--split-output/--single-output",
@@ -444,7 +445,10 @@ def convert_postman(
     from arun.importers.postman import parse_postman
 
     text = Path(collection).read_text(encoding="utf-8")
-    icase = parse_postman(text, case_name=case_name, base_url=base_url)
+    env_text = None
+    if postman_env:
+        env_text = Path(postman_env).read_text(encoding="utf-8")
+    icase = parse_postman(text, case_name=case_name, base_url=base_url, env_text=env_text)
 
     if not icase.steps:
         typer.echo("[CONVERT] No requests detected in Postman collection.")
