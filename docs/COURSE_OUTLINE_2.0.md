@@ -87,8 +87,8 @@
       --redact Authorization,Cookie \
       --placeholders
 
+    # 如有 Postman 环境文件，可加 --postman-env assets/postman_env.json；否则可省略
     arun convert assets/postman.json \
-      --postman-env assets/postman_env.json \
       --split-output \
       --suite-out testsuites/testsuite_postman.yaml \
       --redact Authorization \

@@ -405,9 +405,8 @@ HTML report written to reports/report.html
 # cURL → 用例（脱敏 + 变量占位）
 arun convert requests.curl --outfile testcases/from_curl.yaml --redact Authorization,Cookie --placeholders
 
-# Postman → 用例（导入环境变量，拆分并生成 testsuite）
+# Postman → 用例（如有环境文件，可加 --postman-env postman_env.json；否则可省略）
 arun convert api_collection.json \
-  --postman-env postman_env.json \
   --split-output \
   --suite-out testsuites/testsuite_postman.yaml \
   --redact Authorization \
