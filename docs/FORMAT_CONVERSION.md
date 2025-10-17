@@ -32,6 +32,7 @@
 ## Postman 高保真导入
 
 - `--postman-env postman_env.json`：导入 Postman 环境变量；`{{var}}` 会自动转换为 `$var` 并写入 `config.variables`。
+  - 如果没有环境文件，可省略该参数；CLI 会照常转换（此时仅使用 Collection 自带的变量定义）。
 - 鉴权映射：
   - Bearer → `auth: { type: bearer, token: $token }`
   - Basic → `auth: { type: basic, username: $username, password: $password }`
@@ -43,6 +44,16 @@
 ```bash
 arun convert collection.json \
   --postman-env postman_env.json \
+  --split-output \
+  --suite-out testsuites/testsuite_postman.yaml \
+  --redact Authorization,Cookie \
+  --placeholders
+```
+
+无环境文件的等价示例：
+
+```bash
+arun convert collection.json \
   --split-output \
   --suite-out testsuites/testsuite_postman.yaml \
   --redact Authorization,Cookie \
@@ -110,4 +121,3 @@ arun convert openapi spec/openapi/ecommerce_api.json \
 - `--into existing.yaml`：将生成的步骤追加到现有用例（Case 或 Suite），便于持续扩充单一 case。
 
 > 注意：`--split-output` 与 `--into` 不可同时使用。
-
