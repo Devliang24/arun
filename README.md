@@ -8,7 +8,7 @@
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Version](https://img.shields.io/badge/version-0.1.0-orange)]()
 
-[快速开始](#-快速开始-5-分钟) • [核心特性](#-核心特性) • [文档](#-核心概念) • [示例](#-实战示例) • [格式转换](#format-conversion) • [CI/CD](docs/CI_CD.md) • [文档索引](docs/README.md)
+[快速开始](#-快速开始-5-分钟) • [核心特性](#-核心特性) • [核心概念](#-核心概念) • [示例](#-实战示例) • [格式转换](#format-conversion) • [文档索引](docs/README.md) • [CI/CD](docs/CI_CD.md)
 
 </div>
 
@@ -445,6 +445,16 @@ Tag Summary:
 输出包含：
 - **文件扫描日志**：显示每个文件的解析状态和用例数量
 - **标签汇总**：按字母序列出所有标签，每个标签显示用例数量和详细的用例名称与文件路径
+
+---
+
+<a id="format-conversion"></a>
+
+## 🔄 格式转换
+
+- **统一入口**：使用 `arun convert` 将 cURL / Postman / HAR / OpenAPI 快速转换为 YAML 测试；可搭配 `--split-output`、`--into`、`--suite-out` 等选项生成单用例或整套测试。
+- **导入期脱敏**：支持 `--redact`、`--placeholders` 把敏感字段脱敏或替换为变量，直接落地到 `config.variables`。
+- **实战参考**：更多命令示例与场景指南请查阅 [docs/CLI.md#arun-convert---智能格式转换](docs/CLI.md#arun-convert---智能格式转换) 与 [docs/EXAMPLES.md](docs/EXAMPLES.md)，涵盖 cURL、Postman、HAR、OpenAPI 的组合玩法。
 
 ---
 
