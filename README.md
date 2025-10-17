@@ -654,6 +654,26 @@ arun tags              # 扫描默认的 testcases 目录
 arun tags testsuites   # 指定其它目录
 ```
 
+**输出格式**：
+
+```
+[OK] testcases/test_login.yaml -> 1 cases
+[OK] testcases/test_health.yaml -> 1 cases
+
+Tag Summary:
+- smoke: 2 cases
+    • 健康检查 -> testcases/test_health.yaml
+    • 用户登录测试 -> testcases/test_login.yaml
+- auth: 1 cases
+    • 用户登录测试 -> testcases/test_login.yaml
+- p0: 1 cases
+    • 用户登录测试 -> testcases/test_login.yaml
+```
+
+输出包含：
+- **文件扫描日志**：显示每个文件的解析状态和用例数量
+- **标签汇总**：按字母序列出所有标签，每个标签显示用例数量和详细的用例名称与文件路径
+
 ---
 
 ## 🎨 高级功能
@@ -1171,7 +1191,7 @@ arun fix testcases --only-hooks
 
 ### arun convert - 智能格式转换
 
-将 curl/Postman/HAR 转为 ARun YAML 的统一入口。**核心优势**：无需记忆多个子命令，`arun convert` 自动识别文件格式（`.curl` / `.har` / `.json`），一条命令搞定所有转换。
+将 curl/Postman/HAR/OpenAPI 转为 ARun YAML 的统一入口。**核心优势**：无需记忆多个子命令，`arun convert` 自动识别文件格式（`.curl` / `.har` / `.json`），一条命令搞定所有转换。对于 `.json` 文件，自动区分 OpenAPI（检测 `openapi` 字段）与 Postman Collection，智能选择正确的解析器。
 
 ```bash
 # 合并多个 curl 为单个用例
@@ -1188,6 +1208,9 @@ arun convert collection.json --outfile testcases/postman_suite.yaml
 
 # 导入 HAR（可拆分）
 arun convert recording.har --split-output
+
+# OpenAPI 3.x → 用例（按 tag 过滤，拆分输出）
+arun convert openapi spec/openapi/api.json --tags users,orders --split-output
 
 # 追加到现有 YAML
 arun convert new_requests.curl --into testcases/test_api.yaml
@@ -1209,7 +1232,8 @@ arun convert requests.curl \
 **特性与提示**：
 - 自动解析方法、URL、headers、query、body，并添加基础断言
 - 支持从 stdin 读取（使用 `-`）；拆分模式下默认生成 `imported_step_<n>.yaml`
-- 适用于 curl 片段、Postman Collection、浏览器/抓包 HAR 记录
+- 适用于 curl 片段、Postman Collection、浏览器/抓包 HAR 记录、OpenAPI 3.x 规范文档
+- OpenAPI 转换支持 `--tags` 过滤（仅转换指定 tag 的接口）、`--split-output` 拆分输出、`--redact` 脱敏、`--placeholders` 变量占位
 
 ### arun export - 导出为 cURL
 
@@ -1917,8 +1941,17 @@ arun check testcases
 | `FEISHU_STYLE` | 飞书消息风格 | `text` |
 | `SMTP_HOST` | SMTP 服务器 | - |
 | `SMTP_PORT` | SMTP 端口 | `465` |
+| `SMTP_SSL` | 是否使用 SSL | `true` |
+| `SMTP_USER` | SMTP 用户 | - |
+| `SMTP_PASS` | SMTP 密码 | - |
 | `MAIL_FROM` | 发件人 | - |
 | `MAIL_TO` | 收件人（逗号分隔） | - |
+| `NOTIFY_HTML_BODY` | 邮件 HTML 正文 | `true` |
+| `DINGTALK_WEBHOOK` | 钉钉 Webhook URL | - |
+| `DINGTALK_SECRET` | 钉钉签名密钥 | - |
+| `DINGTALK_AT_MOBILES` | 钉钉 @提醒电话号码 | - |
+| `DINGTALK_AT_ALL` | 钉钉全员 @ | `false` |
+| `DINGTALK_STYLE` | 钉钉消息风格 (text/markdown) | `text` |
 | `MYSQL_DSN` | MySQL 连接串 | - |
 | `MYSQL_HOST` | MySQL 主机 | `127.0.0.1` |
 | `MYSQL_PORT` | MySQL 端口 | `3306` |
