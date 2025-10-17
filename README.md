@@ -132,8 +132,9 @@ jobs:
           fi
           # Postman → 拆分并生成 testsuite
           if [ -f assets/postman.json ]; then
-            arun convert assets/postman.json \
-              --postman-env assets/postman_env.json \
+            ENV_ARG=""
+            if [ -f assets/postman_env.json ]; then ENV_ARG="--postman-env assets/postman_env.json"; fi
+            arun convert assets/postman.json $ENV_ARG \
               --split-output \
               --suite-out testsuites/testsuite_postman.yaml \
               --redact Authorization \
@@ -199,7 +200,8 @@ convert:
         arun convert assets/requests.curl --into testcases/imported.yaml --redact Authorization,Cookie --placeholders
       fi
       if [ -f assets/postman.json ]; then
-        arun convert assets/postman.json --postman-env assets/postman_env.json --split-output --suite-out testsuites/testsuite_postman.yaml --redact Authorization --placeholders
+        ENV_ARG=""; if [ -f assets/postman_env.json ]; then ENV_ARG="--postman-env assets/postman_env.json"; fi
+        arun convert assets/postman.json $ENV_ARG --split-output --suite-out testsuites/testsuite_postman.yaml --redact Authorization --placeholders
       fi
   artifacts:
     paths:
@@ -244,7 +246,8 @@ pipeline {
             arun convert assets/requests.curl --into testcases/imported.yaml --redact Authorization,Cookie --placeholders
           fi
           if [ -f assets/postman.json ]; then
-            arun convert assets/postman.json --postman-env assets/postman_env.json --split-output --suite-out testsuites/testsuite_postman.yaml --redact Authorization --placeholders
+            ENV_ARG=""; if [ -f assets/postman_env.json ]; then ENV_ARG="--postman-env assets/postman_env.json"; fi
+            arun convert assets/postman.json $ENV_ARG --split-output --suite-out testsuites/testsuite_postman.yaml --redact Authorization --placeholders
           fi
         '''
       }
