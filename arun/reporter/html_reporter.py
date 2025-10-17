@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import time
+import os
 from pathlib import Path
 from typing import Any, List
 
@@ -210,9 +211,27 @@ def _build_case(case: CaseInstanceResult) -> str:
     params = case.parameters or {}
     params_html = f"<div class='muted'>参数：<code>{_escape_html(_json(params))}</code></div>" if params else ""
 
+    case_meta: str | None = None
+    src = getattr(case, "source", None)
+    if src:
+        try:
+            p = Path(src)
+            cwd = Path.cwd().resolve()
+            try:
+                case_meta = str(p.resolve().relative_to(cwd))
+            except Exception:
+                try:
+                    case_meta = os.path.relpath(str(p), str(cwd))
+                except Exception:
+                    case_meta = str(p)
+        except Exception:
+            case_meta = str(src)
+
+    meta_html = f"<span class='case-meta'>{_escape_html(case_meta)}</span>" if case_meta else ""
+
     head = (
         "<div class='head'>"
-        f"<div><div><b>用例：</b>{_escape_html(case.name)}</div>{params_html}</div>"
+        f"<div><div><b>用例：</b>{_escape_html(case.name)}{meta_html}</div>{params_html}</div>"
         f"<div><span class='pill {case.status}'>{case.status}</span>"
         f"<span class='muted' style='margin-left:8px;'>{case.duration_ms:.1f} ms</span></div>"
         "</div>"
@@ -257,6 +276,7 @@ def write_html(report: RunReport, outfile: str | Path) -> None:
   .skipped { color: var(--skip); }
   .case { border: 1px solid var(--border); background: var(--card); border-radius: 10px; margin: 14px 0; overflow: hidden; }
   .case > .head { padding: 12px 12px; display:flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); }
+  .case .case-meta { margin-left: 10px; font-size: 12px; font-weight: 500; color: var(--muted); }
   .pill { font-size: 12px; padding: 2px 8px; border-radius: 999px; border:1px solid var(--border); }
   .pill.passed { border-color: var(--ok); }
   .pill.failed { border-color: var(--fail); }
