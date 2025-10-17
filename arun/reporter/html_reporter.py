@@ -93,30 +93,48 @@ def _build_step(step: StepResult) -> str:
 
     method_text = request_map.get("method") if isinstance(request_map, dict) else None
     url_text = request_map.get("url") if isinstance(request_map, dict) else None
-    meta_parts = []
-    if method_text:
-        meta_parts.append(_escape_html(str(method_text)))
-    if url_text:
-        meta_parts.append(_escape_html(str(url_text)))
-    meta_html = " ".join(meta_parts)
-    req_title = "请求体"
-    if meta_html:
-        req_title += f"<span class='muted' style='margin-left:8px;'>{meta_html}</span>"
+    request_meta_text = None
+    if method_text and url_text:
+        request_meta_text = f"{method_text} {url_text}"
+    elif method_text:
+        request_meta_text = str(method_text)
+    elif url_text:
+        request_meta_text = str(url_text)
 
-    resp_title = "响应体"
+    status_meta_text = None
     if resp_status is not None:
-        resp_title += f"<span class='muted' style='margin-left:8px;'>status={resp_status}</span>"
+        status_meta_text = f"status={resp_status}"
+
+    req_title = "请求体"
+    resp_title = "响应体"
 
     ext_json = _json(step.extracts) if (step.extracts or {}) else None
     curl = step.curl or ""
 
-    head = (
-        f"<div class='st-head' onclick=\"window.toggleStepBody && window.toggleStepBody(this)\">"
-        f"<div><b>步骤：</b>{_escape_html(step.name)}</div>"
-        f"<div><span class='pill {step.status}'>" + step.status + "</span>"
+    meta_snippets = []
+    if request_meta_text:
+        meta_snippets.append(f"<span class='st-meta'>{_escape_html(request_meta_text)}</span>")
+    if status_meta_text:
+        meta_snippets.append(f"<span class='st-meta'>{_escape_html(status_meta_text)}</span>")
+    left_meta_html = " ".join(meta_snippets)
+
+    head_left = f"<div><b>步骤：</b>{_escape_html(step.name)}"
+    if left_meta_html:
+        head_left += f" {left_meta_html}"
+    head_left += "</div>"
+
+    head_right = (
+        "<div>"
+        f"<span class='pill {step.status}'>{step.status}</span>"
         f"<span class='muted' style='margin-left:8px;'>{step.duration_ms:.1f} ms</span>"
         f"<span class='muted' style='margin-left:8px;'>断言: {pass_cnt} ✓ / {fail_cnt} ✗</span>"
-        f"</div></div>"
+        "</div>"
+    )
+
+    head = (
+        "<div class='st-head' onclick=\"window.toggleStepBody && window.toggleStepBody(this)\">"
+        f"{head_left}{head_right}"
+        "</div>"
     )
 
     panels = []
@@ -246,6 +264,7 @@ def write_html(report: RunReport, outfile: str | Path) -> None:
   .body { padding: 10px 12px; }
   .step { border: 1px solid var(--border); border-radius: 8px; margin: 10px 0; overflow:hidden; }
   .step .st-head { padding: 8px 10px; display:flex; justify-content: space-between; align-items:center; background: var(--step-head-bg); cursor: pointer; }
+  .step .st-head .st-meta { font-size: 12px; font-weight: 500; margin-left: 8px; color: var(--muted); }
   .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px; }
   .panel { border:1px solid var(--border); border-radius:8px; overflow:hidden; }
   .panel .p-head { padding:6px 8px; background:var(--panel-head-bg); color:var(--muted); font-size:12px; display:flex; justify-content:space-between; align-items:center; }
