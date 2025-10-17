@@ -23,7 +23,7 @@ def _is_testsuite_reference(doc: Dict[str, Any]) -> bool:
     return isinstance(doc, dict) and isinstance(doc.get("testcases"), list)
 
 
-def _normalize_case_dict(d: Dict[str, Any]) -> Dict[str, Any]:
+def _normalize_case_dict(d: Dict[str, Any], path: Path | None = None, raw_text: str | None = None) -> Dict[str, Any]:
     dd = dict(d)
     # Allow case-level hooks declared inside config as aliases, e.g.:
     # config:
@@ -53,11 +53,25 @@ def _normalize_case_dict(d: Dict[str, Any]) -> Dict[str, Any]:
                 dd["config"].pop(hk_field, None)
     if "steps" in dd and isinstance(dd["steps"], list):
         new_steps: List[Dict[str, Any]] = []
-        for s in dd["steps"]:
+        for idx, s in enumerate(dd["steps"]):
             ss = dict(s)
             # Disallow legacy request.json field (no compatibility)
             if isinstance(ss.get("request"), dict) and "json" in ss["request"]:
-                raise LoadError("Invalid request field 'json': use 'body' instead")
+                step_label = str(ss.get("name") or f"steps[{idx + 1}]")
+                # Try to locate the exact line of 'request.json' for better UX
+                line_hint = None
+                if path is not None and raw_text is not None:
+                    loc = _find_request_subfield_location(raw_text, idx, "json")
+                    if loc is not None:
+                        line_no, line_text = loc
+                        line_hint = f"{path}:{line_no}: '{line_text.strip()}'"
+                hint = (
+                    f"Invalid request field 'json' in {path if path else '<file>'}: step '{step_label}'. "
+                    "Use 'body' instead (YAML path: request.json)."
+                )
+                if line_hint:
+                    hint += f"\nHint → {line_hint}"
+                raise LoadError(hint)
             if "validate" in ss:
                 ss["validate"] = [v.model_dump() for v in normalize_validators(ss["validate"])]
                 # enforce $-only for body checks
@@ -208,7 +222,7 @@ def load_yaml_file(path: Path) -> Tuple[List[Case], Dict[str, Any]]:
         raise LoadError("Legacy inline suite ('cases:') is not supported. Please use reference testsuite with 'testcases:'.")
     else:
         # single case file: normalize validators
-        obj = _normalize_case_dict(obj)
+        obj = _normalize_case_dict(obj, path=path, raw_text=raw)
         try:
             case = Case.model_validate(obj)
         except ValidationError as exc:
@@ -308,6 +322,68 @@ def _find_step_field_location(raw_text: str, step_index: int, field: str) -> tup
             if indent > expected_indent:
                 return idx + 1, indent, expected_indent, line.rstrip()
             return None
+
+    return None
+
+
+def _find_request_subfield_location(raw_text: str, step_index: int, subfield: str) -> tuple[int, str] | None:
+    """Best-effort locate the line where a given request subfield (e.g., 'json') appears.
+
+    We detect the step by matching '- name:' lines, then find the 'request:' block
+    and finally the target subfield under it.
+    Returns (line_no_1_based, line_text) or None if not found.
+    """
+    lines = raw_text.splitlines()
+    step_pattern = re.compile(r"^\s*-\s+name\s*:")
+    current_step = -1
+    step_indent = None
+    step_start = None
+
+    for idx, line in enumerate(lines):
+        if step_pattern.match(line):
+            current_step += 1
+            if current_step == step_index:
+                step_indent = len(line) - len(line.lstrip(" "))
+                step_start = idx
+                break
+
+    if step_start is None or step_indent is None:
+        return None
+
+    expected_step_child_indent = step_indent + 2
+    request_indent = None
+    # Find 'request:' within this step
+    for idx in range(step_start + 1, len(lines)):
+        line = lines[idx]
+        stripped = line.lstrip()
+        indent = len(line) - len(stripped)
+        if step_pattern.match(line) and indent <= step_indent:
+            # next step begins
+            break
+        if not stripped:
+            continue
+        if stripped.startswith("request:") and indent == expected_step_child_indent:
+            request_indent = indent
+            request_start = idx
+            break
+
+    if request_indent is None:
+        return None
+
+    # Now search within request block for the subfield
+    expected_sub_indent = request_indent + 2
+    sub_prefix = f"{subfield}:"
+    for idx in range(request_start + 1, len(lines)):
+        line = lines[idx]
+        stripped = line.lstrip()
+        indent = len(line) - len(stripped)
+        if not stripped:
+            continue
+        # out of request block when indentation returns to step-level child
+        if indent <= request_indent and not stripped.startswith("#"):
+            break
+        if stripped.startswith(sub_prefix) and indent == expected_sub_indent:
+            return idx + 1, line.rstrip()
 
     return None
 
