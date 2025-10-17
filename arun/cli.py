@@ -219,6 +219,91 @@ def _derive_case_name(base: Optional[str], step_name: Optional[str], idx: int) -
     return combined.strip()
 
 
+def _sanitize_var_name(name: str) -> str:
+    import re as _re
+    s = _re.sub(r"[^A-Za-z0-9_]", "_", str(name or "").strip())
+    if not s:
+        s = "var"
+    if s[0].isdigit():
+        s = f"v_{s}"
+    return s
+
+
+def _apply_convert_filters(case: Case, *, redact_headers: list[str] | None = None, placeholders: bool = False) -> Case:
+    """Mutate case in-place to redact sensitive headers or lift values into variables as placeholders.
+
+    - redact_headers: list of header names (case-insensitive) to mask as '***'.
+    - placeholders: when True, convert sensitive headers into variables and reference via $var in headers.
+    """
+    redact_lc = {h.lower() for h in (redact_headers or [])}
+    default_sensitive = {"authorization", "cookie", "x-api-key", "x-api-token", "api-key", "apikey"}
+    # if placeholders requested but no explicit headers, use default set
+    if placeholders and not redact_lc:
+        redact_lc = set(default_sensitive)
+
+    vars_map = dict(case.config.variables or {})
+
+    for st in case.steps:
+        req = st.request
+        # headers
+        hdrs = dict(req.headers or {})
+        new_hdrs: dict[str, str] = {}
+        for k, v in hdrs.items():
+            kl = str(k).lower()
+            if kl in redact_lc and isinstance(v, str):
+                if placeholders:
+                    # Special handling for Authorization: Bearer <token>
+                    if kl == "authorization" and v.lower().startswith("bearer "):
+                        token_val = v.split(" ", 1)[1]
+                        var_name = "token"
+                        # avoid overwrite existing values with different content
+                        if vars_map.get(var_name) not in (None, token_val):
+                            # ensure unique
+                            i = 2
+                            while f"token{i}" in vars_map:
+                                i += 1
+                            var_name = f"token{i}"
+                        vars_map[var_name] = token_val
+                        new_hdrs[k] = f"Bearer ${var_name}"
+                    else:
+                        var_name = _sanitize_var_name(kl)
+                        vars_map[var_name] = v
+                        new_hdrs[k] = f"${var_name}"
+                else:
+                    new_hdrs[k] = "***"
+            else:
+                new_hdrs[k] = v
+        if new_hdrs:
+            req.headers = new_hdrs
+        # auth
+        if placeholders and req.auth and isinstance(req.auth, dict):
+            if req.auth.get("type") == "bearer":
+                tok = req.auth.get("token")
+                if isinstance(tok, str) and not tok.strip().startswith("$"):
+                    var_name = "token"
+                    if vars_map.get(var_name) not in (None, tok):
+                        i = 2
+                        while f"token{i}" in vars_map:
+                            i += 1
+                        var_name = f"token{i}"
+                    vars_map[var_name] = tok
+                    req.auth["token"] = f"${var_name}"
+            elif req.auth.get("type") == "basic":
+                u = req.auth.get("username")
+                p = req.auth.get("password")
+                if isinstance(u, str) and not u.startswith("$"):
+                    un = "username"
+                    vars_map[un] = u
+                    req.auth["username"] = f"${un}"
+                if isinstance(p, str) and not p.startswith("$"):
+                    pn = "password"
+                    vars_map[pn] = p
+                    req.auth["password"] = f"${pn}"
+
+    case.config.variables = vars_map or None
+    return case
+
+
 def _make_step_from_imported(imported_step: Any) -> Step:
     req = StepRequest(
         method=imported_step.method,
@@ -273,6 +358,24 @@ def _resolve_output_paths(
         parent = src.parent or Path.cwd()
         return [parent / f"{stem}_step{i}.yaml" for i in range(1, count + 1)]
     return [Path(f"{default_prefix}_{i}.yaml") for i in range(1, count + 1)]
+
+
+def _write_testsuite_reference(paths: List[Path], names: List[str], *, suite_path: str, suite_name: Optional[str] = None) -> None:
+    obj = {
+        "config": {
+            "name": suite_name or "Imported Testsuite",
+        },
+        "testcases": [
+            {"name": nm, "testcase": str(p)} for nm, p in zip(names, paths)
+        ],
+    }
+    from pathlib import Path as _Path
+    from typing import Any as _Any
+    out = yaml.dump(obj, Dumper=_YamlDumper, sort_keys=False, allow_unicode=True)
+    _p = _Path(suite_path)
+    _p.parent.mkdir(parents=True, exist_ok=True)
+    _p.write_text(out, encoding="utf-8")
+    typer.echo(f"[CONVERT] Wrote testsuite to {suite_path}")
 
 
 def _write_imported_cases(
@@ -369,14 +472,29 @@ def convert_auto(
             split_output=split_output,
         )
     elif suffix == ".json":
-        convert_postman(
-            collection=infile,
-            outfile=outfile,
-            into=into,
-            case_name=case_name,
-            base_url=base_url,
-            split_output=split_output,
-        )
+        # Try Postman by default; if 'openapi' field detected, prefer OpenAPI
+        data = {}
+        try:
+            data = json.loads(Path(infile).read_text(encoding="utf-8"))
+        except Exception:
+            pass
+        if isinstance(data, dict) and data.get("openapi"):
+            convert_openapi(
+                spec=infile,
+                outfile=outfile,
+                case_name=case_name,
+                base_url=base_url,
+                split_output=split_output,
+            )
+        else:
+            convert_postman(
+                collection=infile,
+                outfile=outfile,
+                into=into,
+                case_name=case_name,
+                base_url=base_url,
+                split_output=split_output,
+            )
     else:
         typer.echo("[CONVERT] Unrecognized file format. Supported suffixes: .curl, .har, .json")
         raise typer.Exit(code=2)
@@ -385,6 +503,8 @@ def convert_auto(
 # Helper for curl conversion
 def convert_curl(
     infile: str = typer.Argument(..., help="Path to file with curl commands or '-' for stdin"),
+    redact: Optional[str] = typer.Option(None, "--redact", help="Comma-separated header names to mask or placeholder, e.g., Authorization,Cookie"),
+    placeholders: bool = typer.Option(False, "--placeholders/--no-placeholders", help="Replace sensitive headers with $vars and store values in config.variables"),
     outfile: Optional[str] = typer.Option(None, "--outfile", help="Write to new YAML file (default stdout)"),
     into: Optional[str] = typer.Option(None, "--into", help="Append into existing YAML (case or suite)"),
     case_name: Optional[str] = typer.Option(None, "--case-name", help="Case name; default 'Imported Case'"),
@@ -419,6 +539,8 @@ def convert_curl(
         raise typer.Exit(code=2)
 
     cases = _build_cases_from_import(icase, split_output=split_output)
+    redact_list = [x.strip() for x in (redact or '').split(',') if x.strip()]
+    cases = [(_apply_convert_filters(case, redact_headers=redact_list, placeholders=placeholders), idx) for case, idx in cases]
     source_path = None if infile == "-" else infile
     _write_imported_cases(
         cases,
@@ -436,6 +558,9 @@ def convert_postman(
     case_name: Optional[str] = typer.Option(None, "--case-name"),
     base_url: Optional[str] = typer.Option(None, "--base-url"),
     postman_env: Optional[str] = typer.Option(None, "--postman-env", help="Postman environment JSON to import variables"),
+    redact: Optional[str] = typer.Option(None, "--redact", help="Comma-separated header names to mask or placeholder, e.g., Authorization,Cookie"),
+    placeholders: bool = typer.Option(False, "--placeholders/--no-placeholders", help="Replace sensitive headers with $vars and store values in config.variables"),
+    suite_out: Optional[str] = typer.Option(None, "--suite-out", help="Write a reference testsuite YAML that includes generated case files (requires --split-output or --outfile)"),
     split_output: bool = typer.Option(
         False,
         "--split-output/--single-output",
@@ -458,6 +583,8 @@ def convert_postman(
         raise typer.Exit(code=2)
 
     cases = _build_cases_from_import(icase, split_output=split_output)
+    redact_list = [x.strip() for x in (redact or '').split(',') if x.strip()]
+    cases = [(_apply_convert_filters(case, redact_headers=redact_list, placeholders=placeholders), idx) for case, idx in cases]
     _write_imported_cases(
         cases,
         outfile=outfile,
@@ -465,6 +592,22 @@ def convert_postman(
         split_output=split_output,
         source_path=collection,
     )
+    # Optional suite generation
+    if suite_out:
+        if into:
+            typer.echo("[CONVERT] --suite-out cannot be combined with --into")
+            raise typer.Exit(code=2)
+        # compute case paths/names similar to writer
+        names = [c.config.name or f"Case {i}" for (c, i) in cases]
+        if split_output:
+            paths = _resolve_output_paths(len(cases), outfile=outfile, source_path=collection)
+        else:
+            if outfile:
+                paths = [Path(outfile)]
+            else:
+                typer.echo("[CONVERT] --suite-out requires --split-output or --outfile to materialize case files")
+                raise typer.Exit(code=2)
+        _write_testsuite_reference(paths, names, suite_path=suite_out, suite_name=case_name or icase.name)
 
 
 def convert_har(
@@ -473,6 +616,8 @@ def convert_har(
     into: Optional[str] = typer.Option(None, "--into"),
     case_name: Optional[str] = typer.Option(None, "--case-name"),
     base_url: Optional[str] = typer.Option(None, "--base-url"),
+    redact: Optional[str] = typer.Option(None, "--redact", help="Comma-separated header names to mask or placeholder, e.g., Authorization,Cookie"),
+    placeholders: bool = typer.Option(False, "--placeholders/--no-placeholders", help="Replace sensitive headers with $vars and store values in config.variables"),
     exclude_static: bool = typer.Option(True, "--exclude-static/--keep-static", help="Filter out images/css/js/font entries"),
     only_2xx: bool = typer.Option(False, "--only-2xx/--all-status", help="Keep only responses with 2xx status code"),
     exclude_pattern: Optional[str] = typer.Option(None, "--exclude-pattern", help="Regex to exclude entries by URL or mimeType"),
@@ -501,6 +646,8 @@ def convert_har(
         raise typer.Exit(code=2)
 
     cases = _build_cases_from_import(icase, split_output=split_output)
+    redact_list = [x.strip() for x in (redact or '').split(',') if x.strip()]
+    cases = [(_apply_convert_filters(case, redact_headers=redact_list, placeholders=placeholders), idx) for case, idx in cases]
     _write_imported_cases(
         cases,
         outfile=outfile,
@@ -1085,3 +1232,31 @@ def fix(
 
 if __name__ == "__main__":
     app()
+@convert_app.command("openapi")
+def convert_openapi(
+    spec: str = typer.Argument(..., help="OpenAPI 3.x spec file (.json or .yaml)"),
+    outfile: Optional[str] = typer.Option(None, "--outfile"),
+    case_name: Optional[str] = typer.Option(None, "--case-name"),
+    base_url: Optional[str] = typer.Option(None, "--base-url"),
+    tags: Optional[str] = typer.Option(None, "--tags", help="Comma-separated tags to include (case-sensitive)"),
+    split_output: bool = typer.Option(False, "--split-output/--single-output", help="One YAML per operation"),
+    redact: Optional[str] = typer.Option(None, "--redact", help="Comma-separated header names to mask or placeholder, e.g., Authorization,Cookie"),
+    placeholders: bool = typer.Option(False, "--placeholders/--no-placeholders", help="Replace sensitive headers with $vars and store values in config.variables"),
+) -> None:
+    from arun.importers.openapi import parse_openapi
+    text = Path(spec).read_text(encoding="utf-8")
+    tag_list = [t.strip() for t in (tags or '').split(',') if t.strip()]
+    icase = parse_openapi(text, case_name=case_name, base_url=base_url, tags=tag_list or None)
+    if not icase.steps:
+        typer.echo("[CONVERT] No operations detected in OpenAPI spec.")
+        return
+    cases = _build_cases_from_import(icase, split_output=split_output)
+    redact_list = [x.strip() for x in (redact or '').split(',') if x.strip()]
+    cases = [(_apply_convert_filters(case, redact_headers=redact_list, placeholders=placeholders), idx) for case, idx in cases]
+    _write_imported_cases(
+        cases,
+        outfile=outfile,
+        into=None,
+        split_output=split_output,
+        source_path=spec,
+    )
