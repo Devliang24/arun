@@ -8,7 +8,7 @@
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Version](https://img.shields.io/badge/version-0.1.0-orange)]()
 
-[快速开始](#-快速开始-5-分钟) • [核心特性](#-核心特性) • [文档](#-核心概念) • [示例](#-实战示例)
+[快速开始](#-快速开始-5-分钟) • [核心特性](#-核心特性) • [文档](#-核心概念) • [示例](#-实战示例) • [格式转换实战](docs/FORMAT_CONVERSION.md)
 
 </div>
 
@@ -33,6 +33,62 @@ steps:
       - eq: [status_code, 200]
       - eq: [$.data.status, "healthy"]
 ```
+
+---
+
+## 🛠️ CI/CD 示例（GitHub Actions）
+
+以下工作流在每次提交/PR 时运行回归套件，生成 HTML/JSON 报告并作为 artifact 上传：
+
+```yaml
+name: ARun CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  run-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install ARun
+        run: |
+          pip install -e .
+
+      - name: Prepare .env
+        run: |
+          echo "BASE_URL=${{ secrets.BASE_URL }}" >> .env
+          # 可选：追加更多密钥/配置
+          # echo "API_KEY=${{ secrets.API_KEY }}" >> .env
+
+      - name: Run regression suite
+        run: |
+          mkdir -p reports logs
+          arun run testsuites/testsuite_regression.yaml \
+            --env-file .env \
+            --html reports/report.html \
+            --report reports/run.json \
+            --log-file logs/run.log \
+            --mask-secrets
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: arun-reports
+          path: |
+            reports/report.html
+            reports/run.json
+            logs/run.log
+          if-no-files-found: warn
+          retention-days: 7
+```
+
+提示：在仓库 Settings → Secrets and variables → Actions 中配置 `BASE_URL`、`API_KEY` 等敏感信息。
 
 ### 💡 为什么选择 ARun？
 
