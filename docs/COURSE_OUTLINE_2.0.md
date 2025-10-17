@@ -45,6 +45,7 @@
 - 导入调试：识别自动推断 base_url、缺失 header/body 场景。
 - 导出工作流：`arun export curl testcases --steps 1,3 --redact Authorization --with-comments --multiline`，跨 Shell (`--shell ps`) 与占位符注释 (`# Vars/Exprs`)，结合导出资产编写复现指南。
 - 格式转换治理：模板/环境变量保留策略、转换产物归档与版本化建议。
+- 实战指南：见 `docs/FORMAT_CONVERSION.md`（覆盖导入期脱敏 `--redact/--placeholders`、Postman `--postman-env/--suite-out`、HAR 去噪筛选、OpenAPI 转换与示例命令）。
 
 ## 模块 D｜变量、模板与参数化
 - `VarContext` 层级：环境 < config < parameters < step < CLI；变量注入策略。
@@ -78,6 +79,27 @@
 - 资产治理：转换产物版本管理、导出脚本归档、报告/日志存储。
 - 性能基线：`arun/utils/timeit.py`、CI 中的性能监控策略。
 - CI/CD 实践：在流水线运行 `testsuites/testsuite_regression.yaml`，门禁配置与通知，缓存策略与产物共享。
+  - CI 批量转换示例：
+    ```bash
+    # 1) 将已收集的资产转换为可运行用例（导入期脱敏与占位）
+    arun convert assets/requests.curl \
+      --into testcases/imported.yaml \
+      --redact Authorization,Cookie \
+      --placeholders
+
+    arun convert assets/postman.json \
+      --postman-env assets/postman_env.json \
+      --split-output \
+      --suite-out testsuites/testsuite_postman.yaml \
+      --redact Authorization \
+      --placeholders
+
+    # 2) 运行回归套件并产出报告
+    arun run testsuites/testsuite_regression.yaml \
+      --html reports/report.html \
+      --report reports/run.json \
+      --env-file .env
+    ```
 
 ## 模块 H｜源码深度拆解与扩展
 - CLI 框架：`arun/cli.py`（run/convert/export/tags/check/fix、通知参数、产物输出、环境加载）。

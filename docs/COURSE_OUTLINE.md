@@ -43,6 +43,7 @@
 
 ## 阶段 4｜业务实战
 1. 契约驱动用例：`spec/openapi/ecommerce_api.json` 到 YAML。
+   - 更多格式转换与导入实战详见：`docs/FORMAT_CONVERSION.md`（cURL/HAR/Postman/OpenAPI，导入期脱敏与 testsuite 生成）。
 2. 健康检查与可用性：`testcases/test_health.yaml`。
 3. 注册与登录会话：`testcases/test_register.yaml`、`testcases/test_auth.yaml`、`examples/test_register_and_login.yaml`。
 4. 身份校验与自检：`examples/test_login_whoami.yaml`。
@@ -74,6 +75,29 @@
 9. SQL 校验落地：`arun/db/sql_validate.py`、`arun/models/sql_validate.py`。
 10. 套件化运行与筛选：标签表达式与套件产物（`testsuites/*`）。
 11. 提交流程与本地校验：打包与脚本（`pyproject.toml`）。
+ 
+### CI 中的批量转换示例
+
+```bash
+# 将存量资产（curl/Postman）转换为用例，启用导入期脱敏与变量占位
+arun convert assets/requests.curl \
+  --into testcases/imported.yaml \
+  --redact Authorization,Cookie \
+  --placeholders
+
+arun convert assets/postman.json \
+  --postman-env assets/postman_env.json \
+  --split-output \
+  --suite-out testsuites/testsuite_postman.yaml \
+  --redact Authorization \
+  --placeholders
+
+# 运行回归套件
+arun run testsuites/testsuite_regression.yaml \
+  --report reports/run.json \
+  --html reports/report.html \
+  --env-file .env
+```
 
 ## 阶段 6｜源码拆解与扩展
 1. CLI 与命令体系：`arun/cli.py`（run/check/fix、过滤/报告/通知参数）。
