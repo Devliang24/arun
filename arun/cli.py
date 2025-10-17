@@ -48,6 +48,7 @@ app = typer.Typer(add_completion=False, help="ARun · Zero-code HTTP API test fr
 convert_app = typer.Typer(invoke_without_command=True)
 export_app = typer.Typer()
 app.add_typer(convert_app, name="convert")
+app.add_typer(export_app, name="export")
 
 # Importers / exporters (lazy optional imports inside functions where needed)
 
