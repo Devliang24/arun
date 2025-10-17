@@ -120,13 +120,6 @@ def _build_step(step: StepResult) -> str:
     )
 
     panels = []
-    headers_panel = (
-        "<div class='panel' data-section='request-headers'>"
-        "<div class='p-head'><span>请求头</span><span class='actions'><button onclick=\"window.copyPanel && window.copyPanel(this)\">复制</button></span></div>"
-        f"<pre data-raw=\"{_escape_html(req_headers_json)}\"><code>{_escape_html(req_headers_display)}</code></pre>"
-        "</div>"
-    )
-
     request_panel = (
         "<div class='panel' data-section='request-body'>"
         f"<div class='p-head'><span>{req_title}</span><span class='actions'><button onclick=\"window.copyPanel && window.copyPanel(this)\">复制</button></span></div>"
@@ -141,9 +134,16 @@ def _build_step(step: StepResult) -> str:
         "</div>"
     )
 
+    if headers_payload:
+        panels.append(
+            "<div class='panel' data-section='request-headers' style='margin-top:8px;'>"
+            "<div class='p-head'><span>请求头</span><span class='actions'><button onclick=\"window.copyPanel && window.copyPanel(this)\">复制</button></span></div>"
+            f"<pre data-raw=\"{_escape_html(req_headers_json)}\"><code>{_escape_html(req_headers_display)}</code></pre>"
+            "</div>"
+        )
+
     panels.append(
         "<div class='grid' style='margin-top:8px;'>"
-        + headers_panel
         + request_panel
         + response_panel
         + "</div>"
