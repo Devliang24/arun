@@ -22,6 +22,7 @@ arun run <path> [options]
 --log-file FILE               # 日志文件路径（默认 logs/run-<timestamp>.log）
 --httpx-logs                  # 显示 httpx 内部日志
 --reveal-secrets              # 显示敏感数据明文（默认）
+--response-headers            # 打印响应头（默认关闭，需要时显式开启）
 --mask-secrets                # 脱敏敏感数据（CI/CD 推荐）
 --notify feishu,email,dingtalk# 通知渠道
 --notify-only failed          # 通知策略（failed/always，默认 failed）

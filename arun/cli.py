@@ -805,6 +805,12 @@ def run(
     log_file: Optional[str] = typer.Option(None, "--log-file", help="Write console logs to file (default logs/run-<ts>.log)"),
     httpx_logs: bool = typer.Option(False, "--httpx-logs/--no-httpx-logs", help="Show httpx internal request logs", show_default=False),
     reveal_secrets: bool = typer.Option(True, "--reveal-secrets/--mask-secrets", help="Show sensitive fields (password, tokens) in plaintext logs and reports", show_default=True),
+    response_headers: bool = typer.Option(
+        False,
+        "--response-headers/--no-response-headers",
+        help="Log HTTP response headers (default off)",
+        show_default=False,
+    ),
     notify: Optional[str] = typer.Option(None, "--notify", help="Notify channels, comma-separated: feishu,email,dingtalk"),
     notify_only: str = typer.Option("failed", "--notify-only", help="Notify policy: failed|always"),
     notify_attach_html: bool = typer.Option(False, "--notify-attach-html/--no-notify-attach-html", help="Attach HTML report in email (if email enabled)", show_default=False),
@@ -885,7 +891,13 @@ def run(
         raise typer.Exit(code=2)
 
     # Execute
-    runner = Runner(log=log, failfast=failfast, log_debug=(log_level.upper() == "DEBUG"), reveal_secrets=reveal_secrets)
+    runner = Runner(
+        log=log,
+        failfast=failfast,
+        log_debug=(log_level.upper() == "DEBUG"),
+        reveal_secrets=reveal_secrets,
+        log_response_headers=response_headers,
+    )
     templater = TemplateEngine()
     instance_results = []
     log.info(f"[RUN] Discovered files: {len(files)} | Matched cases: {len(items)} | Failfast={failfast}")

@@ -18,11 +18,20 @@ from arun.db.sql_validate import run_sql_validate
 
 
 class Runner:
-    def __init__(self, *, log, failfast: bool = False, log_debug: bool = False, reveal_secrets: bool = True) -> None:
+    def __init__(
+        self,
+        *,
+        log,
+        failfast: bool = False,
+        log_debug: bool = False,
+        reveal_secrets: bool = True,
+        log_response_headers: bool = True,
+    ) -> None:
         self.log = log
         self.failfast = failfast
         self.log_debug = log_debug
         self.reveal = reveal_secrets
+        self.log_response_headers = log_response_headers
         self.templater = TemplateEngine()
 
     def _render(self, data: Any, variables: Dict[str, Any], functions: Dict[str, Any] | None = None, envmap: Dict[str, Any] | None = None) -> Any:
@@ -34,8 +43,8 @@ class Runner:
 
     def _request_dict(self, step: Step) -> Dict[str, Any]:
         # Use field names (not aliases) so "body" stays as expected downstream.
-        # Otherwise the StepRequest alias "json" would leak into runtime and
-        # we would miss sending the actual payload (see bug #??? case 422).
+        # Otherwise the StepRequest alias "json" leaks into runtime and the
+        # payload is dropped, triggering 422 responses on JSON APIs.
         return step.request.model_dump(exclude_none=True)
 
     def _fmt_json(self, obj: Any) -> str:
@@ -457,7 +466,8 @@ class Runner:
                     if not self.reveal:
                         hdrs = mask_headers(hdrs)
                     self.log.info(f"[RESPONSE] status={resp_obj.get('status_code')} elapsed={resp_obj.get('elapsed_ms'):.1f}ms")
-                    self.log.info(self._fmt_aligned("RESP", "headers", self._fmt_json(hdrs)))
+                    if self.log_response_headers:
+                        self.log.info(self._fmt_aligned("RESP", "headers", self._fmt_json(hdrs)))
                     body_preview = resp_obj.get("body")
                     if isinstance(body_preview, (dict, list)):
                         out_body = body_preview
