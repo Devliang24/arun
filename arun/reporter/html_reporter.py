@@ -276,7 +276,7 @@ def write_html(report: RunReport, outfile: str | Path) -> None:
   .skipped { color: var(--skip); }
   .case { border: 1px solid var(--border); background: var(--card); border-radius: 10px; margin: 14px 0; overflow: hidden; }
   .case > .head { padding: 12px 12px; display:flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); }
-  .case .case-meta { margin-left: 10px; font-size: 12px; font-weight: 500; color: var(--muted); }
+  .case .case-meta { margin-left: 10px; font-size: inherit; font-weight: 500; color: var(--muted); }
   .pill { font-size: 12px; padding: 2px 8px; border-radius: 999px; border:1px solid var(--border); }
   .pill.passed { border-color: var(--ok); }
   .pill.failed { border-color: var(--fail); }
