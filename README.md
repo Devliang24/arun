@@ -90,6 +90,179 @@ jobs:
 
 提示：在仓库 Settings → Secrets and variables → Actions 中配置 `BASE_URL`、`API_KEY` 等敏感信息。
 
+### 扩展：导入资产 + 运行（Actions）
+
+在运行套件之前，先将 cURL/Postman/HAR/OpenAPI 资产转换为用例（含导入期脱敏/占位），再执行回归套件：
+
+```yaml
+name: ARun Convert + Run
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  convert-and-run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install ARun
+        run: pip install -e .
+
+      - name: Prepare .env
+        run: |
+          echo "BASE_URL=${{ secrets.BASE_URL }}" >> .env
+          # 可选更多密钥
+          # echo "API_KEY=${{ secrets.API_KEY }}" >> .env
+
+      - name: Convert assets (cURL / Postman / HAR)
+        run: |
+          mkdir -p testcases testsuites reports logs
+          # cURL → 追加至单一用例文件，导入期脱敏与占位
+          if [ -f assets/requests.curl ]; then
+            arun convert assets/requests.curl \
+              --into testcases/imported.yaml \
+              --redact Authorization,Cookie \
+              --placeholders
+          fi
+          # Postman → 拆分并生成 testsuite
+          if [ -f assets/postman.json ]; then
+            arun convert assets/postman.json \
+              --postman-env assets/postman_env.json \
+              --split-output \
+              --suite-out testsuites/testsuite_postman.yaml \
+              --redact Authorization \
+              --placeholders
+          fi
+          # HAR → 过滤静态/仅 2xx/正则排除，写入单文件
+          if [ -f assets/recording.har ]; then
+            arun convert assets/recording.har \
+              --exclude-static --only-2xx --exclude-pattern '(\\.png$|/cdn/)' \
+              --outfile testcases/from_har.yaml
+          fi
+          # OpenAPI → 多文件输出（如果存在）
+          if [ -f spec/openapi/ecommerce_api.json ]; then
+            arun convert openapi spec/openapi/ecommerce_api.json \
+              --tags users,orders \
+              --split-output \
+              --outfile testcases/from_openapi.yaml \
+              --redact Authorization \
+              --placeholders
+          fi
+
+      - name: Run regression suite
+        run: |
+          # 优先运行从 Postman 生成的 testsuite；否则运行已有回归套件
+          SUITE=testsuites/testsuite_regression.yaml
+          if [ -f testsuites/testsuite_postman.yaml ]; then SUITE=testsuites/testsuite_postman.yaml; fi
+          arun run "$SUITE" \
+            --env-file .env \
+            --html reports/report.html \
+            --report reports/run.json \
+            --log-file logs/run.log \
+            --mask-secrets
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: arun-reports-convert-run
+          path: |
+            reports/report.html
+            reports/run.json
+            logs/run.log
+          if-no-files-found: warn
+          retention-days: 7
+```
+
+### GitLab CI 片段
+
+```yaml
+stages: [convert, test]
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+convert:
+  stage: convert
+  image: python:3.11
+  script:
+    - pip install -e .
+    - echo "BASE_URL=$BASE_URL" > .env
+    - mkdir -p testcases testsuites reports logs
+    - |
+      if [ -f assets/requests.curl ]; then
+        arun convert assets/requests.curl --into testcases/imported.yaml --redact Authorization,Cookie --placeholders
+      fi
+      if [ -f assets/postman.json ]; then
+        arun convert assets/postman.json --postman-env assets/postman_env.json --split-output --suite-out testsuites/testsuite_postman.yaml --redact Authorization --placeholders
+      fi
+  artifacts:
+    paths:
+      - testcases/
+      - testsuites/
+    expire_in: 1 week
+
+test:
+  stage: test
+  image: python:3.11
+  needs: [convert]
+  script:
+    - pip install -e .
+    - arun run ${SUITE:-testsuites/testsuite_regression.yaml} --env-file .env --html reports/report.html --report reports/run.json --mask-secrets
+  artifacts:
+    paths:
+      - reports/report.html
+      - reports/run.json
+    expire_in: 1 week
+```
+
+### Jenkins（Declarative Pipeline）
+
+```groovy
+pipeline {
+  agent any
+  environment {
+    BASE_URL = credentials('BASE_URL')
+  }
+  stages {
+    stage('Setup') {
+      steps {
+        sh 'python3 -m pip install -U pip && pip install -e .'
+        sh 'echo "BASE_URL=${BASE_URL}" > .env'
+        sh 'mkdir -p testcases testsuites reports logs'
+      }
+    }
+    stage('Convert') {
+      steps {
+        sh '''
+          if [ -f assets/requests.curl ]; then
+            arun convert assets/requests.curl --into testcases/imported.yaml --redact Authorization,Cookie --placeholders
+          fi
+          if [ -f assets/postman.json ]; then
+            arun convert assets/postman.json --postman-env assets/postman_env.json --split-output --suite-out testsuites/testsuite_postman.yaml --redact Authorization --placeholders
+          fi
+        '''
+      }
+    }
+    stage('Run') {
+      steps {
+        sh 'arun run testsuites/testsuite_regression.yaml --env-file .env --html reports/report.html --report reports/run.json --mask-secrets'
+      }
+    }
+  }
+  post {
+    always {
+      archiveArtifacts artifacts: 'reports/**,logs/**', fingerprint: true
+    }
+  }
+}
+```
+
 ### 💡 为什么选择 ARun？
 
 | 特性 | ARun | 其他工具 |
