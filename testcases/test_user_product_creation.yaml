@@ -1,18 +1,13 @@
 config:
-  name: 用户注册后创建商品
+  name: demo
   base_url: ${ENV(BASE_URL)}
-  tags: [user, products]
+  tags: [cart]
   variables:
     username: u_${short_uid(12)}
     email: u_${uid()}@example.com
     full_name: DemoUser_${short_uid(10)}
     password: Pwd_${short_uid(12)}
     shipping_address: Addr_${short_uid(12)}
-    product_name: Product_${short_uid(8)}
-    product_description: Demo product created by user flow.
-    product_price: 22
-    product_stock: 30
-    product_category_id: 1
 steps:
   - name: 注册用户
     request:
@@ -53,15 +48,15 @@ steps:
       headers:
         Authorization: Bearer $token
       body:
-        name: $product_name
-        description: $product_description
-        price: $product_price
-        stock: $product_stock
-        category_id: $product_category_id
+        name: test1
+        description: This is a test product.
+        price: 22
+        stock: 30
+        category_id: 1
       extract:
         product_id: $.data.id
       validate:
         - eq: [status_code, 201]
         - eq: [$.success, true]
         - eq: [$.message, "商品创建成功"]
-        - eq: [$.data.name, $product_name]
+        - eq: [$.data.name, "test1"]
