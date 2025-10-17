@@ -170,17 +170,25 @@ HTML report written to reports/report.html
 如果你已有 curl 命令、Postman Collection 或浏览器 HAR 记录，可以快速转换为 YAML：
 
 ```bash
-# 从 curl 命令转换（支持从浏览器 "Copy as cURL" 或 API 文档复制）
-arun convert requests.curl --outfile testcases/test_imported.yaml
+# cURL → 用例（脱敏 + 变量占位）
+arun convert requests.curl --outfile testcases/from_curl.yaml --redact Authorization,Cookie --placeholders
 
-# 从 Postman Collection 转换
-arun convert api_collection.json --outfile testcases/test_postman.yaml
+# Postman → 用例（导入环境变量，拆分并生成 testsuite）
+arun convert api_collection.json \
+  --postman-env postman_env.json \
+  --split-output \
+  --suite-out testsuites/testsuite_postman.yaml \
+  --redact Authorization \
+  --placeholders
 
-# 从浏览器 HAR 记录转换（F12 → Network → "Save all as HAR"）
-arun convert recording.har --split-output  # 每个请求生成独立文件
+# HAR → 用例（过滤静态/仅保留 2xx/正则排除）
+arun convert recording.har --exclude-static --only-2xx --exclude-pattern '(\.png$|/cdn/)' --outfile testcases/from_har.yaml
+
+# OpenAPI → 用例（按 tag 过滤，多文件输出）
+arun convert openapi spec/openapi/ecommerce_api.json --tags users,orders --split-output --outfile testcases/from_openapi.yaml --redact Authorization --placeholders
 ```
 
-**提示**：转换后的 YAML 文件可直接运行，也可进一步编辑添加断言、提取变量、参数化等高级功能。
+**提示**：更多“转换实战”示例见 docs/FORMAT_CONVERSION.md。
 
 ---
 
