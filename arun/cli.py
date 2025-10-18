@@ -968,6 +968,7 @@ def run(
         pth = _Path(path)
         hints: list[str] = []
         if not pth.exists():
+            hints.append("Path does not exist. Create it or use an existing directory/file.")
             if not pth.suffix:
                 for ext in (".yaml", ".yml"):
                     cand = pth.with_suffix(ext)

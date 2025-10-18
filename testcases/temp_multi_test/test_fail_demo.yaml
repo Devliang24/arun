@@ -1,0 +1,13 @@
+config:
+  name: 多用例目录-失败示例
+  base_url: ${ENV(BASE_URL)}
+  tags: [demo, temp]
+
+steps:
+  - name: 404 示例
+    request:
+      method: GET
+      url: /__not_found_demo__
+    validate:
+      - eq: [status_code, 404]
+
