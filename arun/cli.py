@@ -835,6 +835,10 @@ def run(
     # Unified env loading: --env <name> YAML + --env-file (kv or yaml) + OS ENV
     env_name: Optional[str] = os.environ.get("ARUN_ENV")  # optional default via env var
     env_store = load_environment(env_name, env_file)
+    # Sync env_store to os.environ for notification and other integrations
+    for k, v in env_store.items():
+        if k and isinstance(v, str) and k.upper() == k:  # Only uppercase keys (skip lowercase duplicates)
+            os.environ.setdefault(k, v)
     # Preflight: warn when default env file is missing and no BASE_URL provided anywhere
     from pathlib import Path as _Path
     _env_exists = _Path(env_file).exists() if env_file else False
@@ -996,10 +1000,15 @@ def run(
         policy = (notify_only or os.environ.get("ARUN_NOTIFY_ONLY", "failed")).strip().lower()
         topn = int(os.environ.get("NOTIFY_TOPN", "5") or "5")
 
+        log.info("[NOTIFY] channels=%s policy=%s", channels, policy)
+
         should_send = (
             (policy == "always") or (policy == "failed" and (s.get("failed", 0) or 0) > 0)
         )
+        log.info("[NOTIFY] should_send=%s (failed_count=%s)", should_send, s.get("failed", 0))
+
         if channels and should_send:
+            log.info("[NOTIFY] Preparing to send notifications to: %s", ", ".join(channels))
             ctx = NotifyContext(html_path=html_target, log_path=default_log, notify_only=policy, topn=topn)
             notifiers = []
 
@@ -1010,6 +1019,9 @@ def run(
                     fm = os.environ.get("FEISHU_MENTION")
                     style = os.environ.get("FEISHU_STYLE", "text").lower().strip()
                     notifiers.append(FeishuNotifier(webhook=fw, secret=fs, mentions=fm, style=style))
+                    log.info("[NOTIFY] Feishu notifier created (style=%s)", style)
+                else:
+                    log.warning("[NOTIFY] Feishu channel requested but FEISHU_WEBHOOK not configured")
 
             if "email" in channels:
                 host = os.environ.get("SMTP_HOST", "").strip()
@@ -1040,14 +1052,18 @@ def run(
                         DingTalkNotifier(webhook=dw, secret=ds, at_mobiles=at_mobiles, at_all=at_all, style=style)
                     )
 
+            log.info("[NOTIFY] Sending notifications via %d notifier(s)", len(notifiers))
             for n in notifiers:
                 try:
+                    notifier_name = n.__class__.__name__
+                    log.info("[NOTIFY] Sending via %s...", notifier_name)
                     n.send(report_obj, ctx)
-                except Exception:
-                    pass
-    except Exception:
+                    log.info("[NOTIFY] %s notification sent successfully", notifier_name)
+                except Exception as e:
+                    log.error("[NOTIFY] Failed to send via %s: %s", n.__class__.__name__, str(e))
+    except Exception as e:
         # never break main flow for notifications
-        pass
+        log.error("[NOTIFY] Notification module error: %s", str(e))
 
     log.info("[CASE] Logs written to %s", default_log)
     if s.get("failed", 0) > 0:
