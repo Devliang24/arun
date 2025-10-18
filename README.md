@@ -822,6 +822,7 @@ allure --version
 export FEISHU_WEBHOOK=https://open.feishu.cn/open-apis/bot/v2/hook/xxx
 export FEISHU_SECRET=your-secret      # 可选，签名验证
 export FEISHU_STYLE=card              # card 或 text（默认）
+export SYSTEM_NAME=我的测试系统       # 可选，自定义卡片标题（支持 SYSTEM_NAME 或 PROJECT_NAME）
 export ARUN_NOTIFY_ONLY=failed        # failed 或 always
 
 # 运行并通知
@@ -829,10 +830,13 @@ arun run testcases --notify feishu --env-file .env
 ```
 
 **飞书卡片示例**（`FEISHU_STYLE=card`）：
-- 📊 测试摘要（总数、通过、失败）
-- 🚨 失败用例列表（前 5 个）
-- 🔗 报告链接（需配置 `REPORT_URL`）
-- 👤 @提醒（需配置 `FEISHU_MENTION`）
+- 🏷️ **自定义标题**：显示系统名称（来自 `SYSTEM_NAME`，默认 "ARun 测试结果"）
+- 📊 **用例统计**：总数、通过、失败、跳过、耗时
+- 🔢 **步骤统计**：总步骤数、通过步骤数、失败步骤数
+- 🚨 **失败步骤详情**：步骤名称、错误消息、耗时（前 5 个）
+- 📁 **执行文件**：显示测试文件列表（单文件或多文件汇总）
+- 🔗 **报告链接**：HTML 报告和日志文件（需配置 `REPORT_URL`）
+- 👤 **@提醒**：支持 @ 指定人员（需配置 `FEISHU_MENTION`）
 
 #### 邮件通知
 
