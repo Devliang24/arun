@@ -23,7 +23,6 @@ steps:
         password: $password
         full_name: $full_name
         shipping_address: $shipping_address
-        dede: $ded
     extract:
       username: $.data.username
     validate:

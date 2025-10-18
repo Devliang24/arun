@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sys
 import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -45,9 +46,7 @@ _YamlDumper.add_representer(_FlowSeq, _flow_seq_representer)
 
 
 app = typer.Typer(add_completion=False, help="ARun · Zero-code HTTP API test framework", rich_markup_mode=None)
-convert_app = typer.Typer(invoke_without_command=True)
 export_app = typer.Typer()
-app.add_typer(convert_app, name="convert")
 app.add_typer(export_app, name="export")
 
 # Importers / exporters (lazy optional imports inside functions where needed)
@@ -135,6 +134,9 @@ def _to_yaml_case_dict(case: Case) -> Dict[str, object]:
                 step.pop(field, None)
 
         req = step.get("request") or {}
+        # Normalize legacy alias: 'json' -> 'body'
+        if isinstance(req, dict) and ("json" in req) and ("body" not in req):
+            req["body"] = req.pop("json")
         headers = req.get("headers") or {}
         headers_lc = {str(k).lower(): v for k, v in headers.items()} if isinstance(headers, dict) else {}
         accept = str(headers_lc.get("accept", "")) if headers_lc else ""
@@ -301,7 +303,7 @@ def _apply_convert_filters(case: Case, *, redact_headers: list[str] | None = Non
                     vars_map[pn] = p
                     req.auth["password"] = f"${pn}"
 
-    case.config.variables = vars_map or None
+    case.config.variables = vars_map or {}
     return case
 
 
@@ -329,11 +331,11 @@ def _build_cases_from_import(icase: Any, *, split_output: bool) -> List[Tuple[Ca
         for idx, imported_step in enumerate(icase.steps, start=1):
             step_obj = _make_step_from_imported(imported_step)
             case_title = _derive_case_name(icase.name, imported_step.name, idx)
-            case = Case(config=Config(name=case_title, base_url=icase.base_url, variables=getattr(icase, 'variables', None) or None), steps=[step_obj])
+            case = Case(config=Config(name=case_title, base_url=icase.base_url, variables=getattr(icase, 'variables', None) or {}), steps=[step_obj])
             cases.append((case, idx))
     else:
         steps = [_make_step_from_imported(s) for s in icase.steps]
-        case = Case(config=Config(name=icase.name, base_url=icase.base_url, variables=getattr(icase, 'variables', None) or None), steps=steps)
+        case = Case(config=Config(name=icase.name, base_url=icase.base_url, variables=getattr(icase, 'variables', None) or {}), steps=steps)
         cases.append((case, 1))
     return cases
 
@@ -440,7 +442,7 @@ def _write_imported_cases(
 
 
 # Unified convert entrypoint (auto-detect by suffix)
-@convert_app.callback()
+@app.command("convert")
 def convert_auto(
     infile: str = typer.Argument(..., help="Source file (.curl/.har/.json) to convert"),
     outfile: Optional[str] = typer.Option(None, "--outfile", help="Write output to file"),
@@ -452,7 +454,63 @@ def convert_auto(
         "--split-output/--single-output",
         help="Generate one YAML file per request when supported",
     ),
+    # Pass-through options for specific converters (available at top-level for convenience)
+    redact: Optional[str] = typer.Option(
+        None,
+        "--redact",
+        help="Comma-separated header names to mask or placeholder, e.g., Authorization,Cookie",
+    ),
+    placeholders: bool = typer.Option(
+        False,
+        "--placeholders/--no-placeholders",
+        help="Replace sensitive headers with $vars and store values in config.variables",
+    ),
 ) -> None:
+    # Enforce: options must be after INFILE (no legacy compatibility)
+    try:
+        argv = list(sys.argv)
+        i_convert = argv.index("convert")
+    except ValueError:
+        i_convert = -1
+    if i_convert >= 0:
+        tail = argv[i_convert + 1 :]
+        # locate infile token in raw argv
+        cand_suffix = (".curl", ".har", ".json")
+        pos = None
+        for i, tok in enumerate(tail):
+            if tok == "-" or tok.lower().endswith(cand_suffix):
+                pos = i
+                break
+        if pos is not None and any(t.startswith("-") for t in tail[:pos]):
+            typer.echo("[CONVERT] Options must follow INFILE. Example:\n  arun convert file.curl --outfile out.yaml")
+            raise typer.Exit(code=2)
+    # Enforce: no bare conversion without any options
+    any_option = any([
+        outfile is not None,
+        into is not None,
+        case_name is not None,
+        base_url is not None,
+        split_output,
+        (redact is not None),
+        placeholders,
+    ])
+    if not any_option:
+        typer.echo("[CONVERT] No options provided. Bare conversion is not supported. Place options after INFILE, e.g.:\n  arun convert my.curl --outfile testcases/from_curl.yaml")
+        raise typer.Exit(code=2)
+
+    if infile == "-":
+        # stdin: treat as curl text
+        convert_curl(
+            infile=infile,
+            outfile=outfile,
+            into=into,
+            case_name=case_name,
+            base_url=base_url,
+            split_output=split_output,
+            redact=redact,
+            placeholders=placeholders,
+        )
+        return
     suffix = Path(infile).suffix.lower()
     if suffix == ".curl":
         convert_curl(
@@ -462,6 +520,8 @@ def convert_auto(
             case_name=case_name,
             base_url=base_url,
             split_output=split_output,
+            redact=redact,
+            placeholders=placeholders,
         )
     elif suffix == ".har":
         convert_har(
@@ -471,6 +531,8 @@ def convert_auto(
             case_name=case_name,
             base_url=base_url,
             split_output=split_output,
+            redact=redact,
+            placeholders=placeholders,
         )
     elif suffix == ".json":
         # Try Postman by default; if 'openapi' field detected, prefer OpenAPI
@@ -486,6 +548,8 @@ def convert_auto(
                 case_name=case_name,
                 base_url=base_url,
                 split_output=split_output,
+                redact=redact,
+                placeholders=placeholders,
             )
         else:
             convert_postman(
@@ -495,6 +559,8 @@ def convert_auto(
                 case_name=case_name,
                 base_url=base_url,
                 split_output=split_output,
+                redact=redact,
+                placeholders=placeholders,
             )
     else:
         typer.echo("[CONVERT] Unrecognized file format. Supported suffixes: .curl, .har, .json")
@@ -754,7 +820,38 @@ def list_tags(
     """List all unique tags used by the discovered test cases."""
     files = discover([path])
     if not files:
-        typer.echo("No YAML test files found.")
+        from pathlib import Path as _Path
+        typer.echo(f"No YAML test files found at: {path}")
+        pth = _Path(path)
+        # Friendly hints and likely fixes
+        hints: list[str] = []
+        # Suggest missing extension correction
+        if not pth.exists():
+            # if user omitted extension, suggest .yaml/.yml
+            if not pth.suffix:
+                for ext in (".yaml", ".yml"):
+                    cand = pth.with_suffix(ext)
+                    if cand.exists():
+                        hints.append(f"Did you mean: arun run {cand}")
+                        break
+        else:
+            if pth.is_file():
+                if pth.suffix.lower() not in {".yaml", ".yml"}:
+                    hints.append("Only .yaml/.yml files are recognized.")
+                    for ext in (".yaml", ".yml"):
+                        cand = pth.with_suffix(ext)
+                        if cand.exists():
+                            hints.append(f"Try: arun run {cand}")
+                            break
+            elif pth.is_dir():
+                hints.append("Provide a YAML file or a directory containing YAML tests under testcases/ or testsuites/.")
+        # Always provide examples
+        hints.append("Examples:")
+        hints.append("  arun run testcases")
+        hints.append("  arun run testcases/test_hello.yaml")
+        hints.append("  arun run testsuites/testsuite_smoke.yaml")
+        for h in hints:
+            typer.echo(h)
         raise typer.Exit(code=2)
 
     collected: Dict[str, set[tuple[str, str]]] = {}
@@ -866,7 +963,34 @@ def run(
     typer.echo(f"Filter expression: {k!r}")
     files = discover([path])
     if not files:
-        typer.echo("No YAML test files found.")
+        from pathlib import Path as _Path
+        typer.echo(f"No YAML test files found at: {path}")
+        pth = _Path(path)
+        hints: list[str] = []
+        if not pth.exists():
+            if not pth.suffix:
+                for ext in (".yaml", ".yml"):
+                    cand = pth.with_suffix(ext)
+                    if cand.exists():
+                        hints.append(f"Did you mean: arun run {cand}")
+                        break
+        else:
+            if pth.is_file():
+                if pth.suffix.lower() not in {".yaml", ".yml"}:
+                    hints.append("Only .yaml/.yml files are recognized.")
+                    for ext in (".yaml", ".yml"):
+                        cand = pth.with_suffix(ext)
+                        if cand.exists():
+                            hints.append(f"Try: arun run {cand}")
+                            break
+            elif pth.is_dir():
+                hints.append("Provide a YAML file or a directory containing YAML tests under testcases/ or testsuites/.")
+        hints.append("Examples:")
+        hints.append("  arun run testcases")
+        hints.append("  arun run testcases/test_hello.yaml")
+        hints.append("  arun run testsuites/testsuite_smoke.yaml")
+        for h in hints:
+            typer.echo(h)
         raise typer.Exit(code=2)
 
     # Load cases
@@ -1261,7 +1385,7 @@ def fix(
 
 if __name__ == "__main__":
     app()
-@convert_app.command("openapi")
+@app.command("convert-openapi")
 def convert_openapi(
     spec: str = typer.Argument(..., help="OpenAPI 3.x spec file (.json or .yaml)"),
     outfile: Optional[str] = typer.Option(None, "--outfile"),

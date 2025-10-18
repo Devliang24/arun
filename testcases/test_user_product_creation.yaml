@@ -8,6 +8,7 @@ config:
     full_name: DemoUser_${short_uid(10)}
     password: Pwd_${short_uid(12)}
     shipping_address: Addr_${short_uid(12)}
+    
 steps:
   - name: 注册用户
     request:
@@ -53,10 +54,10 @@ steps:
         price: 22
         stock: 30
         category_id: 1
-      extract:
-        product_id: $.data.id
-      validate:
-        - eq: [status_code, 201]
-        - eq: [$.success, true]
-        - eq: [$.message, "商品创建成功"]
-        - eq: [$.data.name, "test1"]
+    extract:
+      product_id: $.data.id
+    validate:
+      - eq: [status_code, 201]
+      - eq: [$.success, true]
+      - eq: [$.message, "商品创建成功"]
+      - eq: [$.data.name, "test1"]

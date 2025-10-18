@@ -14,6 +14,7 @@
   - 内置函数
   - 项目 Hooks 与辅助函数
   - 环境变量
+- 变更日志（Changelog）：CHANGELOG.md
 - 实战示例（Examples）：docs/EXAMPLES.md
   - 登录流程与 Token 注入
   - E2E 购物流程

@@ -78,6 +78,8 @@
  
 ### CI 中的批量转换示例
 
+提示：`arun convert` 要求“文件在前，选项在后”，且不支持无选项转换（至少提供一个选项，如 `--outfile`/`--split-output`/`--redact`/`--placeholders`）。
+
 ```bash
 # 将存量资产（cURL/Postman）转换为用例，启用导入期脱敏与变量占位
 arun convert assets/requests.curl \

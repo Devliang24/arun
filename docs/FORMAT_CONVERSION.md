@@ -2,6 +2,8 @@
 
 本页整理 `arun convert` / `arun export` 的常用场景与参数组合，帮助你把 cURL / Postman / HAR / OpenAPI 等资产快速迁移为 YAML 测试，或从 YAML 导出命令复现实验结果。
 
+注意：使用 `arun convert` 时，必须“文件在前，选项在后”，且不支持无选项转换（至少提供一个选项，如 `--outfile`/`--split-output`/`--redact`/`--placeholders`）。
+
 > 温馨提示：命令详尽参数说明见 `docs/CLI.md` 的相关章节；此处聚焦高频组合、最佳实践与排查思路，文档风格参考 `docs/CI_CD.md`。
 
 ## 快速开始
@@ -28,7 +30,7 @@ arun convert recording.har \
   --outfile testcases/from_har.yaml
 
 # OpenAPI → 按 tag 拆分 Case
-arun convert openapi spec/openapi/ecommerce_api.json \
+arun convert-openapi spec/openapi/ecommerce_api.json \
   --tags users,orders \
   --split-output \
   --outfile testcases/from_openapi.yaml \

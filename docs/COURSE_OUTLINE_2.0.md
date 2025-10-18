@@ -4,7 +4,7 @@
 
 ## 学习成果（可验收任务）
 1. **端到端起盘**：安装依赖后执行 `arun run testcases --env-file .env --html reports/report.html --report reports/run.json --allure-results allure-results --log-file logs/run.log --mask-secrets`，生成完整产物并说明脱敏效果。
-2. **格式转换迁移**：使用 `arun convert` 将 cURL/HAR/Postman 资产导入，熟练掌握 `--split-output`、`--into`、`--case-name`、`--base-url` 的组合策略；为导入到同一 case/suite 的场景产出可复用脚本。
+2. **格式转换迁移**：使用 `arun convert` 将 cURL/HAR/Postman 资产导入，熟练掌握 `--split-output`、`--into`、`--case-name`、`--base-url` 的组合策略；为导入到同一 case/suite 的场景产出可复用脚本。（提示：`arun convert` 要求“文件在前，选项在后”，且不支持无选项转换。）
 3. **导出与复现**：运用 `arun export curl` 生成脱敏、多行/单行可选的 cURL；通过 `--with-comments`、`--redact`、`--steps`、`--shell ps` 提供占位符与跨 Shell 复现；输出复现手册。
 4. **标签治理**：使用 `-k` 与 `arun tags` 管理测试套件层级，实现冒烟/回归/权限的稳定筛选，并提交治理报告。
 5. **参数化/复用**：基于矩阵、枚举、压缩三类参数化覆盖多环境与边界场景，验证实例数并记录执行结果。

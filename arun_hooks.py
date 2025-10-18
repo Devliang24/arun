@@ -82,6 +82,7 @@ def capture_request_id(response: dict, variables: dict | None = None, env: dict 
 
 # Prefixed wrappers (DSL-style naming convention)
 def setup_hook_sign_request(request: dict, variables: dict | None = None, env: dict | None = None) -> dict | None:
+    
     return sign_request(request=request, variables=variables or {}, env=env or {})
 
 

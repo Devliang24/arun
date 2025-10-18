@@ -7,7 +7,7 @@
 4. 参数化覆盖：使用矩阵/枚举/压缩三种参数化覆盖多环境与边界场景（示例：`examples/test_params_*.yaml`），验证实例数与期望一致。
 5. 鉴权与会话复用：完成登录→带 token 访问链路，验证自动 Authorization 注入与 `auth` 字段生效（示例：`testcases/test_auth.yaml`、`examples/test_login_whoami.yaml`）。
 6. 报告与最小复现：从 HTML/JSON/Allure 报告中定位失败，利用 `arun export curl` 生成脱敏、多行/单行可选的 cURL（`--with-comments/--redact/--steps/--shell`）。
-7. 资产迁移（格式转换）：使用 `arun convert` 将 cURL/HAR/Postman/OpenAPI 导入（`--split-output/--into/--case-name/--base-url/--tags/--redact/--placeholders`），形成脚本化导入方案。
+7. 资产迁移（格式转换）：使用 `arun convert` 将 cURL/HAR/Postman/OpenAPI 导入（`--split-output/--into/--case-name/--base-url/--tags/--redact/--placeholders`），形成脚本化导入方案。（提示：`arun convert` 要求“文件在前，选项在后”，且不支持无选项转换。）
 8. 环境与优先级：通过 `ARUN_ENV` + `env/<name>.yaml` + `.env` + `--vars` 构建多层环境合并，梳理冲突与覆盖策略。
 9. 模板与内置函数：熟练 `$var`/`${expr}`、`ENV()` 与 `now/uuid/random_int/base64_encode/hmac_sha256` 等的常见用法与陷阱。
 10. Hooks 与签名：掌握 Case/Suite/Step hooks 的调用栈与 `hook_ctx`，实现时间戳/HMAC 签名与上下文注入（示例：`examples/test_hmac_sign.yaml`）。
@@ -132,4 +132,3 @@ arun run testsuites/testsuite_regression.yaml \
 13. 示例与用例映射：`examples/*.yaml`、`testcases/*`、`testsuites/*`。
 14. 规范与打包：`pyproject.toml`。
 15. 规格与资产：`spec/openapi/ecommerce_api.json`。
-

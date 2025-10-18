@@ -6,7 +6,7 @@
 
 [![Python Version](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.1.0-orange)]()
+[![Version](https://img.shields.io/badge/version-0.2.0-orange)]()
 
 [快速开始](#-快速开始-5-分钟) • [核心特性](#-核心特性) • [核心概念](#-核心概念) • [示例](#-实战示例) • [格式转换](docs/FORMAT_CONVERSION.md) • [CLI](docs/CLI.md) • [Reference](docs/REFERENCE.md) • [CI/CD](docs/CI_CD.md)
 
@@ -173,6 +173,11 @@ HTML report written to reports/report.html
 
 如果你已有 cURL 命令、Postman Collection 或浏览器 HAR 记录，可以快速转换为 YAML：
 
+注意：`arun convert` 要求“文件在前，选项在后”，且不支持无选项转换（需至少提供一个选项，如 `--outfile`/`--split-output`/`--redact`/`--placeholders`）。
+
+- 正确：`arun convert requests.curl --outfile testcases/from_curl.yaml`
+- 错误：`arun convert --outfile testcases/from_curl.yaml requests.curl`
+
 ```bash
 # cURL → 用例（脱敏 + 变量占位）
 arun convert requests.curl --outfile testcases/from_curl.yaml --redact Authorization,Cookie --placeholders
@@ -188,7 +193,7 @@ arun convert api_collection.json \
 arun convert recording.har --exclude-static --only-2xx --exclude-pattern '(\.png$|/cdn/)' --outfile testcases/from_har.yaml
 
 # OpenAPI → 用例（按 tag 过滤，多文件输出）
-arun convert openapi spec/openapi/ecommerce_api.json --tags users,orders --split-output --outfile testcases/from_openapi.yaml --redact Authorization --placeholders
+arun convert-openapi spec/openapi/ecommerce_api.json --tags users,orders --split-output --outfile testcases/from_openapi.yaml --redact Authorization --placeholders
 ```
 
 **提示**：更多“转换实战”示例见下方「arun convert - 智能格式转换」一节。

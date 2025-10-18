@@ -182,6 +182,8 @@ steps:
 
 演示从浏览器/Postman 到 ARun YAML 的完整转换流程。
 
+注意：`arun convert` 要求“文件在前，选项在后”，且不支持无选项转换（至少提供 `--outfile`/`--split-output`/`--redact`/`--placeholders` 等其一）。
+
 #### 场景 1：从浏览器 HAR 快速生成测试
 
 ```bash
