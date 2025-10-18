@@ -11,6 +11,8 @@ config:
 
 steps:
   - name: 注册用户
+    variables:
+      dd: "dede"
     request:
       method: POST
       url: /api/v1/auth/register
@@ -23,6 +25,7 @@ steps:
         password: $password
         full_name: $full_name
         shipping_address: $shipping_address
+        dd: $dd
     extract:
       username: $.data.username
     validate:
