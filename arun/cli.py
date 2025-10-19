@@ -933,9 +933,9 @@ def run(
     env_name: Optional[str] = os.environ.get("ARUN_ENV")  # optional default via env var
     env_store = load_environment(env_name, env_file)
     # Sync env_store to os.environ for notification and other integrations
-    for k, v in env_store.items():
-        if k and isinstance(v, str) and k.upper() == k:  # Only uppercase keys (skip lowercase duplicates)
-            os.environ.setdefault(k, v)
+    for env_key, env_val in env_store.items():
+        if env_key and isinstance(env_val, str) and env_key.upper() == env_key:  # Only uppercase keys (skip lowercase duplicates)
+            os.environ.setdefault(env_key, env_val)
     # Preflight: warn when default env file is missing and no BASE_URL provided anywhere
     from pathlib import Path as _Path
     _env_exists = _Path(env_file).exists() if env_file else False
@@ -955,10 +955,10 @@ def run(
         global_vars[k2] = v2
         global_vars[k2.lower()] = v2
 
-    # Workaround: some environments leak env keys into -k unexpectedly; neutralize if k equals a known env key
-    if k and k in (set(env_store.keys()) | {kk.lower() for kk in env_store.keys()}):
-        # only override when it's clearly an env key, not an actual filter
-        k = None
+    # Always honor user-provided tag filter `-k`.
+    # Previously we neutralized `-k` when it matched an env key, which caused
+    # confusing behavior (e.g., `-k auth` ignored if ENV has AUTH/auth).
+    # That heuristic is removed to ensure explicit filters are respected.
     # Discover files
     typer.echo(f"Filter expression: {k!r}")
     files = discover([path])
