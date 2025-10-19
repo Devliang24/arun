@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import typer
+from importlib import metadata as _im
 import yaml
 
 from arun.loader.collector import discover, match_tags
@@ -45,7 +46,61 @@ def _flow_seq_representer(dumper: yaml.Dumper, value: _FlowSeq):
 _YamlDumper.add_representer(_FlowSeq, _flow_seq_representer)
 
 
-app = typer.Typer(add_completion=False, help="ARun · Zero-code HTTP API test framework", rich_markup_mode=None)
+def _get_arun_version() -> str:
+    """Best-effort version detection for help banner.
+
+    Priority:
+    1) Installed package metadata (importlib.metadata)
+    2) pyproject.toml under a project root (if available when running from source)
+    3) arun.__version__ attribute
+    4) "unknown"
+    """
+    # 1) package metadata (installed/installed in editable)
+    try:
+        return _im.version("arun")
+    except Exception:
+        pass
+
+    # 2) pyproject.toml (running from source without installed metadata)
+    try:
+        here = Path(__file__).resolve()
+        for parent in [here.parent, *here.parents]:
+            pp = parent / "pyproject.toml"
+            if pp.exists():
+                text = pp.read_text(encoding="utf-8", errors="ignore")
+                in_project = False
+                for line in text.splitlines():
+                    s = line.strip()
+                    if s.startswith("[") and s.endswith("]"):
+                        in_project = (s == "[project]")
+                    elif in_project and s.startswith("version") and "=" in s:
+                        # naive TOML parse: version = "x.y.z"
+                        try:
+                            _, rhs = s.split("=", 1)
+                            v = rhs.strip().strip('"').strip("'")
+                            if v:
+                                return v
+                        except Exception:
+                            pass
+                break
+    except Exception:
+        pass
+
+    # 3) module attribute
+    try:
+        from arun import __version__ as _v  # type: ignore
+        if _v:
+            return str(_v)
+    except Exception:
+        pass
+
+    # 4) fallback
+    return "unknown"
+
+
+_APP_HELP = f"ARun v{_get_arun_version()} · Zero-code HTTP API test framework"
+
+app = typer.Typer(add_completion=False, help=_APP_HELP, rich_markup_mode=None)
 export_app = typer.Typer()
 app.add_typer(export_app, name="export")
 
