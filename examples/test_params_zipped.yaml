@@ -1,15 +1,19 @@
 config:
   name: "参数化：压缩"
   base_url: ${ENV(BASE_URL)}
-parameters:
-  - a-b:
-      - [1, "x"]
-      - [2, "y"]
+  parameters:
+    - username-password:
+        - ["alice", "pass123"]
+        - ["bob", "secret456"]
+        - ["charlie", "pwd789"]
+    - env:
+        - "dev"
+        - "staging"
 
 steps:
   - name: 压缩参数
     request:
       method: GET
-      url: /?a=$a&b=$b
+      url: /login?username=$username&password=$password&env=$env
     validate:
       - eq: [status_code, 200]

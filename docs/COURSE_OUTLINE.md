@@ -4,7 +4,7 @@
 1. 搭建运行与产物：独立完成安装与运行，输出 HTML 报告、JSON 报告与控制台/文件日志（`arun run testcases --html reports/report.html --report reports/report.json --env-file .env`）。
 2. 业务回归测试套件：基于现有 `testcases/*` 与 `testsuites/*` 交付冒烟/回归/权限三层测试套件；验收标准：冒烟测试套件稳定全绿且用时 <5 分钟（示例：运行 `testsuites/testsuite_smoke.yaml`）。
 3. 标签治理与筛选：按 `smoke/regression/permissions` 标签组织并能用 `-k` 表达式精确筛选（如 `arun run testcases -k "smoke and not slow"`）。
-4. 参数化覆盖：使用矩阵/枚举/压缩三种参数化覆盖多环境与边界场景（`examples/test_params_*.yaml`），验证实例数与期望一致。
+4. 参数化覆盖：使用压缩参数化覆盖多环境与边界场景（`examples/test_params_zipped.yaml`），验证实例数与期望一致。
 5. 鉴权与会话复用：完成登录→带 token 访问链路（`testcases/test_auth.yaml`、`examples/test_login_whoami.yaml`），并验证无需显式设置 `Authorization` 头也能通过（自动注入生效）。
 6. 报告与最小复现：能从 HTML 报告中获取 cURL 并在终端复现实验结果；可生成 Allure 结果并本地渲染（`--allure-results allure-results`）。
 7. SQL 数据一致性：配置 MySQL 连接（环境变量 `MYSQL_HOST/PORT/USER/PASSWORD/DB` 或 `MYSQL_DSN`），运行 `examples/test_sql_validate.yaml` 与 `examples/test_sql_store_reuse.yaml` 完成金额/库存校验与变量复用。
@@ -36,7 +36,7 @@
 
 ## 阶段 3｜核心能力
 1. 数据提取与断言：JMESPath 常用模式与断言可读性。
-2. 参数化与复用：矩阵/枚举/压缩，片段与组织策略。
+2. 参数化与复用：压缩模式，片段与组织策略。
 3. HTTP 引擎与稳定性：超时/重试/幂等/cURL 诊断（`arun/engine/http.py`）。
 4. Hooks 与签名鉴权：`arun_hooks.py`、时间戳/HMAC、会话变量。
 5. SQL 校验与结果复用：查询断言/变量存储（`examples/test_sql_*.yaml`）。
@@ -59,7 +59,7 @@
 14. 请求体与编码场景：`examples/test_form_urlencoded.yaml`、`examples/test_multipart_upload.yaml`、`examples/test_headers_merge.yaml`。
 15. 鉴权策略示例：`examples/test_static_bearer.yaml`、`examples/test_hmac_sign.yaml`。
 16. 重试与跳过策略：`examples/test_skip_and_retry.yaml`。
-17. 参数化覆盖策略：`examples/test_params_matrix.yaml`、`examples/test_params_enumerate.yaml`、`examples/test_params_zipped.yaml`。
+17. 参数化覆盖策略：`examples/test_params_zipped.yaml`。
 18. SQL 连接与覆盖：`examples/test_sql_validate.yaml`、`examples/test_sql_dsn_override.yaml`。
 19. 测试套件与标签治理：`testsuites/testsuite_smoke.yaml`、`testsuites/testsuite_regression.yaml`、`testsuites/testsuite_permissions.yaml`。
 

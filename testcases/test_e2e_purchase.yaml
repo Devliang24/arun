@@ -8,10 +8,8 @@ config:
     full_name: E2EUser_${short_uid(10)}
     password: Pwd_${short_uid(12)}
     shipping_address: Addr_${short_uid(12)}
-parameters:
-  quantity:
-    - 1
-    - 2
+  parameters:
+    - quantity: [1, 2]
 
 steps:
   - name: 注册用户

@@ -18,7 +18,7 @@
 - 实战示例（Examples）：docs/EXAMPLES.md
   - 登录流程与 Token 注入
   - E2E 购物流程
-  - 参数化矩阵
+  - 参数化（压缩）
   - 签名 Hooks 示例
   - 格式转换与导出工作流
   - 测试套件（Testsuite，引用用例）

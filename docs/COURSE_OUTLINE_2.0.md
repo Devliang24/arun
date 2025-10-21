@@ -7,7 +7,7 @@
 2. **格式转换迁移**：使用 `arun convert` 将 cURL/HAR/Postman 资产导入，熟练掌握 `--split-output`、`--into`、`--case-name`、`--base-url` 的组合策略；为导入到同一 case/suite 的场景产出可复用脚本。（提示：`arun convert` 要求“文件在前，选项在后”，且不支持无选项转换。）
 3. **导出与复现**：运用 `arun export curl` 生成脱敏、多行/单行可选的 cURL；通过 `--with-comments`、`--redact`、`--steps`、`--shell ps` 提供占位符与跨 Shell 复现；输出复现手册。
 4. **标签治理**：使用 `-k` 与 `arun tags` 管理测试套件层级，实现冒烟/回归/权限的稳定筛选，并提交治理报告。
-5. **参数化/复用**：基于矩阵、枚举、压缩三类参数化覆盖多环境与边界场景，验证实例数并记录执行结果。
+5. **参数化/复用**：基于压缩参数化覆盖多环境与边界场景，验证实例数并记录执行结果。
 6. **环境管理**：通过 `ARUN_ENV` + `env/<name>.yaml` + `.env` + `--vars` 构建多层环境合并，梳理优先级与冲突解决策略。
 7. **模板与内置函数**：熟练 `$var`/`${expr}`、`ENV()` 与 `now`/`uuid`/`random_int`/`hmac_sha256`；解析常见渲染陷阱，并能调试模板异常。
 8. **鉴权与会话**：跑通登录→会话→自动 Authorization 注入链路，验证 `auth` 字段与 Token 复用场景。
@@ -48,9 +48,9 @@
 - 实战指南：见 `docs/CLI.md#format-conversion`（覆盖导入期脱敏 `--redact/--placeholders`、Postman `--postman-env/--suite-out`、HAR 去噪筛选、OpenAPI 转换与示例命令）。
 
 ## 模块 D｜变量、模板与参数化
-- `VarContext` 层级：环境 < config < parameters < step < CLI；变量注入策略。
+- `VarContext` 层级：环境 < config.variables < config.parameters < step < CLI；变量注入策略。
 - TemplateEngine 解析流程：`$var`/`${expr}`、`ENV()`、内置函数；防御性渲染。
-- 参数化实践：矩阵/枚举/压缩；组合策略与测试套件治理。
+- 参数化实践：压缩模式；组合策略与测试套件治理。
 - 内置函数库：`now`、`uuid`、`random_int`、`base64_encode`、`hmac_sha256`；自定义函数在 Hooks 中扩展。
 
 ## 模块 E｜运行器核心能力
@@ -67,7 +67,7 @@
 - 鉴权策略：`examples/test_static_bearer.yaml`、`examples/test_hmac_sign.yaml`。
 - 编码与边界：`examples/test_form_urlencoded.yaml`、`examples/test_multipart_upload.yaml`、`examples/test_headers_merge.yaml`。
 - 重试/跳过：`examples/test_skip_and_retry.yaml`。
-- 参数化扩展：`examples/test_params_{matrix,enumerate,zipped}.yaml`。
+- 参数化扩展：`examples/test_params_zipped.yaml`。
 - SQL 场景：`examples/test_sql_{validate,store_reuse,dsn_override}.yaml`。
 - 测试套件治理：`testsuites/testsuite_{smoke,regression,permissions}.yaml`。
 

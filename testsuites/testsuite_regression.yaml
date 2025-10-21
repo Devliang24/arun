@@ -13,4 +13,4 @@ testcases:
   - name: 端到端下单（参数化）
     testcase: testcases/test_e2e_purchase.yaml
     parameters:
-      quantity: [1, 2]
+      - quantity: [1, 2]

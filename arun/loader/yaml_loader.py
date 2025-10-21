@@ -25,12 +25,17 @@ def _is_testsuite_reference(doc: Dict[str, Any]) -> bool:
 
 def _normalize_case_dict(d: Dict[str, Any], path: Path | None = None, raw_text: str | None = None) -> Dict[str, Any]:
     dd = dict(d)
+    has_top_level_parameters = "parameters" in dd
     # Allow case-level hooks declared inside config as aliases, e.g.:
     # config:
     #   setup_hooks: ["${func()}"]
     #   teardown_hooks: ["${func()}"]
     promoted_from_config: set[str] = set()
+    parameters_from_config = False
     if "config" in dd and isinstance(dd["config"], dict):
+        if "parameters" in dd["config"]:
+            parameters_from_config = True
+            dd["parameters"] = dd["config"].pop("parameters")
         for hk_field in ("setup_hooks", "teardown_hooks"):
             if hk_field in dd["config"]:
                 items = dd["config"].get(hk_field)
@@ -51,6 +56,14 @@ def _normalize_case_dict(d: Dict[str, Any], path: Path | None = None, raw_text: 
                 promoted_from_config.add(hk_field)
                 # remove from config to avoid model validation issues
                 dd["config"].pop(hk_field, None)
+        if parameters_from_config and has_top_level_parameters:
+            raise LoadError(
+                "Invalid duplicate 'parameters': define parameters under 'config.parameters' only."
+            )
+    if "parameters" in dd and not parameters_from_config:
+        raise LoadError(
+            "Invalid top-level 'parameters'. Move case parameters under 'config.parameters'."
+        )
     if "steps" in dd and isinstance(dd["steps"], list):
         new_steps: List[Dict[str, Any]] = []
         for idx, s in enumerate(dd["steps"]):
@@ -391,38 +404,19 @@ def _find_request_subfield_location(raw_text: str, step_index: int, subfield: st
 def expand_parameters(parameters: Any) -> List[Dict[str, Any]]:
     """Expand parameterization to a list of param dicts.
 
-    Supported forms:
-    1) Dict of lists (cartesian):
-       parameters: { a: [1,2], b: [3,4] }
-    2) List of dict-of-lists (cartesian across items):
-       parameters:
-         - a: [1,2]
-         - b: [3,4]
-    3) Zipped groups (hyphen-joined variable names):
-       parameters:
-         - a-b:
-             - [1,3]
-             - [2,4]
-       (Supports multiple groups; final result is cartesian product across groups)
-    4) Enumeration of concrete dicts:
-       parameters:
-         - {a: 1, b: 3}
-         - {a: 2, b: 4}
+    Only zipped mode is supported, e.g.:
+        parameters:
+          - username-password:
+              - [alice, pass123]
+              - [bob, secret456]
+          - region-env:
+              - [us, dev]
+              - [eu, staging]
     """
     if not parameters:
         return [{}]
 
-    # 4) enumeration of concrete dicts (all items are dicts and values are not lists/tuples)
     if isinstance(parameters, list):
-        if parameters and all(
-            isinstance(it, dict)
-            and all(not isinstance(v, (list, tuple, dict)) for v in it.values())
-            and all("-" not in k for k in it.keys())
-            for it in parameters
-        ):
-            return [dict(p) for p in parameters]
-
-        # General composition: iteratively combine groups
         combos: List[Dict[str, Any]] = [{}]
 
         def product_append(base: List[Dict[str, Any]], unit: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -432,56 +426,43 @@ def expand_parameters(parameters: Any) -> List[Dict[str, Any]]:
                     out.append({**b, **u})
             return out
 
-        for item in parameters:
-            if not isinstance(item, dict):
-                raise LoadError(f"Invalid parameters list item: {item!r}")
-            # 3) zipped groups: key like "a-b-c": [[v1,v2,v3], ...]
-            if len(item) == 1 and any("-" in k for k in item.keys()):
-                key = next(iter(item.keys()))
-                rows = item[key]
-                if not isinstance(rows, list):
-                    raise LoadError(f"Zipped parameters for {key!r} must be a list of lists")
-                names = [n.strip() for n in key.split("-") if n.strip()]
-                unit: List[Dict[str, Any]] = []
-                for row in rows:
-                    if not isinstance(row, (list, tuple)) or len(row) != len(names):
-                        raise LoadError(f"Row {row!r} does not match variables {names}")
-                    unit.append({n: v for n, v in zip(names, row)})
-                combos = product_append(combos, unit)
-            else:
-                # 2) dict-of-lists group (cartesian within the group)
-                if not all(isinstance(v, list) for v in item.values()):
-                    raise LoadError(f"Parameters item must be lists: {item!r}")
-                    
-                keys = list(item.keys())
-                vals = [list(v) for v in item.values()]
-                unit: List[Dict[str, Any]] = []
-                def rec(i: int, acc: Dict[str, Any]):
-                    if i == len(keys):
-                        unit.append(dict(acc))
-                        return
-                    k = keys[i]
-                    for vv in vals[i]:
-                        acc[k] = vv
-                        rec(i + 1, acc)
-                rec(0, {})
-                combos = product_append(combos, unit)
+        for idx, item in enumerate(parameters):
+            if not isinstance(item, dict) or len(item) != 1:
+                raise LoadError(
+                    f"Invalid zipped parameters at index {idx}: expected single-key dict like '- a-b: [...]'."
+                )
+            key, rows = next(iter(item.items()))
+            if not isinstance(rows, list):
+                raise LoadError(f"Zipped parameters for '{key}' must be provided as a list.")
+            names = [n.strip() for n in str(key).split("-") if n.strip()]
+            if not names:
+                raise LoadError(f"Zipped parameter key '{key}' must contain at least one variable name.")
+
+            unit: List[Dict[str, Any]] = []
+            for row in rows:
+                if len(names) == 1:
+                    if isinstance(row, (list, tuple)):
+                        if len(row) != 1:
+                            raise LoadError(
+                                f"Zipped parameters for '{key}' expect single values; got {row!r}."
+                            )
+                        values = [row[0]]
+                    else:
+                        values = [row]
+                else:
+                    if not isinstance(row, (list, tuple)):
+                        raise LoadError(
+                            f"Zipped parameters for '{key}' expect list/tuple rows matching {names}; got {row!r}."
+                        )
+                    if len(row) != len(names):
+                        raise LoadError(
+                            f"Row {row!r} does not match variables {names} for zipped group '{key}'."
+                        )
+                    values = list(row)
+                unit.append({name: value for name, value in zip(names, values)})
+
+            combos = product_append(combos, unit)
+
         return combos
 
-    # 1) dict of lists (cartesian)
-    if isinstance(parameters, dict):
-        keys = list(parameters.keys())
-        values = [list(v) for v in parameters.values()]
-        combos: List[Dict[str, Any]] = []
-        def rec(idx: int, acc: Dict[str, Any]):
-            if idx == len(keys):
-                combos.append(dict(acc))
-                return
-            k = keys[idx]
-            for v in values[idx]:
-                acc[k] = v
-                rec(idx + 1, acc)
-        rec(0, {})
-        return combos
-
-    raise LoadError(f"Unsupported parameters type: {type(parameters)}")
+    raise LoadError("Zipped parameters must be declared as a list of single-key dictionaries under config.parameters.")

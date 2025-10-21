@@ -6,7 +6,7 @@ from typing import Any, Dict, List
 class VarContext:
     """Layered variables with simple precedence.
 
-    Precedence (low -> high when merging): env_file < case.config.variables < parameters < step.variables < CLI overrides
+    Precedence (low -> high when merging): env_file < case.config.variables < case.config.parameters < step.variables < CLI overrides
     """
 
     def __init__(self, base: Dict[str, Any] | None = None) -> None:
@@ -38,4 +38,3 @@ class VarContext:
         if overrides:
             merged.update(overrides)
         return merged
-

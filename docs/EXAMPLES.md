@@ -108,17 +108,17 @@ steps:
       - gt: [$.data.order_id, 0]
 ```
 
-### 示例 3：参数化矩阵测试
+### 示例 3：参数化（压缩）测试
 
 ```yaml
 config:
   name: 多环境健康检查
   tags: [smoke, health]
 
-parameters:
-  env: [dev, staging, prod]
-  region: [us, eu, asia]
-  # 生成 3 × 3 = 9 个测试实例
+  parameters:
+    - env: ["dev", "staging", "prod"]
+    - region: ["us", "eu", "asia"]
+    # 生成 3 × 3 = 9 个测试实例（通过笛卡尔积组合两个压缩组）
 
 steps:
   - name: 检查服务健康

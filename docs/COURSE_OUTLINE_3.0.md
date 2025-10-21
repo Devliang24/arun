@@ -4,7 +4,7 @@
 1. 搭建运行与产物：独立完成安装与运行，输出 HTML 报告、JSON 报告、Allure 结果与结构化日志（示例：`arun run testcases --env-file .env --html reports/report.html --report reports/run.json --allure-results allure-results --log-file logs/run.log --mask-secrets`），说明脱敏效果。
 2. 业务回归测试套件：基于现有 `testcases/*` 与 `testsuites/*` 交付冒烟/回归/权限三层测试套件；验收标准：冒烟测试套件稳定全绿且用时 <5 分钟（示例：运行 `testsuites/testsuite_smoke.yaml`）。
 3. 标签治理与筛选：按 `smoke/regression/permissions` 标签组织并能用 `-k` 表达式精确筛选（示例：`arun run testcases -k "smoke and not slow"`）。
-4. 参数化覆盖：使用矩阵/枚举/压缩三种参数化覆盖多环境与边界场景（示例：`examples/test_params_*.yaml`），验证实例数与期望一致。
+4. 参数化覆盖：使用压缩参数化覆盖多环境与边界场景（示例：`examples/test_params_zipped.yaml`），验证实例数与期望一致。
 5. 鉴权与会话复用：完成登录→带 token 访问链路，验证自动 Authorization 注入与 `auth` 字段生效（示例：`testcases/test_auth.yaml`、`examples/test_login_whoami.yaml`）。
 6. 报告与最小复现：从 HTML/JSON/Allure 报告中定位失败，利用 `arun export curl` 生成脱敏、多行/单行可选的 cURL（`--with-comments/--redact/--steps/--shell`）。
 7. 资产迁移（格式转换）：使用 `arun convert` 将 cURL/HAR/Postman/OpenAPI 导入（`--split-output/--into/--case-name/--base-url/--tags/--redact/--placeholders`），形成脚本化导入方案。（提示：`arun convert` 要求“文件在前，选项在后”，且不支持无选项转换。）
@@ -33,7 +33,7 @@
 2. 安装与环境准备：`pip install -e .`、`arun --help`；创建 `.env`、`reports/`、`logs/`；确认 Python 版本与依赖。
 3. 首次运行与产物：`arun run testcases --env-file .env --html reports/report.html --report reports/run.json`，认识默认产物与路径（`reports/`、`logs/`）。
 4. YAML DSL 入门：`config/steps/request`（`method/url/headers/query/body`）/`extract/validate`；常用比较器 `eq/contains/gt/regex`。
-5. 变量与模板基础：`$var` 与 `${expr}` 的区别；作用域优先级（环境 < config < parameters < step < CLI）；`ENV()` 读取环境变量与默认值。
+5. 变量与模板基础：`$var` 与 `${expr}` 的区别；作用域优先级（环境 < config.variables < config.parameters < step < CLI）；`ENV()` 读取环境变量与默认值。
 6. 环境加载与覆盖：`ARUN_ENV` + `env/<name>.yaml` 的合并策略；`--vars` 临时覆盖；冲突识别与定位思路。
 7. 标签与筛选：`config.tags` 用法；`-k` 表达式 `and/or/not` 组合（示例：`-k "smoke and not slow"`）。
 8. 失败与重试控制：`--failfast` 行为；Step 级 `timeout/retry`（如场景需要）；失败快照与最小复现建议。
@@ -48,8 +48,8 @@
 ## 阶段 3｜核心能力
 1. 数据提取与断言：JMESPath 常用模式（数组/对象/嵌套），断言可读性与命名（`arun/runner/{extractors,assertions}.py`）。
 2. 断言集合与失败定位：多断言分组/短路；错误信息优化与报告阅读顺序（HTML/JSON/Allure）。
-3. 变量作用域与生命周期：环境/config/parameters/step/CLI 覆盖顺序；同名冲突与临时变量复用。
-4. 参数化深化：矩阵/枚举/压缩的适用场景与实例数预估；条目级 `parameters` 覆盖（`testsuites/*`）。
+3. 变量作用域与生命周期：环境/config.variables/config.parameters/step/CLI 覆盖顺序；同名冲突与临时变量复用。
+4. 参数化深化：压缩模式的适用场景与实例数预估；条目级 `parameters` 覆盖（`testsuites/*`）。
 5. 模板与渲染：`$var/${expr}`；`ENV()` 默认值；内置函数 `now/uuid/random_int/base64_encode/hmac_sha256`；渲染失败排查。
 6. HTTP 稳定性：超时/重试/重定向/证书校验；最小复现 cURL（`arun/utils/curl.py`）。
 7. 会话与鉴权：`auth` 字段与自动 Authorization 注入；登录 token 提取与复用；Cookie/跨请求头合并策略（`arun/engine/http.py`）。
@@ -76,7 +76,7 @@
 14. 编码与边界场景：`examples/test_form_urlencoded.yaml`、`examples/test_multipart_upload.yaml`、`examples/test_headers_merge.yaml`。
 15. 鉴权策略示例：`examples/test_static_bearer.yaml`、`examples/test_hmac_sign.yaml`。
 16. 重试与跳过策略：`examples/test_skip_and_retry.yaml`。
-17. 参数化覆盖策略：`examples/test_params_matrix.yaml`、`examples/test_params_enumerate.yaml`、`examples/test_params_zipped.yaml`。
+17. 参数化覆盖策略：`examples/test_params_zipped.yaml`。
 18. SQL 连接与覆盖：`examples/test_sql_validate.yaml`、`examples/test_sql_dsn_override.yaml`。
 19. 测试套件与标签治理：`testsuites/testsuite_smoke.yaml`、`testsuites/testsuite_regression.yaml`、`testsuites/testsuite_permissions.yaml`。
 

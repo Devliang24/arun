@@ -74,7 +74,7 @@ steps:
 
 - **Hooks 系统**：测试套件（Suite）/用例（Case）/步骤（Step）三级生命周期钩子，支持请求签名、数据准备
 - **SQL 验证**：内置 MySQL 支持，查询结果断言和变量存储
-- **参数化测试**：矩阵、枚举、压缩三种模式，轻松生成测试组合
+- **参数化测试**：压缩模式（zipped），保证多参数按行成组传递
 - **重试机制**：指数退避，容错不稳定接口
 
 ### 📊 企业级特性
@@ -256,7 +256,7 @@ body:
 1. CLI 覆盖      --vars key=value (最高优先级)
 2. 步骤变量      steps[].variables (当前步骤内有效)
 3. 配置变量      config.variables (用例级全局)
-4. 参数变量      parameters (参数化测试时注入)
+4. 参数变量      config.parameters (参数化测试时注入)
 5. 提取变量      steps[].extract (从当前步骤响应提取，存入会话供后续步骤使用)
 ```
 
@@ -268,9 +268,8 @@ body:
 config:
   variables:
     user_id: 100        # 优先级 3：配置变量（用例级全局）
-
-parameters:
-  user_id: [1, 2]       # 优先级 4：参数变量会被配置变量覆盖
+  parameters:
+    - user_id: [1, 2]       # 优先级 4：参数变量会被配置变量覆盖
 
 steps:
   - name: 登录
@@ -565,32 +564,16 @@ steps:
 
 ### 参数化测试
 
-使用多组参数运行同一测试，支持三种模式：
-
-#### 1. 矩阵模式（笛卡尔积）
+使用多组参数运行同一测试时，请在用例内通过 `config.parameters` 提供“压缩（zipped）参数”——每个条目以连字符 `-` 连接变量名，行内的值会一一对应注入：
 
 ```yaml
-parameters:
-  env: [dev, staging, prod]
-  region: [us, eu]
-  # 生成 3 × 2 = 6 个测试实例
-
-steps:
-  - name: 健康检查
-    request:
-      url: https://${env}-${region}.example.com/health
-    validate:
-      - eq: [status_code, 200]
-```
-
-#### 2. 枚举模式（列表）
-
-```yaml
-parameters:
-  - {username: alice, role: admin}
-  - {username: bob, role: user}
-  - {username: charlie, role: guest}
-  # 生成 3 个测试实例
+config:
+  parameters:
+    - username-password:
+        - ["alice", "pass123"]
+        - ["bob", "secret456"]
+        - ["charlie", "pwd789"]
+    # 生成 3 个测试实例，每一行同时提供 username/password
 
 steps:
   - name: 登录测试
@@ -599,34 +582,13 @@ steps:
       url: /api/login
       body:
         username: $username
+        password: $password
     validate:
       - eq: [status_code, 200]
-      - eq: [$.data.role, $role]
+      - eq: [$.data.user.username, $username]
 ```
 
-#### 3. 压缩模式（并行数组）
-
-使用连字符分隔的变量名（如 `username-password`）将多个值打包成组，每组值对应一个测试实例。
-
-```yaml
-parameters:
-  - username-password:        # 连字符分隔的变量名
-      - [alice, pass123]      # 第 1 组：username=alice, password=pass123
-      - [bob, secret456]      # 第 2 组：username=bob, password=secret456
-      - [charlie, pwd789]     # 第 3 组：username=charlie, password=pwd789
-  # 生成 3 个测试实例，每组参数成对使用
-
-steps:
-  - name: 登录
-    request:
-      method: POST
-      url: /api/login
-      body:
-        username: $username   # 使用第 1 个变量
-        password: $password   # 使用第 2 个变量
-```
-
-> **提示**：压缩模式适合多个参数需要成对出现的场景（如用户名和密码、坐标 x 和 y 等）。
+> **提示**：若只需要单个变量，可使用单字段写法，例如 `- quantity: [1, 2, 3]`，每个值分别注入 `$quantity`。
 
 ### SQL 验证
 
