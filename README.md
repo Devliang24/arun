@@ -564,19 +564,52 @@ steps:
 
 ### 参数化测试
 
-使用多组参数运行同一测试时，请在用例内通过 `config.parameters` 提供“压缩（zipped）参数”——每个条目以连字符 `-` 连接变量名，行内的值会一一对应注入：
+ARun 支持**压缩（zipped）参数化**，让你使用不同参数组合多次运行同一测试。参数定义在 `config.parameters` 中，支持单变量列表和多变量绑定两种用法。
+
+#### 用法 1：单变量列表
+
+适合单个参数的多个取值场景，如测试不同数量、不同环境等。
 
 ```yaml
 config:
+  name: 订单数量测试
+  base_url: ${ENV(BASE_URL)}
   parameters:
-    - username-password:
-        - ["alice", "pass123"]
-        - ["bob", "secret456"]
-        - ["charlie", "pwd789"]
-    # 生成 3 个测试实例，每一行同时提供 username/password
+    - quantity: [1, 2, 5, 10]
+    # 生成 4 个测试实例，分别测试 quantity=1, 2, 5, 10
 
 steps:
-  - name: 登录测试
+  - name: 创建订单
+    request:
+      method: POST
+      url: /api/orders
+      body:
+        product_id: "PROD-001"
+        quantity: $quantity
+    validate:
+      - eq: [status_code, 201]
+      - eq: [$.data.quantity, $quantity]
+```
+
+**实际示例：** `testcases/test_e2e_purchase.yaml:11-12`
+
+#### 用法 2：多变量绑定（推荐）
+
+使用**连字符 `-`** 连接变量名，将多个相关参数绑定为一组。适合测试用户凭证、坐标对、配置组合等场景。
+
+```yaml
+config:
+  name: 登录测试
+  base_url: ${ENV(BASE_URL)}
+  parameters:
+    - username-password-expected_status:
+        - ["alice", "pass123", 200]      # 正常登录
+        - ["bob", "wrong_pwd", 401]      # 密码错误
+        - ["unknown", "any_pwd", 401]    # 用户不存在
+    # 生成 3 个测试实例，每组参数成对使用
+
+steps:
+  - name: 尝试登录
     request:
       method: POST
       url: /api/login
@@ -584,11 +617,48 @@ steps:
         username: $username
         password: $password
     validate:
-      - eq: [status_code, 200]
-      - eq: [$.data.user.username, $username]
+      - eq: [status_code, $expected_status]
 ```
 
-> **提示**：若只需要单个变量，可使用单字段写法，例如 `- quantity: [1, 2, 3]`，每个值分别注入 `$quantity`。
+**实际示例：** `testcases/test_login_zipped.yaml:5-8`
+
+#### 用法 3：多组笛卡尔积（高级）
+
+定义多个压缩组时，ARun 会自动生成笛卡尔积组合，适合跨环境、跨区域的组合测试。
+
+```yaml
+config:
+  name: 多环境健康检查
+  base_url: ${ENV(BASE_URL)}
+  parameters:
+    - env: [dev, staging, prod]         # 3 个环境
+    - region: [us, eu, asia]            # 3 个区域
+    # 生成 3 × 3 = 9 个测试实例
+
+steps:
+  - name: 检查服务健康
+    variables:
+      full_url: https://${env}-${region}.example.com
+    request:
+      method: GET
+      url: ${full_url}/health
+    validate:
+      - eq: [status_code, 200]
+      - contains: [$.data.region, $region]
+```
+
+**组合说明：** 两个压缩组会生成 9 个实例：
+- (dev, us), (dev, eu), (dev, asia)
+- (staging, us), (staging, eu), (staging, asia)
+- (prod, us), (prod, eu), (prod, asia)
+
+> **最佳实践：**
+> - 单变量用列表：`- quantity: [1, 2, 3]`
+> - 多变量用绑定：`- username-password: [[alice, pass123], [bob, secret456]]`
+> - 需要笛卡尔积时定义多个压缩组：`- env: [dev, prod]` + `- region: [us, eu]`
+> - 变量名用连字符分隔，不要使用下划线或空格
+
+**更多示例：** 参见 `examples/test_params_zipped.yaml` 和 `testcases/test_register_zipped.yaml`
 
 ### SQL 验证
 
